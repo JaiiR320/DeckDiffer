@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "plan": {
+      "mode": "primary",
+      "description": "Read-only planning and design review before implementation",
+      "prompt": "{file:./agents/plan.md}",
+      "permission": {
+        "edit": "deny",
+        "write": "deny"
+      }
+    },
+    "qa": {
+      "mode": "subagent",
+      "description": "Independently review implementation quality, fit, and potential issues",
+      "prompt": "{file:./agents/qa.md}",
+      "permission": {
+        "edit": "deny",
+        "write": "deny"
+      }
+    }
+  }
+}
