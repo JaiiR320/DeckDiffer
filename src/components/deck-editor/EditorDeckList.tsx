@@ -10,6 +10,7 @@ type EditorDeckListProps = {
   resultCardTotal: number
   onAdjustQuantity?: (row: EditorRow, delta: number) => void
   onRestoreCard?: (row: EditorRow) => void
+  onPreviewCard?: (row: EditorRow) => void
   readOnly?: boolean
 }
 
@@ -19,6 +20,7 @@ export function EditorDeckList({
   resultCardTotal,
   onAdjustQuantity,
   onRestoreCard,
+  onPreviewCard,
   readOnly = false,
 }: EditorDeckListProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Partial<Record<CardCategory, boolean>>>({})
@@ -129,7 +131,12 @@ export function EditorDeckList({
                       key={row.oracleId}
                       className={`grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-sm ${index > 0 ? 'border-t border-zinc-800/90' : ''} ${toneClass} ${diffBorderClass}`}
                     >
-                      <span className="text-zinc-100">{row.name}</span>
+                      <span
+                        className="inline-block cursor-pointer text-zinc-100"
+                        onMouseEnter={() => onPreviewCard?.(row)}
+                      >
+                        {row.name}
+                      </span>
                       <div className="flex items-center gap-1.5">
                         {readOnly ? (
                           <span className="font-mono text-sm text-zinc-400">{row.currentQuantity}</span>

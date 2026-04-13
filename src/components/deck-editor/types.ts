@@ -13,6 +13,8 @@ export type EditorRow = {
   name: string
   category: CardCategory
   typeLine: string
+  setCode?: string
+  collectorNumber?: string
   baselineQuantity: number
   currentQuantity: number
   status: 'same' | 'added' | 'removed' | 'changed'

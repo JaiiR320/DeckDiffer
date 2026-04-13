@@ -20,6 +20,8 @@ export function buildEditorRows(baselineCards: ValidatedDeckCard[], workingCards
       name: workingCard?.name ?? baselineCard?.name ?? 'Unknown Card',
       category: workingCard?.category ?? baselineCard?.category ?? 'Other',
       typeLine: workingCard?.typeLine ?? baselineCard?.typeLine ?? '',
+      setCode: workingCard?.setCode ?? baselineCard?.setCode,
+      collectorNumber: workingCard?.collectorNumber ?? baselineCard?.collectorNumber,
       baselineQuantity,
       currentQuantity,
       status:

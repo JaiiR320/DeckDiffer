@@ -1,7 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Pencil, Save } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CardPreviewPanel } from '../components/cards/CardPreviewPanel'
 import { DeckActionsModal } from '../components/decks/DeckActionsModal'
 import { DeckAlerts } from '../components/deck-editor/DeckAlerts'
 import { EditorDeckList } from '../components/deck-editor/EditorDeckList'
@@ -22,7 +23,13 @@ import {
 } from '../lib/decklist'
 import { createDeckSave, getLatestSave, slugifyName, type DeckItem } from '../lib/deck'
 import { deleteDeck, loadDeckById, upsertDeck } from '../lib/storage'
-import { type SearchCardResult, validateDeckEntries } from '../lib/scryfall'
+import {
+  getCardPreview,
+  type CardPreviewLookup,
+  type CardPreviewResult,
+  type SearchCardResult,
+  validateDeckEntries,
+} from '../lib/scryfall'
 
 export const Route = createFileRoute('/decks/$deckId')({
   component: DeckDetailPage,
@@ -53,6 +60,10 @@ function DeckDetailPage() {
   const [activeTab, setActiveTab] = useState<'editor' | 'history'>('editor')
   const [compareMode, setCompareMode] = useState(false)
   const [compareSaves, setCompareSaves] = useState<{ saveA: DeckSave; saveB: DeckSave } | null>(null)
+  const [previewLookup, setPreviewLookup] = useState<CardPreviewLookup | null>(null)
+  const [previewCard, setPreviewCard] = useState<CardPreviewResult | null>(null)
+  const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const previewRequestIdRef = useRef(0)
 
   const deckName = deck?.name ?? deckId
 
@@ -88,6 +99,35 @@ function DeckDetailPage() {
       }
     }
   }, [deck])
+
+  useEffect(() => {
+    if (!previewLookup) {
+      return
+    }
+
+    const requestId = previewRequestIdRef.current + 1
+    previewRequestIdRef.current = requestId
+    setPreviewStatus('loading')
+    setPreviewCard(null)
+
+    getCardPreview(previewLookup)
+      .then((nextPreview) => {
+        if (previewRequestIdRef.current !== requestId) {
+          return
+        }
+
+        setPreviewCard(nextPreview)
+        setPreviewStatus(nextPreview ? 'ready' : 'error')
+      })
+      .catch(() => {
+        if (previewRequestIdRef.current !== requestId) {
+          return
+        }
+
+        setPreviewCard(null)
+        setPreviewStatus('error')
+      })
+  }, [previewLookup])
 
   function openImportModal() {
     setDraftDeck(baselineDeck.rawText)
@@ -301,6 +341,20 @@ function DeckDetailPage() {
     }))
   }
 
+  function updatePreviewCard(nextPreview: CardPreviewLookup) {
+    setPreviewLookup((currentPreview) => {
+      if (
+        currentPreview?.name === nextPreview.name &&
+        currentPreview?.setCode === nextPreview.setCode &&
+        currentPreview?.collectorNumber === nextPreview.collectorNumber
+      ) {
+        return currentPreview
+      }
+
+      return nextPreview
+    })
+  }
+
   function addCard(card: SearchCardResult) {
     setWorkingCards((currentCards) => [
       ...currentCards,
@@ -310,6 +364,8 @@ function DeckDetailPage() {
         quantity: 1,
         typeLine: card.typeLine,
         category: card.category,
+        setCode: card.setCode,
+        collectorNumber: card.collectorNumber,
       },
     ])
   }
@@ -331,6 +387,8 @@ function DeckDetailPage() {
             quantity: 1,
             typeLine: row.typeLine,
             category: row.category,
+            setCode: row.setCode,
+            collectorNumber: row.collectorNumber,
           },
         ]
       }
@@ -364,6 +422,8 @@ function DeckDetailPage() {
           quantity: row.baselineQuantity,
           typeLine: row.typeLine,
           category: row.category,
+          setCode: row.setCode,
+          collectorNumber: row.collectorNumber,
         },
       ]
     })
@@ -398,7 +458,7 @@ function DeckDetailPage() {
 
   return (
     <>
-      <main className="mx-auto min-h-screen w-full max-w-5xl px-8 py-8">
+      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
         <div className="mb-8 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link
@@ -482,18 +542,44 @@ function DeckDetailPage() {
                 onExport={exportResult}
                 exportDisabled={isHydrated && (mergedWorkingCards.length === 0 || baselineDeck.status === 'loading')}
                 onAddCard={addCard}
+                onPreviewCard={(card) =>
+                  updatePreviewCard({
+                    name: card.name,
+                    setCode: card.setCode,
+                    collectorNumber: card.collectorNumber,
+                  })
+                }
               />
 
-              <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
+              <div className="grid gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
+                <div className="p-5 lg:pr-0">
+                  <CardPreviewPanel
+                    preview={previewCard}
+                    status={previewStatus}
+                    requestedName={previewLookup?.name ?? null}
+                  />
+                </div>
 
-              <EditorDeckList
-                groupedRows={groupedRows}
-                emptyMessage={emptyMessage}
-                resultCardTotal={resultCardTotal}
-                onAdjustQuantity={compareMode ? undefined : adjustQuantity}
-                onRestoreCard={compareMode ? undefined : restoreCard}
-                readOnly={compareMode}
-              />
+                <div className="min-w-0">
+                  <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
+
+                  <EditorDeckList
+                    groupedRows={groupedRows}
+                    emptyMessage={emptyMessage}
+                    resultCardTotal={resultCardTotal}
+                    onAdjustQuantity={compareMode ? undefined : adjustQuantity}
+                    onRestoreCard={compareMode ? undefined : restoreCard}
+                    onPreviewCard={(row) =>
+                      updatePreviewCard({
+                        name: row.name,
+                        setCode: row.setCode,
+                        collectorNumber: row.collectorNumber,
+                      })
+                    }
+                    readOnly={compareMode}
+                  />
+                </div>
+              </div>
             </>
           ) : deck ? (
             <SaveHistoryPanel

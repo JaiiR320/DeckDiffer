@@ -12,6 +12,19 @@ type ScryfallCard = {
   type_line: string
   set: string
   collector_number: string
+  mana_cost?: string
+  oracle_text?: string
+  image_uris?: {
+    small?: string
+    normal?: string
+  }
+  card_faces?: Array<{
+    oracle_text?: string
+    image_uris?: {
+      small?: string
+      normal?: string
+    }
+  }>
 }
 
 type ScryfallCollectionResponse = {
@@ -37,7 +50,25 @@ export type SearchCardResult = {
   collectorNumber?: string
 }
 
+export type CardPreviewLookup = {
+  name: string
+  setCode?: string
+  collectorNumber?: string
+}
+
+export type CardPreviewResult = {
+  name: string
+  typeLine: string
+  manaCost?: string
+  oracleText?: string
+  setCode?: string
+  collectorNumber?: string
+  smallImageUrl: string
+  imageUrl: string
+}
+
 const SCRYFALL_COLLECTION_LIMIT = 75
+const cardPreviewCache = new Map<string, Promise<CardPreviewResult | null>>()
 
 function normalizeCardQuery(query: string) {
   return query
@@ -62,6 +93,77 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     setCode: card.set?.toUpperCase(),
     collectorNumber: card.collector_number,
   }
+}
+
+function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
+  const faceWithImage = card.card_faces?.find(
+    (face) => face.image_uris?.normal || face.image_uris?.small,
+  )
+  const smallImageUrl = card.image_uris?.small ?? faceWithImage?.image_uris?.small
+  const imageUrl = card.image_uris?.normal ?? faceWithImage?.image_uris?.normal
+
+  if (!smallImageUrl || !imageUrl) {
+    return null
+  }
+
+  return {
+    name: card.name,
+    typeLine: card.type_line,
+    manaCost: card.mana_cost,
+    oracleText:
+      card.oracle_text ?? card.card_faces?.map((face) => face.oracle_text).filter(Boolean).join('\n\n'),
+    setCode: card.set?.toUpperCase(),
+    collectorNumber: card.collector_number,
+    smallImageUrl,
+    imageUrl,
+  }
+}
+
+function getCardPreviewCacheKey({ name, setCode, collectorNumber }: CardPreviewLookup) {
+  if (setCode && collectorNumber) {
+    return `print::${setCode.toLowerCase()}::${collectorNumber.toLowerCase()}`
+  }
+
+  return `name::${normalizeCardQuery(name).toLowerCase()}`
+}
+
+async function fetchCardPreview({ name, setCode, collectorNumber }: CardPreviewLookup) {
+  const headers = { Accept: 'application/json' }
+
+  if (setCode && collectorNumber) {
+    const printResponse = await fetch(
+      `https://api.scryfall.com/cards/${encodeURIComponent(setCode.toLowerCase())}/${encodeURIComponent(collectorNumber.toLowerCase())}`,
+      { headers },
+    )
+
+    if (printResponse.ok) {
+      return toCardPreviewResult((await printResponse.json()) as ScryfallCard)
+    }
+  }
+
+  const namedResponse = await fetch(
+    `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(normalizeCardQuery(name))}`,
+    { headers },
+  )
+
+  if (!namedResponse.ok) {
+    return null
+  }
+
+  return toCardPreviewResult((await namedResponse.json()) as ScryfallCard)
+}
+
+export function getCardPreview(lookup: CardPreviewLookup) {
+  const cacheKey = getCardPreviewCacheKey(lookup)
+  const cachedPreview = cardPreviewCache.get(cacheKey)
+
+  if (cachedPreview) {
+    return cachedPreview
+  }
+
+  const previewPromise = fetchCardPreview(lookup).catch(() => null)
+  cardPreviewCache.set(cacheKey, previewPromise)
+  return previewPromise
 }
 
 async function fetchCardCollectionByEntries(entries: ParsedDeckEntry[]) {
