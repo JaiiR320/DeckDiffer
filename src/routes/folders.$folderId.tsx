@@ -46,6 +46,10 @@ function FolderDetailPage() {
   const editorRows = buildEditorRows(baselineDeck.cards, workingCards)
   const groupedRows = groupEditorRows(editorRows)
   const resultCardTotal = editorRows.reduce((total, row) => total + row.currentQuantity, 0)
+  const emptyMessage =
+    baselineDeck.status === 'loading'
+      ? 'Validating the imported deck with Scryfall.'
+      : 'Import a deck or add cards to start building.'
 
   function openImportModal() {
     setDraftDeck(baselineDeck.rawText)
@@ -240,7 +244,7 @@ function FolderDetailPage() {
 
           <EditorDeckList
             groupedRows={groupedRows}
-            emptyMessage="Import a deck or add cards to start building."
+            emptyMessage={emptyMessage}
             resultCardTotal={resultCardTotal}
             onAdjustQuantity={adjustQuantity}
             onRestoreCard={restoreCard}

@@ -39,11 +39,6 @@ export function DeckAlerts({ deck, onDismissWarnings }: DeckAlertsProps) {
         </section>
       ) : null}
 
-      {deck.status === 'loading' ? (
-        <div className="flex min-h-20 items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 px-6 text-center">
-          <p className="max-w-sm text-sm text-zinc-500">Validating the imported deck with Scryfall.</p>
-        </div>
-      ) : null}
     </div>
   )
 }
