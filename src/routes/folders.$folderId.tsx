@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ChevronDown, Download, Import, RotateCcw, X } from 'lucide-react'
+import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Download, Import, RotateCcw, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import {
@@ -252,25 +252,25 @@ function FolderDetailPage() {
     })
   }
 
-  function removeCard(row: EditorRow) {
-    setWorkingCards((currentCards) => currentCards.filter((card) => card.oracleId !== row.oracleId))
-  }
-
   function restoreCard(row: EditorRow) {
-    if (row.baselineQuantity <= 0) {
-      return
-    }
+    setWorkingCards((currentCards) => {
+      const nextCards = currentCards.filter((card) => card.oracleId !== row.oracleId)
 
-    setWorkingCards((currentCards) => [
-      ...currentCards,
-      {
-        oracleId: row.oracleId,
-        name: row.name,
-        quantity: row.baselineQuantity,
-        typeLine: row.typeLine,
-        category: row.category,
-      },
-    ])
+      if (row.baselineQuantity <= 0) {
+        return nextCards
+      }
+
+      return [
+        ...nextCards,
+        {
+          oracleId: row.oracleId,
+          name: row.name,
+          quantity: row.baselineQuantity,
+          typeLine: row.typeLine,
+          category: row.category,
+        },
+      ]
+    })
   }
 
   function exportResult() {
@@ -334,9 +334,8 @@ function FolderDetailPage() {
             emptyMessage="No cards in this deck yet."
             resultCardTotal={resultCardTotal}
             onAdjustQuantity={adjustQuantity}
-            onRemoveCard={removeCard}
-            onRestoreCard={restoreCard}
-          />
+             onRestoreCard={restoreCard}
+           />
         </section>
       </main>
 
@@ -688,14 +687,12 @@ function EditorDeckList({
   emptyMessage,
   resultCardTotal,
   onAdjustQuantity,
-  onRemoveCard,
   onRestoreCard,
 }: {
   groupedRows: Record<CardCategory, EditorRow[]>
   emptyMessage: string
   resultCardTotal: number
   onAdjustQuantity: (row: EditorRow, delta: number) => void
-  onRemoveCard: (row: EditorRow) => void
   onRestoreCard: (row: EditorRow) => void
 }) {
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
@@ -735,9 +732,11 @@ function EditorDeckList({
         <button
           type="button"
           onClick={() => setAllCategoriesCollapsed(!areAllCollapsed)}
-          className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
+          aria-label={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+          title={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
         >
-          {areAllCollapsed ? 'Expand All' : 'Collapse All'}
+          {areAllCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
         </button>
       </div>
 
@@ -803,7 +802,7 @@ function EditorDeckList({
                   >
                     <span className={`font-mono text-xs font-semibold ${markerClass}`}>{marker}</span>
                     <span className="text-zinc-100">{row.name}</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <QuantityStepper
                         quantity={row.currentQuantity}
                         baselineQuantity={row.baselineQuantity}
@@ -813,24 +812,16 @@ function EditorDeckList({
                         onDecrement={() => onAdjustQuantity(row, -1)}
                         onIncrement={() => onAdjustQuantity(row, 1)}
                       />
-                      {row.status === 'removed' ? (
-                        <button
-                          type="button"
-                          onClick={() => onRestoreCard(row)}
-                          className="inline-flex items-center gap-1 rounded-md border border-rose-800 bg-rose-950/40 px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide text-rose-200 transition hover:bg-rose-950/60"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" />
-                          Restore
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onRemoveCard(row)}
-                          className="rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
-                        >
-                          Remove
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        aria-label={`Restore ${row.name}`}
+                        title={`Restore ${row.name}`}
+                        onClick={() => onRestoreCard(row)}
+                        disabled={row.status === 'same'}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 )
@@ -876,12 +867,12 @@ function QuantityStepper({
         aria-label={decrementLabel}
         onClick={onDecrement}
         disabled={quantity === 0 && baselineQuantity === 0}
-        className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         -
       </button>
       <span
-        className={`min-w-10 rounded-md border px-2 py-1 text-center font-mono text-[11px] font-medium ${badgeClass}`}
+        className={`inline-flex h-7 min-w-8 items-center justify-center rounded-md border px-2 text-center text-[10px] font-medium ${badgeClass}`}
       >
         {quantity}
       </span>
@@ -889,7 +880,7 @@ function QuantityStepper({
         type="button"
         aria-label={incrementLabel}
         onClick={onIncrement}
-        className="rounded-md border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-[11px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
       >
         +
       </button>
