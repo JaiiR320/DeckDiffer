@@ -1,3 +1,4 @@
+import { CardSymbolText } from './CardSymbolText'
 import type { CardPreviewResult } from '../../lib/scryfall'
 
 type CardPreviewPanelProps = {
@@ -24,7 +25,11 @@ export function CardPreviewPanel({ preview, status, requestedName }: CardPreview
               <div className="flex items-start justify-between gap-3">
                 <h2 className="text-sm font-semibold text-zinc-100">{preview.name}</h2>
                 {preview.manaCost ? (
-                  <span className="shrink-0 text-xs font-medium text-cyan-300">{preview.manaCost}</span>
+                  <CardSymbolText
+                    text={preview.manaCost}
+                    className="shrink-0 text-xs font-medium text-cyan-300"
+                    symbolClassName="mx-[1px] inline-block h-4 w-4 align-[-0.2em]"
+                  />
                 ) : null}
               </div>
               <p className="mt-1 text-xs text-zinc-500">{preview.typeLine}</p>
@@ -36,8 +41,17 @@ export function CardPreviewPanel({ preview, status, requestedName }: CardPreview
               ) : null}
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-sm leading-6 whitespace-pre-line text-zinc-300">
-              {preview.oracleText || 'No oracle text available.'}
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-sm leading-6 text-zinc-300">
+              {preview.oracleText ? (
+                <CardSymbolText
+                  as="div"
+                  text={preview.oracleText}
+                  className="whitespace-pre-line"
+                  symbolClassName="mx-[1px] inline-block h-[0.95em] w-[0.95em] align-[-0.15em]"
+                />
+              ) : (
+                'No oracle text available.'
+              )}
             </div>
 
             {status === 'loading' ? <p className="text-xs text-zinc-500">Updating preview...</p> : null}

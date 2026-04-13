@@ -36,6 +36,16 @@ type ScryfallSearchResponse = {
   data: ScryfallCard[]
 }
 
+type ScryfallSymbol = {
+  symbol: string
+  english: string
+  svg_uri: string
+}
+
+type ScryfallSymbologyResponse = {
+  data: ScryfallSymbol[]
+}
+
 type ScryfallErrorResponse = {
   object: 'error'
   details: string
@@ -67,8 +77,15 @@ export type CardPreviewResult = {
   imageUrl: string
 }
 
+export type CardSymbol = {
+  symbol: string
+  english: string
+  svgUri: string
+}
+
 const SCRYFALL_COLLECTION_LIMIT = 75
 const cardPreviewCache = new Map<string, Promise<CardPreviewResult | null>>()
+let cardSymbolsCache: Promise<Map<string, CardSymbol>> | null = null
 
 function normalizeCardQuery(query: string) {
   return query
@@ -164,6 +181,42 @@ export function getCardPreview(lookup: CardPreviewLookup) {
   const previewPromise = fetchCardPreview(lookup).catch(() => null)
   cardPreviewCache.set(cacheKey, previewPromise)
   return previewPromise
+}
+
+async function fetchCardSymbols() {
+  const response = await fetch('https://api.scryfall.com/symbology', {
+    headers: { Accept: 'application/json' },
+  })
+
+  if (!response.ok) {
+    throw new Error('Could not load Scryfall card symbols.')
+  }
+
+  const payload = (await response.json()) as ScryfallSymbologyResponse
+
+  return new Map(
+    payload.data.map((symbol) => [
+      symbol.symbol,
+      {
+        symbol: symbol.symbol,
+        english: symbol.english,
+        svgUri: symbol.svg_uri,
+      },
+    ]),
+  )
+}
+
+export function getCardSymbols() {
+  if (cardSymbolsCache) {
+    return cardSymbolsCache
+  }
+
+  cardSymbolsCache = fetchCardSymbols().catch((error) => {
+    cardSymbolsCache = null
+    throw error
+  })
+
+  return cardSymbolsCache
 }
 
 async function fetchCardCollectionByEntries(entries: ParsedDeckEntry[]) {
