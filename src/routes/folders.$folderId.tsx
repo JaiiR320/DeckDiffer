@@ -718,7 +718,7 @@ function EditorDeckList({
   return (
     <div className="space-y-4 px-5 pb-5 pt-1">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+        <p className="font-mono text-sm font-medium uppercase tracking-[0.08em] text-zinc-500">
           {resultCardTotal} total card{resultCardTotal === 1 ? '' : 's'}
         </p>
         <button
@@ -747,13 +747,13 @@ function EditorDeckList({
             className={`flex w-full items-center justify-between gap-3 bg-zinc-900/80 px-4 py-3 text-left ${collapsedCategories[category] ? '' : 'border-b border-zinc-800'}`}
           >
             <div>
-              <h3 className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">{category}</h3>
-              <p className="mt-1 font-mono text-[11px] text-zinc-600">
+              <h3 className="font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-400">{category}</h3>
+              <p className="mt-1 font-mono text-sm text-zinc-600">
                 {rows.length} card{rows.length === 1 ? '' : 's'}
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 font-mono text-[11px] font-medium uppercase tracking-wide">
+              <div className="flex items-center gap-3 font-mono text-sm font-medium uppercase tracking-[0.08em]">
                 <span className="text-emerald-300">+{addedCount}</span>
                 <span className="text-amber-300">~{changedCount}</span>
                 <span className="text-rose-300">-{removedCount}</span>
