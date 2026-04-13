@@ -1,4 +1,4 @@
-import type { EditorRow } from './types'
+import type { EditorRow } from '../types'
 
 type QuantityStepperProps = {
   quantity: number

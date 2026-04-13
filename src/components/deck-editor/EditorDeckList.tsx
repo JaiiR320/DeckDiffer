@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronsDownUp, ChevronsUpDown, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { CARD_CATEGORIES, type CardCategory } from '../../lib/decklist'
-import { QuantityStepper } from './QuantityStepper'
+import { QuantityStepper } from './list/QuantityStepper'
 import type { EditorRow } from './types'
 
 type EditorDeckListProps = {

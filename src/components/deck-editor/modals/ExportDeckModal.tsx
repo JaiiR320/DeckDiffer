@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
-import { ToggleChip } from './ToggleChip'
-import type { ExportModalState } from './types'
+import { ToggleChip } from '../../ToggleChip'
+import type { ExportModalState } from '../types'
 
 type ExportDeckModalProps = {
   exportOptions: ExportModalState
