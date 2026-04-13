@@ -5,10 +5,10 @@ import type { FormEvent } from 'react'
 import {
   CARD_CATEGORIES,
   type CardCategory,
+  type DeckExportOptions,
   type InvalidDeckCard,
   type ValidatedDeckCard,
-  formatDeckExport,
-  getCardCategory,
+  formatDecklist,
   mergeValidatedCards,
   parseDecklist,
 } from '../lib/decklist'
@@ -35,6 +35,12 @@ type EditorRow = {
   baselineQuantity: number
   currentQuantity: number
   status: 'same' | 'added' | 'removed' | 'changed'
+}
+
+type ExportModalState = {
+  includeQuantity: boolean
+  includeSet: boolean
+  includeCollectorNumber: boolean
 }
 
 const emptyDeckState: DeckState = {
@@ -114,7 +120,13 @@ function FolderDetailPage() {
   const [baselineDeck, setBaselineDeck] = useState<DeckState>(emptyDeckState)
   const [workingCards, setWorkingCards] = useState<ValidatedDeckCard[]>([])
   const [isImportOpen, setIsImportOpen] = useState(false)
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const [draftDeck, setDraftDeck] = useState('')
+  const [exportOptions, setExportOptions] = useState<ExportModalState>({
+    includeQuantity: true,
+    includeSet: false,
+    includeCollectorNumber: false,
+  })
 
   const editorRows = buildEditorRows(baselineDeck.cards, workingCards)
   const groupedRows = groupEditorRows(editorRows)
@@ -127,6 +139,14 @@ function FolderDetailPage() {
   function closeImportModal() {
     setDraftDeck('')
     setIsImportOpen(false)
+  }
+
+  function openExportModal() {
+    setIsExportOpen(true)
+  }
+
+  function closeExportModal() {
+    setIsExportOpen(false)
   }
 
   async function handleImportDeck(event: FormEvent<HTMLFormElement>) {
@@ -258,14 +278,28 @@ function FolderDetailPage() {
       return
     }
 
-    const file = new Blob([formatDeckExport(mergedWorkingCards)], { type: 'text/plain' })
-    const url = URL.createObjectURL(file)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${folderName.toLowerCase().replace(/\s+/g, '-')}-result.txt`
-    link.click()
-    URL.revokeObjectURL(url)
+    openExportModal()
   }
+
+  async function copyExportToClipboard() {
+    const mergedWorkingCards = mergeValidatedCards(workingCards)
+    const text = formatDecklist(mergedWorkingCards, {
+      includeQuantity: exportOptions.includeQuantity,
+      includeSet: exportOptions.includeSet || exportOptions.includeCollectorNumber,
+      includeCollectorNumber: exportOptions.includeCollectorNumber,
+      setStyle: 'brackets',
+    })
+
+    await navigator.clipboard.writeText(text)
+    closeExportModal()
+  }
+
+  const exportPreview = formatDecklist(mergeValidatedCards(workingCards), {
+    includeQuantity: exportOptions.includeQuantity,
+    includeSet: exportOptions.includeSet || exportOptions.includeCollectorNumber,
+    includeCollectorNumber: exportOptions.includeCollectorNumber,
+    setStyle: 'brackets',
+  })
 
   return (
     <>
@@ -364,7 +398,127 @@ function FolderDetailPage() {
           </div>
         </div>
       ) : null}
+
+      {isExportOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+          <button
+            type="button"
+            aria-label="Close export modal"
+            className="absolute inset-0"
+            onClick={closeExportModal}
+          />
+          <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-0 shadow-2xl shadow-black/40">
+            <div className="border-b border-zinc-800 px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-zinc-100">Export Deck</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeExportModal}
+                  className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-900 hover:text-zinc-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-5 px-6 py-5">
+              <div className="flex flex-wrap gap-3">
+                <ToggleChip
+                  label="Quantity"
+                  checked={exportOptions.includeQuantity}
+                  onToggle={() =>
+                    setExportOptions((current) => ({
+                      ...current,
+                      includeQuantity: !current.includeQuantity,
+                    }))
+                  }
+                />
+                <ToggleChip
+                  label="Set"
+                  checked={exportOptions.includeSet || exportOptions.includeCollectorNumber}
+                  onToggle={() =>
+                    setExportOptions((current) => {
+                      const nextIncludeSet = !current.includeSet
+
+                      return {
+                        ...current,
+                        includeSet: nextIncludeSet,
+                        includeCollectorNumber: nextIncludeSet ? current.includeCollectorNumber : false,
+                      }
+                    })
+                  }
+                />
+                <ToggleChip
+                  label="Number"
+                  checked={exportOptions.includeCollectorNumber}
+                  onToggle={() =>
+                    setExportOptions((current) => ({
+                      ...current,
+                      includeSet: true,
+                      includeCollectorNumber: !current.includeCollectorNumber,
+                    }))
+                  }
+                />
+              </div>
+
+              <textarea
+                readOnly
+                value={exportPreview}
+                className="min-h-80 w-full resize-y rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 font-mono text-sm text-zinc-200 outline-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-between border-t border-zinc-800 px-6 py-5">
+              <button
+                type="button"
+                onClick={closeExportModal}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyExportToClipboard()}
+                className="rounded-xl bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
+              >
+                Copy to Clipboard
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
+  )
+}
+
+function ToggleChip({
+  label,
+  checked,
+  onToggle,
+}: {
+  label: string
+  checked: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onToggle}
+      className={`inline-flex items-center gap-3 rounded-full border px-3 py-2 text-sm transition ${checked ? 'border-cyan-800 bg-cyan-950/40 text-cyan-200' : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800'}`}
+    >
+      <span
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${checked ? 'bg-cyan-500/80' : 'bg-zinc-800'}`}
+      >
+        <span
+          className={`h-5 w-5 rounded-full bg-white transition ${checked ? 'translate-x-5' : 'translate-x-1'}`}
+        />
+      </span>
+      {label}
+    </button>
   )
 }
 

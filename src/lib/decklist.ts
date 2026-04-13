@@ -16,6 +16,8 @@ export type ParsedDeckEntry = {
   lineNumber: number
   quantity: number
   name: string
+  setCode?: string
+  collectorNumber?: string
 }
 
 export type ParsedDeckError = {
@@ -30,6 +32,15 @@ export type ValidatedDeckCard = {
   quantity: number
   typeLine: string
   category: CardCategory
+  setCode?: string
+  collectorNumber?: string
+}
+
+export type DeckExportOptions = {
+  includeQuantity: boolean
+  includeSet: boolean
+  includeCollectorNumber: boolean
+  setStyle: 'brackets' | 'parentheses'
 }
 
 export type InvalidDeckCard = {
@@ -66,8 +77,11 @@ export function parseDecklist(rawText: string) {
       continue
     }
 
-    const match = text.match(/^(?:(\d+)x?\s+)?(.+)$/i)
-    if (!match) {
+    const quantityMatch = text.match(/^(?:(\d+)x?\s+)?(.*)$/i)
+    const quantityText = quantityMatch?.[1]
+    const remainder = quantityMatch?.[2]?.trim()
+
+    if (!remainder) {
       errors.push({
         lineNumber: index + 1,
         text,
@@ -76,9 +90,23 @@ export function parseDecklist(rawText: string) {
       continue
     }
 
-    const quantityText = match[1]
-    const name = match[2]?.trim()
     const quantity = quantityText ? Number(quantityText) : 1
+
+    let collectorNumber: string | undefined
+    let setCode: string | undefined
+    let name = remainder
+
+    const collectorMatch = name.match(/\s+(\d+[a-zA-Z]?)$/)
+    if (collectorMatch) {
+      collectorNumber = collectorMatch[1]
+      name = name.slice(0, -collectorMatch[0].length).trim()
+    }
+
+    const setMatch = name.match(/\s*(?:\[([^\]]+)\]|\(([^)]+)\))$/)
+    if (setMatch) {
+      setCode = (setMatch[1] ?? setMatch[2])?.trim().toUpperCase()
+      name = name.slice(0, -setMatch[0].length).trim()
+    }
 
     if (!name || Number.isNaN(quantity) || quantity < 1) {
       errors.push({
@@ -93,6 +121,8 @@ export function parseDecklist(rawText: string) {
       lineNumber: index + 1,
       quantity,
       name,
+      setCode,
+      collectorNumber,
     })
   }
 
@@ -144,16 +174,38 @@ export function mergeValidatedCards(cards: ValidatedDeckCard[]) {
 }
 
 export function formatDeckExport(cards: ValidatedDeckCard[]) {
-  const groupedDeck = groupValidatedCards(cards)
+  return formatDecklist(cards, {
+    includeQuantity: true,
+    includeSet: false,
+    includeCollectorNumber: false,
+    setStyle: 'brackets',
+  })
+}
 
-  return CARD_CATEGORIES.flatMap((category) => {
-    const categoryCards = groupedDeck[category]
-    if (categoryCards.length === 0) {
-      return []
+export function formatDecklist(cards: ValidatedDeckCard[], options: DeckExportOptions) {
+  const mergedCards = mergeValidatedCards(cards).sort((left, right) => left.name.localeCompare(right.name))
+
+  const rows = mergedCards.flatMap((card) => {
+    const suffixParts: string[] = []
+
+    if (options.includeSet && card.setCode) {
+      suffixParts.push(
+        options.setStyle === 'parentheses' ? `(${card.setCode})` : `[${card.setCode}]`,
+      )
     }
 
-    return [category, ...categoryCards.map((card) => `${card.quantity} ${card.name}`), '']
+    if (options.includeSet && options.includeCollectorNumber && card.collectorNumber) {
+      suffixParts.push(card.collectorNumber)
+    }
+
+    const cardText = [card.name, ...suffixParts].join(' ').trim()
+
+    if (options.includeQuantity) {
+      return [`${card.quantity} ${cardText}`]
+    }
+
+    return Array.from({ length: card.quantity }, () => cardText)
   })
-    .join('\n')
-    .trim()
+
+  return rows.join('\n').trim()
 }

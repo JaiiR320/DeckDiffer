@@ -10,6 +10,8 @@ type ScryfallCard = {
   oracle_id: string | null
   id: string
   type_line: string
+  set: string
+  collector_number: string
 }
 
 type ScryfallCollectionResponse = {
@@ -26,6 +28,8 @@ export type SearchCardResult = {
   name: string
   typeLine: string
   category: ReturnType<typeof getCardCategory>
+  setCode?: string
+  collectorNumber?: string
 }
 
 const SCRYFALL_COLLECTION_LIMIT = 75
@@ -59,6 +63,27 @@ async function fetchCardCollection(names: string[]) {
   return (await response.json()) as ScryfallCollectionResponse
 }
 
+async function fetchCardCollectionByEntries(entries: ParsedDeckEntry[]) {
+  const response = await fetch('https://api.scryfall.com/cards/collection', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      identifiers: entries.map((entry) =>
+        entry.setCode ? { name: entry.name, set: entry.setCode.toLowerCase() } : { name: entry.name },
+      ),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Could not validate cards with Scryfall.')
+  }
+
+  return (await response.json()) as ScryfallCollectionResponse
+}
+
 export async function searchCards(query: string) {
   const response = await fetch(
     `https://api.scryfall.com/cards/search?unique=cards&order=name&q=${encodeURIComponent(query)}`,
@@ -80,6 +105,8 @@ export async function searchCards(query: string) {
     name: card.name,
     typeLine: card.type_line,
     category: getCardCategory(card.type_line),
+    setCode: card.set?.toUpperCase(),
+    collectorNumber: card.collector_number,
   }))
 }
 
@@ -91,17 +118,24 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
     }
   }
 
-  const uniqueNames = [...new Set(entries.map((entry) => entry.name))]
-
   const payloads: ScryfallCollectionResponse[] = []
+  const uniqueEntries = [
+    ...new Map(
+      entries.map((entry) => [`${entry.name.toLowerCase()}::${entry.setCode ?? ''}`, entry]),
+    ).values(),
+  ]
 
-  for (const chunk of chunkNames(uniqueNames, SCRYFALL_COLLECTION_LIMIT)) {
-    payloads.push(await fetchCardCollection(chunk))
+  for (let index = 0; index < uniqueEntries.length; index += SCRYFALL_COLLECTION_LIMIT) {
+    payloads.push(
+      await fetchCardCollectionByEntries(uniqueEntries.slice(index, index + SCRYFALL_COLLECTION_LIMIT)),
+    )
   }
 
   const allCards = payloads.flatMap((payload) => payload.data)
   const allNotFound = payloads.flatMap((payload) => payload.not_found ?? [])
-  const cardByName = new Map(allCards.map((card) => [card.name.toLowerCase(), card]))
+  const cardByKey = new Map(
+    allCards.map((card) => [`${card.name.toLowerCase()}::${card.set?.toUpperCase() ?? ''}`, card]),
+  )
   const invalidNames = new Set(
     allNotFound.map((entry) => entry.name?.toLowerCase()).filter(Boolean),
   )
@@ -110,8 +144,12 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
   const invalidCards: InvalidDeckCard[] = []
 
   for (const entry of entries) {
-    const exactMatch = cardByName.get(entry.name.toLowerCase())
-    const fallbackMatch = allCards.find((card) => card.name.toLowerCase() === entry.name.toLowerCase())
+    const exactMatch = cardByKey.get(`${entry.name.toLowerCase()}::${entry.setCode ?? ''}`)
+    const fallbackMatch = allCards.find(
+      (card) =>
+        card.name.toLowerCase() === entry.name.toLowerCase() &&
+        (!entry.setCode || card.set?.toUpperCase() === entry.setCode),
+    )
     const matchedCard = exactMatch ?? fallbackMatch
 
     if (!matchedCard || invalidNames.has(entry.name.toLowerCase())) {
@@ -119,7 +157,9 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
         lineNumber: entry.lineNumber,
         quantity: entry.quantity,
         name: entry.name,
-        reason: 'Card not found on Scryfall.',
+        reason: entry.setCode
+          ? `Card not found on Scryfall for set ${entry.setCode}.`
+          : 'Card not found on Scryfall.',
       })
       continue
     }
@@ -130,6 +170,8 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       quantity: entry.quantity,
       typeLine: matchedCard.type_line,
       category: getCardCategory(matchedCard.type_line),
+      setCode: matchedCard.set?.toUpperCase(),
+      collectorNumber: matchedCard.collector_number,
     })
   }
 
