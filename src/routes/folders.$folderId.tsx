@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { DeckAlerts } from '../components/deck-editor/DeckAlerts'
 import { EditorDeckList } from '../components/deck-editor/EditorDeckList'
@@ -38,6 +38,7 @@ function FolderDetailPage() {
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [draftDeck, setDraftDeck] = useState('')
+  const [isHydrated, setIsHydrated] = useState(false)
   const [exportOptions, setExportOptions] = useState<ExportModalState>({
     includeQuantity: true,
   })
@@ -50,6 +51,10 @@ function FolderDetailPage() {
     baselineDeck.status === 'loading'
       ? 'Validating the imported deck with Scryfall.'
       : 'Import a deck or add cards to start building.'
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
 
   function openImportModal() {
     setDraftDeck(baselineDeck.rawText)
@@ -236,7 +241,7 @@ function FolderDetailPage() {
           <EditorHeader
             onImport={openImportModal}
             onExport={exportResult}
-            exportDisabled={mergedWorkingCards.length === 0 || baselineDeck.status === 'loading'}
+            exportDisabled={isHydrated && (mergedWorkingCards.length === 0 || baselineDeck.status === 'loading')}
             onAddCard={addCard}
           />
 

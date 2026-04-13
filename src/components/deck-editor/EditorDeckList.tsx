@@ -98,32 +98,21 @@ export function EditorDeckList({
             </button>
 
             {collapsedCategories[category] ? null : (
-              <div className="divide-y divide-zinc-800">
-                {rows.map((row) => {
+              <div>
+                {rows.map((row, index) => {
                   const toneClass =
                     row.status === 'added'
-                      ? 'border-l-4 border-emerald-500 bg-emerald-950/20'
+                      ? 'bg-emerald-950/20'
                       : row.status === 'removed'
-                        ? 'border-l-4 border-rose-500 bg-rose-950/20'
+                        ? 'bg-rose-950/20'
                         : row.status === 'changed'
-                          ? 'border-l-4 border-amber-500 bg-amber-950/20'
-                          : 'border-l-4 border-transparent'
-                  const markerClass =
-                    row.status === 'added'
-                      ? 'text-emerald-300'
-                      : row.status === 'removed'
-                        ? 'text-rose-300'
-                        : row.status === 'changed'
-                          ? 'text-amber-300'
-                          : 'text-zinc-700'
-                  const marker = row.status === 'added' ? '+' : row.status === 'removed' ? '-' : row.status === 'changed' ? '~' : ' '
-
+                          ? 'bg-amber-950/20'
+                          : ''
                   return (
                     <div
                       key={row.oracleId}
-                      className={`grid grid-cols-[1.5rem_1fr_auto] items-center gap-3 px-4 py-3 text-sm ${toneClass}`}
+                      className={`grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-sm ${index > 0 ? 'border-t border-zinc-800/90' : ''} ${toneClass}`}
                     >
-                      <span className={`font-mono text-xs font-semibold ${markerClass}`}>{marker}</span>
                       <span className="text-zinc-100">{row.name}</span>
                       <div className="flex items-center gap-1.5">
                         <QuantityStepper
