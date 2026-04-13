@@ -51,21 +51,34 @@ export function EditorDeckList({
     )
   }
 
+  // Calculate total diff counts across all categories
+  const allRows = Object.values(groupedRows).flat()
+  const totalAdded = allRows.filter((row) => row.status === 'added').length
+  const totalChanged = allRows.filter((row) => row.status === 'changed').length
+  const totalRemoved = allRows.filter((row) => row.status === 'removed').length
+
   return (
     <div className="space-y-4 px-5 pb-5 pt-5">
       <div className="flex items-center justify-between">
         <p className="font-mono text-sm font-medium uppercase tracking-[0.08em] text-zinc-500">
           {resultCardTotal} total card{resultCardTotal === 1 ? '' : 's'}
         </p>
-        <button
-          type="button"
-          onClick={() => setAllCategoriesCollapsed(!areAllCollapsed)}
-          aria-label={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
-          title={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
-        >
-          {areAllCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 font-mono text-sm font-medium uppercase tracking-[0.08em]">
+            <span className="text-emerald-300">+{totalAdded}</span>
+            <span className="text-amber-300">~{totalChanged}</span>
+            <span className="text-rose-300">-{totalRemoved}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAllCategoriesCollapsed(!areAllCollapsed)}
+            aria-label={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+            title={areAllCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
+          >
+            {areAllCollapsed ? <ChevronsUpDown className="h-3.5 w-3.5" /> : <ChevronsDownUp className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       {categoriesWithRows.map((category) => {
