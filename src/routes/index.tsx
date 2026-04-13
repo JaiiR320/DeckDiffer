@@ -1,7 +1,9 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { Folder, Plus } from 'lucide-react'
+import { createFileRoute } from '@tanstack/react-router'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { CreateFolderModal } from '../components/folders/CreateFolderModal'
+import { FolderCard } from '../components/folders/FolderCard'
 import { initialFolders } from '../lib/folders'
 
 export const Route = createFileRoute('/')({ component: App })
@@ -49,64 +51,18 @@ function App() {
           </button>
 
           {folders.map((folder) => (
-            <Link
-              key={folder.id}
-              to="/folders/$folderId"
-              params={{ folderId: folder.id }}
-              className="flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left shadow-[0_24px_60px_rgba(0,0,0,0.25)] transition hover:border-zinc-700"
-            >
-              <Folder className="h-8 w-8 text-cyan-300" strokeWidth={1.75} />
-              <span className="mt-8 text-3xl font-semibold tracking-tight text-zinc-100">
-                {folder.name}
-              </span>
-              <span className="mt-2 text-lg text-zinc-500">
-                {folder.deckCount} deck{folder.deckCount === 1 ? '' : 's'}
-              </span>
-            </Link>
+            <FolderCard key={folder.id} folder={folder} />
           ))}
         </section>
       </main>
 
       {isCreateOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-          <button
-            type="button"
-            aria-label="Close create folder modal"
-            className="absolute inset-0"
-            onClick={closeModal}
-          />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
-            <h1 className="text-xl font-semibold text-zinc-100">New Folder</h1>
-            <form className="mt-5" onSubmit={handleCreateFolder}>
-              <label className="block text-sm font-medium text-zinc-400" htmlFor="folder-name">
-                Folder name
-              </label>
-              <input
-                id="folder-name"
-                autoFocus
-                value={folderName}
-                onChange={(event) => setFolderName(event.target.value)}
-                placeholder="Enter a folder name"
-                className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
-              />
-              <div className="mt-5 flex justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CreateFolderModal
+          folderName={folderName}
+          onFolderNameChange={setFolderName}
+          onClose={closeModal}
+          onSubmit={handleCreateFolder}
+        />
       ) : null}
     </>
   )

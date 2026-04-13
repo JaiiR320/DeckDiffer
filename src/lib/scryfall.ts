@@ -64,35 +64,6 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
   }
 }
 
-function chunkNames(names: string[], size: number) {
-  const chunks: string[][] = []
-
-  for (let index = 0; index < names.length; index += size) {
-    chunks.push(names.slice(index, index + size))
-  }
-
-  return chunks
-}
-
-async function fetchCardCollection(names: string[]) {
-  const response = await fetch('https://api.scryfall.com/cards/collection', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      identifiers: names.map((name) => ({ name })),
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error('Could not validate cards with Scryfall.')
-  }
-
-  return (await response.json()) as ScryfallCollectionResponse
-}
-
 async function fetchCardCollectionByEntries(entries: ParsedDeckEntry[]) {
   const response = await fetch('https://api.scryfall.com/cards/collection', {
     method: 'POST',
