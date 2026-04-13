@@ -1,8 +1,17 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { Download, Import, X } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronDown, Download, Import, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import {
+  CARD_CATEGORIES,
+  type InvalidDeckCard,
+  type ValidatedDeckCard,
+  formatDeckExport,
+  groupValidatedCards,
+  parseDecklist,
+} from '../lib/decklist'
 import { formatFolderName, getFolderById } from '../lib/folders'
+import { searchCards, type SearchCardResult, validateDeckEntries } from '../lib/scryfall'
 
 export const Route = createFileRoute('/folders/$folderId')({
   component: FolderDetailPage,
@@ -10,18 +19,34 @@ export const Route = createFileRoute('/folders/$folderId')({
 
 type DeckSide = 'left' | 'right'
 
+type DeckColumnState = {
+  rawText: string
+  validCards: ValidatedDeckCard[]
+  invalidCards: InvalidDeckCard[]
+  status: 'idle' | 'loading' | 'ready' | 'error'
+  errorMessage: string | null
+}
+
+const emptyDeckState: DeckColumnState = {
+  rawText: '',
+  validCards: [],
+  invalidCards: [],
+  status: 'idle',
+  errorMessage: null,
+}
+
 function FolderDetailPage() {
   const { folderId } = Route.useParams()
   const folder = getFolderById(folderId)
   const folderName = folder?.name ?? formatFolderName(folderId)
-  const [leftDeck, setLeftDeck] = useState('')
-  const [rightDeck, setRightDeck] = useState('')
+  const [leftDeck, setLeftDeck] = useState<DeckColumnState>(emptyDeckState)
+  const [rightDeck, setRightDeck] = useState<DeckColumnState>(emptyDeckState)
   const [importSide, setImportSide] = useState<DeckSide | null>(null)
   const [draftDeck, setDraftDeck] = useState('')
 
   function openImportModal(side: DeckSide) {
     setImportSide(side)
-    setDraftDeck(side === 'left' ? leftDeck : rightDeck)
+    setDraftDeck(side === 'left' ? leftDeck.rawText : rightDeck.rawText)
   }
 
   function closeImportModal() {
@@ -29,20 +54,99 @@ function FolderDetailPage() {
     setDraftDeck('')
   }
 
-  function handleImportDeck(event: FormEvent<HTMLFormElement>) {
+  async function handleImportDeck(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!importSide) {
       return
     }
 
-    if (importSide === 'left') {
-      setLeftDeck(draftDeck.trim())
-    } else {
-      setRightDeck(draftDeck.trim())
+    const setDeck = importSide === 'left' ? setLeftDeck : setRightDeck
+    const rawText = draftDeck.trim()
+    const { entries, errors } = parseDecklist(rawText)
+
+    setDeck((currentDeck) => ({
+      ...currentDeck,
+      rawText,
+      status: 'loading',
+      invalidCards: [],
+      errorMessage: null,
+    }))
+    closeImportModal()
+
+    try {
+      const { validCards, invalidCards } = await validateDeckEntries(entries)
+
+      setDeck({
+        rawText,
+        validCards,
+        invalidCards: [
+          ...errors.map((error) => ({
+            lineNumber: error.lineNumber,
+            quantity: 0,
+            name: error.text,
+            reason: error.reason,
+          })),
+          ...invalidCards,
+        ],
+        status: 'ready',
+        errorMessage: null,
+      })
+      closeImportModal()
+    } catch (error) {
+      setDeck({
+        rawText,
+        validCards: [],
+        invalidCards: [],
+        status: 'error',
+        errorMessage:
+          error instanceof Error ? error.message : 'Could not import this deck right now.',
+      })
+    }
+  }
+
+  function dismissWarnings(side: DeckSide) {
+    const setDeck = side === 'left' ? setLeftDeck : setRightDeck
+
+    setDeck((currentDeck) => ({
+      ...currentDeck,
+      invalidCards: [],
+    }))
+  }
+
+  function handleExportDeck(side: DeckSide) {
+    const deck = side === 'left' ? leftDeck : rightDeck
+    if (deck.validCards.length === 0) {
+      return
     }
 
-    closeImportModal()
+    const file = new Blob([formatDeckExport(deck.validCards)], { type: 'text/plain' })
+    const url = URL.createObjectURL(file)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${folderName.toLowerCase().replace(/\s+/g, '-')}-${side}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleAddCard(side: DeckSide, card: SearchCardResult) {
+    const setDeck = side === 'left' ? setLeftDeck : setRightDeck
+
+    setDeck((currentDeck) => ({
+      ...currentDeck,
+      validCards: [
+        ...currentDeck.validCards,
+        {
+          oracleId: card.oracleId,
+          name: card.name,
+          quantity: 1,
+          typeLine: card.typeLine,
+          category: card.category,
+        },
+      ],
+      status: 'ready',
+      errorMessage: null,
+    }))
   }
 
   return (
@@ -65,20 +169,34 @@ function FolderDetailPage() {
         <section className="rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
           <div className="grid border-b border-zinc-800 md:grid-cols-2">
             <DeckColumnHeader
+              side="left"
               title="Left Deck"
-              hasDeck={Boolean(leftDeck)}
+              deck={leftDeck}
               onImport={() => openImportModal('left')}
+              onExport={() => handleExportDeck('left')}
+              onAddCard={handleAddCard}
             />
             <DeckColumnHeader
+              side="right"
               title="Right Deck"
-              hasDeck={Boolean(rightDeck)}
+              deck={rightDeck}
               onImport={() => openImportModal('right')}
+              onExport={() => handleExportDeck('right')}
+              onAddCard={handleAddCard}
             />
           </div>
 
           <div className="grid min-h-[32rem] md:grid-cols-2">
-            <DiffPlaceholder side="left" hasDeck={Boolean(leftDeck)} />
-            <DiffPlaceholder side="right" hasDeck={Boolean(rightDeck)} />
+            <DeckColumnBody
+              side="left"
+              deck={leftDeck}
+              onDismissWarnings={() => dismissWarnings('left')}
+            />
+            <DeckColumnBody
+              side="right"
+              deck={rightDeck}
+              onDismissWarnings={() => dismissWarnings('right')}
+            />
           </div>
         </section>
       </main>
@@ -128,9 +246,10 @@ function FolderDetailPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={!draftDeck.trim()}
                   className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
                 >
-                  Save Deck
+                  Validate Deck
                 </button>
               </div>
             </form>
@@ -142,61 +261,227 @@ function FolderDetailPage() {
 }
 
 function DeckColumnHeader({
+  side,
   title,
-  hasDeck,
+  deck,
   onImport,
+  onExport,
+  onAddCard,
 }: {
+  side: DeckSide
   title: string
-  hasDeck: boolean
+  deck: DeckColumnState
   onImport: () => void
+  onExport: () => void
+  onAddCard: (side: DeckSide, card: SearchCardResult) => void
 }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<SearchCardResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+
+  useEffect(() => {
+    const trimmedQuery = query.trim()
+
+    if (trimmedQuery.length < 3) {
+      setResults([])
+      setIsSearching(false)
+      return
+    }
+
+    let isCancelled = false
+    setIsSearching(true)
+
+    const timeoutId = window.setTimeout(async () => {
+      const nextResults = await searchCards(trimmedQuery)
+
+      if (isCancelled) {
+        return
+      }
+
+      setResults(nextResults)
+      setIsSearching(false)
+    }, 300)
+
+    return () => {
+      isCancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [query])
+
+  function handleSelectCard(card: SearchCardResult) {
+    onAddCard(side, card)
+    setQuery('')
+    setResults([])
+    setIsSearching(false)
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-zinc-800 p-5 last:border-b-0 md:border-b-0 md:first:border-r">
-      <div>
-        <h2 className="text-lg font-semibold text-zinc-100">{title}</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          {hasDeck ? 'Deck imported' : 'No deck imported'}
-        </p>
+    <div className="flex flex-col gap-4 border-b border-zinc-800 p-5 last:border-b-0 md:border-b-0 md:first:border-r">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-100">{title}</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            {deck.status === 'loading'
+              ? 'Validating deck...'
+              : deck.validCards.length > 0
+                ? `${deck.validCards.length} valid card entries`
+                : 'No deck imported'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={deck.validCards.length === 0 || deck.status === 'loading'}
+          >
+            <Download className="h-4 w-4" strokeWidth={1.75} />
+            Export
+          </button>
+          <button
+            type="button"
+            onClick={onImport}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+          >
+            <Import className="h-4 w-4" strokeWidth={1.75} />
+            Import
+          </button>
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onImport}
-          className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-        >
-          <Import className="h-4 w-4" strokeWidth={1.75} />
-          Import
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={!hasDeck}
-        >
-          <Download className="h-4 w-4" strokeWidth={1.75} />
-          Export
-        </button>
+      <div className="relative">
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Add card"
+          className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+        />
+
+        {query.trim().length >= 3 ? (
+          <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
+            {isSearching ? (
+              <div className="px-4 py-3 text-sm text-zinc-500">Searching cards...</div>
+            ) : results.length > 0 ? (
+              <div className="divide-y divide-zinc-800">
+                {results.map((card) => (
+                  <button
+                    key={`${card.oracleId}-${card.name}`}
+                    type="button"
+                    onClick={() => handleSelectCard(card)}
+                    className="block w-full px-4 py-3 text-left transition hover:bg-zinc-900"
+                  >
+                    <div className="text-sm font-medium text-zinc-100">{card.name}</div>
+                    <div className="mt-1 text-xs text-zinc-500">{card.typeLine}</div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-sm text-zinc-500">No cards found.</div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   )
 }
 
-function DiffPlaceholder({
+function DeckColumnBody({
   side,
-  hasDeck,
+  deck,
+  onDismissWarnings,
 }: {
   side: DeckSide
-  hasDeck: boolean
+  deck: DeckColumnState
+  onDismissWarnings: () => void
 }) {
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+  const groupedDeck = groupValidatedCards(deck.validCards)
+
+  function toggleCategory(category: string) {
+    setCollapsedCategories((current) => ({
+      ...current,
+      [category]: !current[category],
+    }))
+  }
+
   return (
     <div className="border-zinc-800 p-5 md:first:border-r">
-      <div className="flex h-full min-h-[26rem] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 px-6 text-center">
-        <p className="max-w-sm text-sm text-zinc-500">
-          {hasDeck
-            ? `The ${side} deck is loaded. Diff rows will appear here once comparison is implemented.`
-            : `Import a ${side} deck to start building the diff.`}
-        </p>
-      </div>
+      {deck.errorMessage ? (
+        <div className="mb-4 rounded-xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-300">
+          {deck.errorMessage}
+        </div>
+      ) : null}
+
+      {deck.invalidCards.length > 0 ? (
+        <section className="mb-4 rounded-xl border border-amber-900/60 bg-amber-950/20 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <h3 className="text-sm font-semibold text-amber-200">Warnings</h3>
+            <button
+              type="button"
+              onClick={onDismissWarnings}
+              className="rounded-lg p-1.5 text-amber-300 transition hover:bg-amber-900/30 hover:text-amber-100"
+              aria-label="Dismiss warnings"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm text-amber-100/90">
+            {deck.invalidCards.map((card) => (
+              <li key={`${card.lineNumber}-${card.name}`}>
+                <span className="font-medium">Line {card.lineNumber}:</span> {card.name}{' '}
+                <span className="text-amber-300">{card.reason}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {deck.status === 'loading' ? (
+        <div className="flex h-full min-h-[26rem] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 px-6 text-center">
+          <p className="max-w-sm text-sm text-zinc-500">Validating the {side} deck with Scryfall.</p>
+        </div>
+      ) : deck.validCards.length > 0 ? (
+        <div className="space-y-4">
+          {CARD_CATEGORIES.filter((category) => groupedDeck[category].length > 0).map((category) => (
+            <section key={category} className="rounded-xl border border-zinc-800 bg-zinc-950/60">
+              <button
+                type="button"
+                onClick={() => toggleCategory(category)}
+                className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left ${collapsedCategories[category] ? '' : 'border-b border-zinc-800'}`}
+              >
+                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  {category}
+                </h3>
+                <ChevronDown
+                  className={`h-4 w-4 text-zinc-500 transition ${collapsedCategories[category] ? '-rotate-90' : 'rotate-0'}`}
+                />
+              </button>
+              {collapsedCategories[category] ? null : (
+                <div className="divide-y divide-zinc-800">
+                  {groupedDeck[category].map((card) => (
+                    <div
+                      key={card.oracleId}
+                      className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                    >
+                      <span className="text-zinc-100">{card.name}</span>
+                      <span className="font-medium text-zinc-400">{card.quantity}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div className="flex h-full min-h-[26rem] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 px-6 text-center">
+          <p className="max-w-sm text-sm text-zinc-500">
+            {deck.rawText
+              ? `No valid cards were loaded into the ${side} deck.`
+              : `Import a ${side} deck to start building the diff.`}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
