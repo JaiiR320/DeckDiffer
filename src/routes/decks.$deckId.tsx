@@ -60,6 +60,7 @@ function DeckDetailPage() {
   const [activeTab, setActiveTab] = useState<'editor' | 'history'>('editor')
   const [compareMode, setCompareMode] = useState(false)
   const [compareSaves, setCompareSaves] = useState<{ saveA: DeckSave; saveB: DeckSave } | null>(null)
+  const [showDiffOnly, setShowDiffOnly] = useState(false)
   const [previewLookup, setPreviewLookup] = useState<CardPreviewLookup | null>(null)
   const [previewCard, setPreviewCard] = useState<CardPreviewResult | null>(null)
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -364,6 +365,10 @@ function DeckDetailPage() {
     setIsPreviewPinned((current) => !current)
   }
 
+  function toggleShowDiffOnly() {
+    setShowDiffOnly((current) => !current)
+  }
+
   function addCard(card: SearchCardResult) {
     setWorkingCards((currentCards) => [
       ...currentCards,
@@ -578,6 +583,8 @@ function DeckDetailPage() {
                     groupedRows={groupedRows}
                     emptyMessage={emptyMessage}
                     resultCardTotal={resultCardTotal}
+                    showDiffOnly={showDiffOnly}
+                    onToggleShowDiffOnly={toggleShowDiffOnly}
                     onAdjustQuantity={compareMode ? undefined : adjustQuantity}
                     onRestoreCard={compareMode ? undefined : restoreCard}
                     onPreviewCard={(row) =>
