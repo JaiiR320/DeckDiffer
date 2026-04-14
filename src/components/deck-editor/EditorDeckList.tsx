@@ -16,10 +16,6 @@ type EditorDeckListProps = {
   readOnly?: boolean
 }
 
-export function isDiffToggleDisabled(hasDiffRows: boolean, showDiffOnly: boolean) {
-  return !hasDiffRows && !showDiffOnly
-}
-
 export function EditorDeckList({
   groupedRows,
   emptyMessage,
@@ -92,12 +88,11 @@ export function EditorDeckList({
             aria-pressed={showDiffOnly}
             aria-label={showDiffOnly ? 'Show all cards' : 'Show differences only'}
             title={showDiffOnly ? 'Show all cards' : 'Show differences only'}
-            disabled={isDiffToggleDisabled(hasDiffRows, showDiffOnly)}
             className={`relative inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
               showDiffOnly
                 ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-300'
                 : 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800'
-            } disabled:cursor-not-allowed disabled:opacity-40`}
+            }`}
           >
             <Minus className="h-3.5 w-3.5 translate-y-[2px]" strokeWidth={2} />
             <Plus className="absolute h-3.5 w-3.5 -translate-y-[2px]" strokeWidth={2} />
