@@ -63,6 +63,7 @@ function DeckDetailPage() {
   const [previewLookup, setPreviewLookup] = useState<CardPreviewLookup | null>(null)
   const [previewCard, setPreviewCard] = useState<CardPreviewResult | null>(null)
   const [previewStatus, setPreviewStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [isPreviewPinned, setIsPreviewPinned] = useState(false)
   const previewRequestIdRef = useRef(0)
 
   const deckName = deck?.name ?? deckId
@@ -341,7 +342,11 @@ function DeckDetailPage() {
     }))
   }
 
-  function updatePreviewCard(nextPreview: CardPreviewLookup) {
+  function updatePreviewCard(nextPreview: CardPreviewLookup, source: 'hover' | 'manual' = 'hover') {
+    if (isPreviewPinned && source === 'hover') {
+      return
+    }
+
     setPreviewLookup((currentPreview) => {
       if (
         currentPreview?.name === nextPreview.name &&
@@ -353,6 +358,10 @@ function DeckDetailPage() {
 
       return nextPreview
     })
+  }
+
+  function togglePreviewPinned() {
+    setIsPreviewPinned((current) => !current)
   }
 
   function addCard(card: SearchCardResult) {
@@ -557,6 +566,8 @@ function DeckDetailPage() {
                     preview={previewCard}
                     status={previewStatus}
                     requestedName={previewLookup?.name ?? null}
+                    isPinned={isPreviewPinned}
+                    onTogglePinned={togglePreviewPinned}
                   />
                 </div>
 

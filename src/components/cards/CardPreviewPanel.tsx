@@ -1,3 +1,4 @@
+import { Pin } from 'lucide-react'
 import { CardSymbolText } from './CardSymbolText'
 import type { CardPreviewResult } from '../../lib/scryfall'
 
@@ -5,20 +6,44 @@ type CardPreviewPanelProps = {
   preview: CardPreviewResult | null
   status: 'idle' | 'loading' | 'ready' | 'error'
   requestedName?: string | null
+  isPinned: boolean
+  onTogglePinned: () => void
 }
 
-export function CardPreviewPanel({ preview, status, requestedName }: CardPreviewPanelProps) {
+export function CardPreviewPanel({
+  preview,
+  status,
+  requestedName,
+  isPinned,
+  onTogglePinned,
+}: CardPreviewPanelProps) {
   const hasPreview = preview !== null
 
   return (
     <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-5">
       {hasPreview ? (
         <>
-          <img
-            src={preview.imageUrl}
-            alt={preview.name}
-            className="block w-full rounded-xl border border-zinc-800 bg-zinc-900"
-          />
+          <div className="relative">
+            <img
+              src={preview.imageUrl}
+              alt={preview.name}
+              className="block w-full rounded-xl border border-zinc-800 bg-zinc-900"
+            />
+            <button
+              type="button"
+              onClick={onTogglePinned}
+              aria-pressed={isPinned}
+              aria-label={isPinned ? 'Unpin card preview' : 'Pin card preview'}
+              title={isPinned ? 'Unpin card preview' : 'Pin card preview'}
+              className={
+                isPinned
+                  ? 'absolute left-1/2 top-3 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-cyan-300/60 bg-cyan-400/50 text-zinc-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300/65'
+                  : 'absolute left-1/2 top-3 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 shadow-lg shadow-black/25 transition hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100'
+              }
+            >
+              <Pin className={isPinned ? 'h-[18px] w-[18px] fill-current' : 'h-[18px] w-[18px]'} strokeWidth={2} />
+            </button>
+          </div>
 
           <div className="mt-4 space-y-3">
             <div>
