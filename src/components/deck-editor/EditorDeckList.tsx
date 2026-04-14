@@ -119,6 +119,7 @@ export function EditorDeckList({
           const addedCount = rows.filter((row) => row.status === 'added').length
           const changedCount = rows.filter((row) => row.status === 'changed').length
           const removedCount = rows.filter((row) => row.status === 'removed').length
+          const totalQuantity = rows.reduce((sum, row) => sum + row.currentQuantity, 0)
 
           return (
             <section key={category} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/80">
@@ -130,7 +131,7 @@ export function EditorDeckList({
                 <div>
                   <h3 className="font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-400">{category}</h3>
                   <p className="mt-1 font-mono text-sm text-zinc-600">
-                    {rows.length} card{rows.length === 1 ? '' : 's'}
+                    {totalQuantity} card{totalQuantity === 1 ? '' : 's'}{totalQuantity !== rows.length ? ` · ${rows.length} unique` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
