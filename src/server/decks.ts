@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
+import { z } from 'zod'
 import { db } from '#/db'
 import { deckSaves, decks } from '#/db/schema'
 import { auth } from '#/lib/auth'
@@ -37,6 +38,68 @@ type ImportLegacyDecksInput = {
 
 type DeckRow = typeof decks.$inferSelect
 type DeckSaveRow = typeof deckSaves.$inferSelect
+
+const deckIdSchema = z.object({
+  deckId: z.string().trim().min(1, 'Deck ID is required.'),
+})
+
+const deckNameSchema = z.string().trim().min(1, 'Deck name is required.')
+
+const createDeckInputSchema = z.object({
+  name: deckNameSchema,
+})
+
+const renameDeckInputSchema = z.object({
+  deckId: z.string().trim().min(1, 'Deck ID is required.'),
+  newName: deckNameSchema,
+})
+
+const cardCategorySchema = z.enum([
+  'Land',
+  'Creature',
+  'Artifact',
+  'Enchantment',
+  'Instant',
+  'Sorcery',
+  'Planeswalker',
+  'Battle',
+  'Other',
+])
+
+const validatedDeckCardSchema = z.object({
+  oracleId: z.string().trim().min(1, 'Card oracle ID is required.'),
+  name: z.string().trim().min(1, 'Card name is required.'),
+  quantity: z.number().int().positive('Card quantity must be greater than zero.'),
+  typeLine: z.string().trim().min(1, 'Card type line is required.'),
+  category: cardCategorySchema,
+  setCode: z.string().trim().min(1, 'Card set code is required.'),
+  collectorNumber: z.string().trim().min(1, 'Card collector number is required.'),
+})
+
+const saveDeckInputSchema = z.object({
+  deckId: z.string().trim().min(1, 'Deck ID is required.'),
+  label: z.string(),
+  cards: z.array(validatedDeckCardSchema),
+})
+
+const legacyDeckSaveSchema = z.object({
+  id: z.string().optional(),
+  label: z.string().optional(),
+  savedAt: z.string().optional(),
+  cards: z.array(validatedDeckCardSchema),
+})
+
+const legacyDeckSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, 'Legacy deck name is required.'),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  saves: z.array(legacyDeckSaveSchema),
+})
+
+const importLegacyDecksInputSchema = z.object({
+  decks: z.array(legacyDeckSchema),
+})
 
 async function requireUserId() {
   const session = await auth.api.getSession({
@@ -135,14 +198,14 @@ export const listDecks = createServerFn({ method: 'GET' }).handler(async () => {
 })
 
 export const getDeck = createServerFn({ method: 'GET' })
-  .inputValidator((data: GetDeckInput) => data)
+  .inputValidator((data: GetDeckInput) => deckIdSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
     return getDeckWithSavesBySlug(userId, data.deckId)
   })
 
 export const createDeckForUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: CreateDeckInput) => data)
+  .inputValidator((data: CreateDeckInput) => createDeckInputSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
     const name = data.name.trim()
@@ -168,7 +231,7 @@ export const createDeckForUser = createServerFn({ method: 'POST' })
   })
 
 export const renameDeckForUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: RenameDeckInput) => data)
+  .inputValidator((data: RenameDeckInput) => renameDeckInputSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
     const nextName = data.newName.trim()
@@ -200,7 +263,7 @@ export const renameDeckForUser = createServerFn({ method: 'POST' })
   })
 
 export const deleteDeckForUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: DeleteDeckInput) => data)
+  .inputValidator((data: DeleteDeckInput) => deckIdSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
 
@@ -217,7 +280,7 @@ export const deleteDeckForUser = createServerFn({ method: 'POST' })
   })
 
 export const saveDeckForUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: SaveDeckInput) => data)
+  .inputValidator((data: SaveDeckInput) => saveDeckInputSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
 
@@ -251,7 +314,7 @@ export const saveDeckForUser = createServerFn({ method: 'POST' })
   })
 
 export const importLegacyDecksForUser = createServerFn({ method: 'POST' })
-  .inputValidator((data: ImportLegacyDecksInput) => data)
+  .inputValidator((data: ImportLegacyDecksInput) => importLegacyDecksInputSchema.parse(data))
   .handler(async ({ data }) => {
     const userId = await requireUserId()
     const legacyDecks = Array.isArray(data.decks) ? data.decks : []
