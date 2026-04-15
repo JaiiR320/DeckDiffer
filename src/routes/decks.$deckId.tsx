@@ -1,4 +1,4 @@
-import { Link, createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { Pencil, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -21,8 +21,7 @@ import {
   parseDecklist,
   type ValidatedDeckCard,
 } from '../lib/decklist'
-import { createDeckSave, getLatestSave, slugifyName, type DeckItem } from '../lib/deck'
-import { deleteDeck, loadDeckById, upsertDeck } from '../lib/storage'
+import { getLatestSave, type DeckItem } from '../lib/deck'
 import {
   getCardPreview,
   type CardPreviewLookup,
@@ -30,6 +29,7 @@ import {
   type SearchCardResult,
   validateDeckEntries,
 } from '../lib/scryfall'
+import { deleteDeckForUser, getDeck, renameDeckForUser, saveDeckForUser } from '#/server/decks'
 import { getCurrentSession } from '#/server/session'
 
 export const Route = createFileRoute('/decks/$deckId')({
@@ -52,7 +52,10 @@ const emptyDeckState: DeckState = {
 
 function DeckDetailPage() {
   const { deckId } = Route.useParams()
-  const [deck, setDeck] = useState<DeckItem | undefined>(loadDeckById(deckId))
+  const navigate = useNavigate()
+  const [deck, setDeck] = useState<DeckItem | undefined>()
+  const [deckLoadState, setDeckLoadState] = useState<'loading' | 'ready' | 'not-found' | 'error'>('loading')
+  const [deckErrorMessage, setDeckErrorMessage] = useState<string | null>(null)
   const [baselineDeck, setBaselineDeck] = useState<DeckState>(emptyDeckState)
   const [workingCards, setWorkingCards] = useState<ValidatedDeckCard[]>([])
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -76,6 +79,45 @@ function DeckDetailPage() {
 
   const deckName = deck?.name ?? deckId
 
+  useEffect(() => {
+    let isMounted = true
+
+    setDeckLoadState('loading')
+
+    void getDeck({
+      data: { deckId },
+    })
+      .then((nextDeck) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (!nextDeck) {
+          setDeck(undefined)
+          setDeckLoadState('not-found')
+          setDeckErrorMessage(null)
+          return
+        }
+
+        setDeck(nextDeck)
+        setDeckLoadState('ready')
+        setDeckErrorMessage(null)
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return
+        }
+
+        setDeck(undefined)
+        setDeckLoadState('error')
+        setDeckErrorMessage(error instanceof Error ? error.message : 'Could not load this deck right now.')
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [deckId])
+
   // In compare mode, use the two saves being compared
   const compareBaselineCards = compareSaves?.saveA.cards ?? baselineDeck.cards
   const compareWorkingCards = compareSaves?.saveB.cards ?? workingCards
@@ -91,21 +133,24 @@ function DeckDetailPage() {
         ? `Comparing "${compareSaves?.saveA.label}" → "${compareSaves?.saveB.label}"`
         : 'Import a deck or add cards to start building.'
 
-  // Hydrate editor from latest save on mount
   useEffect(() => {
     setIsHydrated(true)
-    if (deck && deck.saves.length > 0) {
-      const latestSave = getLatestSave(deck)
-      if (latestSave) {
-        setBaselineDeck({
-          rawText: '',
-          cards: latestSave.cards,
-          invalidCards: [],
-          status: 'ready',
-          errorMessage: null,
-        })
-        setWorkingCards(latestSave.cards)
-      }
+    if (!deck || deck.saves.length === 0) {
+      setBaselineDeck(emptyDeckState)
+      setWorkingCards([])
+      return
+    }
+
+    const latestSave = getLatestSave(deck)
+    if (latestSave) {
+      setBaselineDeck({
+        rawText: '',
+        cards: latestSave.cards,
+        invalidCards: [],
+        status: 'ready',
+        errorMessage: null,
+      })
+      setWorkingCards(latestSave.cards)
     }
   }, [deck])
 
@@ -179,58 +224,76 @@ function DeckDetailPage() {
     }))
   }
 
-  function handleSaveDeck(label: string) {
+  async function handleSaveDeck(label: string) {
     if (!deck) return
 
-    const newSave = createDeckSave(workingCards, label, deck.saves.length)
-    const updatedDeck: DeckItem = {
-      ...deck,
-      saves: [...deck.saves, newSave],
-      updatedAt: new Date().toISOString(),
+    try {
+      const updatedDeck = await saveDeckForUser({
+        data: {
+          deckId: deck.id,
+          label,
+          cards: workingCards,
+        },
+      })
+
+      if (!updatedDeck) {
+        throw new Error('Could not save deck.')
+      }
+
+      setDeck(updatedDeck)
+      setDeckErrorMessage(null)
+      setBaselineDeck({
+        rawText: '',
+        cards: workingCards,
+        invalidCards: [],
+        status: 'ready',
+        errorMessage: null,
+      })
+      closeSaveModal()
+    } catch (error) {
+      setDeckErrorMessage(error instanceof Error ? error.message : 'Could not save deck right now.')
     }
-
-    upsertDeck(updatedDeck)
-    setDeck(updatedDeck)
-
-    // Update baseline to the newly saved state
-    setBaselineDeck({
-      rawText: '',
-      cards: workingCards,
-      invalidCards: [],
-      status: 'ready',
-      errorMessage: null,
-    })
-
-    closeSaveModal()
   }
 
-  function handleRenameDeck(deckId: string, newName: string) {
+  async function handleRenameDeck(deckId: string, newName: string) {
     if (!deck || deck.id !== deckId) return
 
-    const newId = slugifyName(newName)
-    const updatedDeck: DeckItem = {
-      ...deck,
-      id: newId,
-      name: newName,
-      updatedAt: new Date().toISOString(),
-    }
+    try {
+      const updatedDeck = await renameDeckForUser({
+        data: { deckId, newName },
+      })
 
-    // Delete old deck and save new one
-    deleteDeck(deckId)
-    upsertDeck(updatedDeck)
+      if (!updatedDeck) {
+        throw new Error('Could not rename deck.')
+      }
 
-    setDeck(updatedDeck)
-    // Navigate to new URL if ID changed
-    if (newId !== deckId) {
-      window.history.replaceState(null, '', `/decks/${newId}`)
+      setDeck(updatedDeck)
+      setDeckErrorMessage(null)
+
+      if (updatedDeck.id !== deckId) {
+        await navigate({
+          to: '/decks/$deckId',
+          params: { deckId: updatedDeck.id },
+          replace: true,
+        })
+      }
+
+      closeDeckActionsModal()
+    } catch (error) {
+      setDeckErrorMessage(error instanceof Error ? error.message : 'Could not rename deck right now.')
     }
-    closeDeckActionsModal()
   }
 
-  function handleDeleteDeck(deckId: string) {
-    deleteDeck(deckId)
-    // Navigate back to home
-    window.location.href = '/'
+  async function handleDeleteDeck(deckId: string) {
+    try {
+      await deleteDeckForUser({
+        data: { deckId },
+      })
+
+      await navigate({ to: '/' })
+    } catch (error) {
+      setDeckErrorMessage(error instanceof Error ? error.message : 'Could not delete deck right now.')
+    }
   }
 
   function handleExportDeck(deckToExport: DeckItem) {
@@ -541,9 +604,49 @@ function DeckDetailPage() {
   // Allow save if: has cards AND (differs from baseline OR no saves yet)
   const canSave = hasCards && (cardsDifferFromBaseline || hasNoSavesYet)
 
+  if (deckLoadState === 'loading') {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+        <p className="text-sm text-zinc-500">Loading deck...</p>
+      </main>
+    )
+  }
+
+  if (deckLoadState === 'error') {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+        <p className="rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
+          {deckErrorMessage ?? 'Could not load this deck right now.'}
+        </p>
+      </main>
+    )
+  }
+
+  if (deckLoadState === 'not-found' || !deck) {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+        <div className="flex items-center gap-4">
+          <Link
+            to="/"
+            className="rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
+          >
+            Back
+          </Link>
+          <p className="text-sm text-zinc-500">Deck not found.</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <>
       <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+        {deckErrorMessage ? (
+          <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
+            {deckErrorMessage}
+          </p>
+        ) : null}
+
         <div className="mb-8 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link

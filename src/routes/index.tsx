@@ -5,9 +5,9 @@ import type { FormEvent } from 'react'
 import { DeckActionsModal } from '../components/decks/DeckActionsModal'
 import { CreateDeckModal } from '../components/decks/CreateDeckModal'
 import { DeckCard } from '../components/decks/DeckCard'
-import { createDeck, slugifyName, type DeckItem } from '../lib/deck'
+import type { DeckItem } from '../lib/deck'
 import { formatDeckExport } from '../lib/decklist'
-import { deleteDeck, loadDecks, upsertDeck } from '../lib/storage'
+import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from '#/server/decks'
 import { getCurrentSession } from '#/server/session'
 
 export const Route = createFileRoute('/')({
@@ -25,10 +25,37 @@ function App() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [deckName, setDeckName] = useState('')
   const [editingDeck, setEditingDeck] = useState<DeckItem | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Load decks from storage on mount
   useEffect(() => {
-    setDecks(loadDecks())
+    let isMounted = true
+
+    void listDecks()
+      .then((nextDecks) => {
+        if (!isMounted) {
+          return
+        }
+
+        setDecks(nextDecks)
+        setErrorMessage(null)
+      })
+      .catch((error) => {
+        if (!isMounted) {
+          return
+        }
+
+        setErrorMessage(error instanceof Error ? error.message : 'Could not load decks right now.')
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   function closeModal() {
@@ -40,7 +67,7 @@ function App() {
     setEditingDeck(null)
   }
 
-  function handleCreateDeck(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateDeck(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const name = deckName.trim()
@@ -48,36 +75,53 @@ function App() {
       return
     }
 
-    const newDeck = createDeck(name)
-    upsertDeck(newDeck)
-    setDecks((currentDecks) => [...currentDecks, newDeck])
-    closeModal()
-  }
+    try {
+      const newDeck = await createDeckForUser({
+        data: { name },
+      })
 
-  function handleRenameDeck(deckId: string, newName: string) {
-    const deck = decks.find((d) => d.id === deckId)
-    if (!deck) return
+      if (!newDeck) {
+        throw new Error('Could not create deck.')
+      }
 
-    const newId = slugifyName(newName)
-    const updatedDeck: DeckItem = {
-      ...deck,
-      id: newId,
-      name: newName,
-      updatedAt: new Date().toISOString(),
+      setDecks((currentDecks) => [newDeck, ...currentDecks])
+      setErrorMessage(null)
+      closeModal()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not create deck right now.')
     }
-
-    // Delete old deck and save new one
-    deleteDeck(deckId)
-    upsertDeck(updatedDeck)
-
-    setDecks((currentDecks) =>
-      currentDecks.map((d) => (d.id === deckId ? updatedDeck : d))
-    )
   }
 
-  function handleDeleteDeck(deckId: string) {
-    deleteDeck(deckId)
-    setDecks((currentDecks) => currentDecks.filter((d) => d.id !== deckId))
+  async function handleRenameDeck(deckId: string, newName: string) {
+    try {
+      const updatedDeck = await renameDeckForUser({
+        data: { deckId, newName },
+      })
+
+      if (!updatedDeck) {
+        throw new Error('Could not rename deck.')
+      }
+
+      setDecks((currentDecks) => currentDecks.map((d) => (d.id === deckId ? updatedDeck : d)))
+      setEditingDeck(updatedDeck)
+      setErrorMessage(null)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not rename deck right now.')
+    }
+  }
+
+  async function handleDeleteDeck(deckId: string) {
+    try {
+      await deleteDeckForUser({
+        data: { deckId },
+      })
+
+      setDecks((currentDecks) => currentDecks.filter((d) => d.id !== deckId))
+      setEditingDeck(null)
+      setErrorMessage(null)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Could not delete deck right now.')
+    }
   }
 
   function handleExportDeck(deck: DeckItem) {
@@ -107,6 +151,12 @@ function App() {
   return (
     <>
       <main className="mx-auto min-h-screen w-full max-w-7xl px-8 py-8">
+        {errorMessage ? (
+          <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
+            {errorMessage}
+          </p>
+        ) : null}
+
         <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <button
             type="button"
@@ -121,6 +171,10 @@ function App() {
             <DeckCard key={deck.id} deck={deck} onEdit={setEditingDeck} />
           ))}
         </section>
+
+        {!isLoading && decks.length === 0 ? (
+          <p className="mt-8 text-sm text-zinc-500">No decks yet. Create one to get started.</p>
+        ) : null}
       </main>
 
       {isCreateOpen ? (
