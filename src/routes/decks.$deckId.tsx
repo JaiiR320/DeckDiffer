@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Pencil, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -30,8 +30,15 @@ import {
   type SearchCardResult,
   validateDeckEntries,
 } from '../lib/scryfall'
+import { getCurrentSession } from '#/server/session'
 
 export const Route = createFileRoute('/decks/$deckId')({
+  beforeLoad: async () => {
+    const session = await getCurrentSession()
+    if (!session) {
+      throw redirect({ to: '/auth' })
+    }
+  },
   component: DeckDetailPage,
 })
 

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
@@ -8,8 +8,17 @@ import { DeckCard } from '../components/decks/DeckCard'
 import { createDeck, slugifyName, type DeckItem } from '../lib/deck'
 import { formatDeckExport } from '../lib/decklist'
 import { deleteDeck, loadDecks, upsertDeck } from '../lib/storage'
+import { getCurrentSession } from '#/server/session'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    const session = await getCurrentSession()
+    if (!session) {
+      throw redirect({ to: '/auth' })
+    }
+  },
+  component: App,
+})
 
 function App() {
   const [decks, setDecks] = useState<DeckItem[]>([])
