@@ -43,9 +43,7 @@ export function CardPreviewPanel({
             >
               <Pin
                 className={
-                  isPinned
-                    ? "h-[18px] w-[18px] fill-current"
-                    : "h-[18px] w-[18px]"
+                  isPinned ? "h-4.5 w-4.5 fill-current" : "h-4.5 w-4.5"
                 }
                 strokeWidth={2}
               />
@@ -96,7 +94,7 @@ export function CardPreviewPanel({
           </div>
         </>
       ) : (
-        <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-5 text-center">
+        <div className="flex min-h-105 items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-5 text-center">
           <p className="max-w-[18rem] text-sm leading-6 text-zinc-500">
             {status === "loading" && requestedName
               ? `Loading ${requestedName}...`

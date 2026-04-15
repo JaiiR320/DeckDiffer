@@ -4,6 +4,6 @@ Try not to offer many potential directions in your responses to keep the convers
 
 DO NOT attempt to run or stop the devserver, I am using devserve which is a CLI that manages dev servers
 
-When attempting to read the logs of the server, look in .devserve/ there is an out.log and an err.log file.
+When you are told to, or want to look at the logs of the devserve, look in .devserve/ there is an out.log and an err.log file.
 
 MUST USE pnpm and not npm for package management
