@@ -1,13 +1,21 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { DeckActionsModal } from '../components/decks/DeckActionsModal'
 import { CreateDeckModal } from '../components/decks/CreateDeckModal'
 import { DeckCard } from '../components/decks/DeckCard'
+import { LegacyImportModal } from '../components/decks/LegacyImportModal'
 import type { DeckItem } from '../lib/deck'
 import { formatDeckExport } from '../lib/decklist'
-import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from '#/server/decks'
+import { clearLegacyDecks, loadDecks } from '../lib/storage'
+import {
+  createDeckForUser,
+  deleteDeckForUser,
+  importLegacyDecksForUser,
+  listDecks,
+  renameDeckForUser,
+} from '#/server/decks'
 import { getCurrentSession } from '#/server/session'
 
 export const Route = createFileRoute('/')({
@@ -21,19 +29,26 @@ export const Route = createFileRoute('/')({
 })
 
 function App() {
+  const deckRequestIdRef = useRef(0)
   const [decks, setDecks] = useState<DeckItem[]>([])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [deckName, setDeckName] = useState('')
   const [editingDeck, setEditingDeck] = useState<DeckItem | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [legacyDecks, setLegacyDecks] = useState<DeckItem[]>([])
+  const [isLegacyImportOpen, setIsLegacyImportOpen] = useState(false)
+  const [isImportingLegacyDecks, setIsImportingLegacyDecks] = useState(false)
+  const [legacyImportError, setLegacyImportError] = useState<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
+    const requestId = deckRequestIdRef.current + 1
+    deckRequestIdRef.current = requestId
 
     void listDecks()
       .then((nextDecks) => {
-        if (!isMounted) {
+        if (!isMounted || deckRequestIdRef.current !== requestId) {
           return
         }
 
@@ -41,7 +56,7 @@ function App() {
         setErrorMessage(null)
       })
       .catch((error) => {
-        if (!isMounted) {
+        if (!isMounted || deckRequestIdRef.current !== requestId) {
           return
         }
 
@@ -58,6 +73,12 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    const nextLegacyDecks = loadDecks()
+    setLegacyDecks(nextLegacyDecks)
+    setIsLegacyImportOpen(nextLegacyDecks.length > 0)
+  }, [])
+
   function closeModal() {
     setIsCreateOpen(false)
     setDeckName('')
@@ -65,6 +86,11 @@ function App() {
 
   function closeEditModal() {
     setEditingDeck(null)
+  }
+
+  function closeLegacyImportModal() {
+    setIsLegacyImportOpen(false)
+    setLegacyImportError(null)
   }
 
   async function handleCreateDeck(event: FormEvent<HTMLFormElement>) {
@@ -121,6 +147,33 @@ function App() {
       setErrorMessage(null)
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Could not delete deck right now.')
+    }
+  }
+
+  async function handleImportLegacyDecks() {
+    if (legacyDecks.length === 0) {
+      return
+    }
+
+    setIsImportingLegacyDecks(true)
+    setLegacyImportError(null)
+
+    try {
+      deckRequestIdRef.current += 1
+
+      const result = await importLegacyDecksForUser({
+        data: { decks: legacyDecks },
+      })
+
+      setDecks(result.decks)
+      clearLegacyDecks()
+      setLegacyDecks([])
+      setIsLegacyImportOpen(false)
+      setErrorMessage(null)
+    } catch (error) {
+      setLegacyImportError(error instanceof Error ? error.message : 'Could not import local decks right now.')
+    } finally {
+      setIsImportingLegacyDecks(false)
     }
   }
 
@@ -196,6 +249,15 @@ function App() {
           onExport={handleExportDeck}
         />
       ) : null}
+
+      <LegacyImportModal
+        isOpen={isLegacyImportOpen}
+        isImporting={isImportingLegacyDecks}
+        deckCount={legacyDecks.length}
+        errorMessage={legacyImportError}
+        onClose={closeLegacyImportModal}
+        onImport={() => void handleImportLegacyDecks()}
+      />
     </>
   )
 }

@@ -24,6 +24,10 @@ export function loadDecks(): DeckItem[] {
   }
 }
 
+export function hasLegacyDecks(): boolean {
+  return loadDecks().length > 0
+}
+
 /**
  * Saves all decks to localStorage.
  */
@@ -32,6 +36,14 @@ export function saveDecks(decks: DeckItem[]): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(decks))
   } catch (error) {
     console.error('Failed to save decks to localStorage:', error)
+  }
+}
+
+export function clearLegacyDecks(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (error) {
+    console.error('Failed to clear legacy decks from localStorage:', error)
   }
 }
 

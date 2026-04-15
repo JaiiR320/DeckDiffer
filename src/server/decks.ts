@@ -6,6 +6,7 @@ import { deckSaves, decks } from '#/db/schema'
 import { auth } from '#/lib/auth'
 import { slugifyName, type DeckItem, type DeckSave } from '#/lib/deck'
 import type { ValidatedDeckCard } from '#/lib/decklist'
+import { normalizeLegacyDecks, parseImportDate, resolveLegacyImportIdentity } from '#/lib/legacy-deck-import'
 
 type CreateDeckInput = {
   name: string
@@ -28,6 +29,10 @@ type SaveDeckInput = {
 
 type GetDeckInput = {
   deckId: string
+}
+
+type ImportLegacyDecksInput = {
+  decks: DeckItem[]
 }
 
 type DeckRow = typeof decks.$inferSelect
@@ -107,26 +112,21 @@ async function getDeckWithSavesBySlug(userId: string, slug: string) {
   return mapDeck(deckRow, saveRows)
 }
 
+async function getUniqueDeckIdentity(userId: string, name: string, currentDeckId?: string) {
+  const existingDecks = await db
+    .select({ slug: decks.slug })
+    .from(decks)
+    .where(currentDeckId ? and(eq(decks.userId, userId), ne(decks.id, currentDeckId)) : eq(decks.userId, userId))
+
+  return resolveLegacyImportIdentity(
+    name,
+    new Set(existingDecks.map((deck) => deck.slug)),
+  )
+}
+
 async function getUniqueSlug(userId: string, name: string, currentDeckId?: string) {
-  const baseSlug = slugifyName(name) || 'deck'
-  let nextSlug = baseSlug
-  let suffix = 2
-
-  while (true) {
-    const existingDeck = await db.query.decks.findFirst({
-      where:
-        currentDeckId
-          ? and(eq(decks.userId, userId), eq(decks.slug, nextSlug), ne(decks.id, currentDeckId))
-          : and(eq(decks.userId, userId), eq(decks.slug, nextSlug)),
-    })
-
-    if (!existingDeck) {
-      return nextSlug
-    }
-
-    nextSlug = `${baseSlug}-${suffix}`
-    suffix += 1
-  }
+  const identity = await getUniqueDeckIdentity(userId, name, currentDeckId)
+  return identity.slug
 }
 
 export const listDecks = createServerFn({ method: 'GET' }).handler(async () => {
@@ -232,13 +232,13 @@ export const saveDeckForUser = createServerFn({ method: 'POST' })
     const saveLabel = data.label.trim() || `Save #1`
     const now = new Date()
 
-    await db.insert(deckSaves).values({
-      id: crypto.randomUUID(),
-      deckId: existingDeck.id,
-      label: saveLabel,
-      savedAt: now,
-      cards: data.cards,
-    })
+      await db.insert(deckSaves).values({
+        id: crypto.randomUUID(),
+        deckId: existingDeck.id,
+        label: saveLabel,
+        savedAt: now,
+        cards: data.cards,
+      })
 
     await db
       .update(decks)
@@ -248,4 +248,60 @@ export const saveDeckForUser = createServerFn({ method: 'POST' })
       .where(eq(decks.id, existingDeck.id))
 
     return getDeckWithSavesBySlug(userId, existingDeck.slug)
+  })
+
+export const importLegacyDecksForUser = createServerFn({ method: 'POST' })
+  .inputValidator((data: ImportLegacyDecksInput) => data)
+  .handler(async ({ data }) => {
+    const userId = await requireUserId()
+    const legacyDecks = Array.isArray(data.decks) ? data.decks : []
+    const existingDecks = await db
+      .select({ slug: decks.slug })
+      .from(decks)
+      .where(eq(decks.userId, userId))
+
+    const normalizedDecks = normalizeLegacyDecks(legacyDecks, new Set(existingDecks.map((deck) => deck.slug)))
+
+    if (normalizedDecks.length === 0) {
+      return {
+        importedCount: 0,
+        decks: await getDeckRowsWithSaves(userId),
+      }
+    }
+
+    const importQueries = []
+
+    for (const legacyDeck of normalizedDecks) {
+      const deckDbId = crypto.randomUUID()
+
+      importQueries.push(
+        db.insert(decks).values({
+          id: deckDbId,
+          userId,
+          slug: legacyDeck.slug,
+          name: legacyDeck.name,
+          createdAt: legacyDeck.createdAt,
+          updatedAt: legacyDeck.updatedAt,
+        }),
+      )
+
+      for (const save of legacyDeck.saves) {
+        importQueries.push(
+          db.insert(deckSaves).values({
+            id: crypto.randomUUID(),
+            deckId: deckDbId,
+            label: save.label,
+            savedAt: save.savedAt,
+            cards: save.cards,
+          }),
+        )
+      }
+    }
+
+    await db.batch(importQueries as [typeof importQueries[number], ...typeof importQueries])
+
+    return {
+      importedCount: normalizedDecks.length,
+      decks: await getDeckRowsWithSaves(userId),
+    }
   })
