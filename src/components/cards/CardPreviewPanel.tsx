@@ -20,7 +20,7 @@ export function CardPreviewPanel({
   const hasPreview = preview !== null;
 
   return (
-    <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-5">
+    <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-24">
       {hasPreview ? (
         <>
           <div className="relative group">
