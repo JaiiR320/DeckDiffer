@@ -15,6 +15,8 @@ const authSecret =
   process.env.SECRET ??
   (process.env.NODE_ENV === 'production' ? undefined : 'deckdiffer-dev-auth-secret')
 
+const dashApiKey = process.env.BETTER_AUTH_API_KEY?.trim()
+
 if (!process.env.BETTER_AUTH_URL) {
   throw new Error('BETTER_AUTH_URL is not configured.')
 }
@@ -31,5 +33,5 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
-  plugins: [tanstackStartCookies(), dash()],
+  plugins: [dash({ apiKey: dashApiKey }), tanstackStartCookies()],
 })
