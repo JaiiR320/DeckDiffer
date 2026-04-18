@@ -364,7 +364,7 @@ function DeckDetailPage() {
         data: { deckId },
       })
 
-      await navigate({ to: '/' })
+      await navigate({ to: '/decks' })
     } catch (error) {
       setDeckErrorMessage(error instanceof Error ? error.message : 'Could not delete deck right now.')
     }
@@ -578,7 +578,7 @@ function DeckDetailPage() {
 
   if (loaderData.errorMessage) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full max-w-6xl px-8 py-8">
         <p className="rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
           {loaderData.errorMessage}
         </p>
@@ -588,10 +588,10 @@ function DeckDetailPage() {
 
   if (!deck) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full max-w-6xl px-8 py-8">
         <div className="flex items-center gap-4">
           <Link
-            to="/"
+            to="/decks"
             className="rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
           >
             Back
@@ -604,7 +604,7 @@ function DeckDetailPage() {
 
   return (
     <>
-      <main className="mx-auto min-h-screen w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full max-w-6xl px-8 py-8">
         {deckErrorMessage ? (
           <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
             {deckErrorMessage}
@@ -614,7 +614,7 @@ function DeckDetailPage() {
         <div className="mb-8 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link
-              to="/"
+              to="/decks"
               className="rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
             >
               Back

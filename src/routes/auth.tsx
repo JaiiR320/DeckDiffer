@@ -9,7 +9,7 @@ export const Route = createFileRoute('/auth')({
   beforeLoad: async () => {
     const session = await getCurrentSession()
     if (session) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/decks' })
     }
   },
   component: AuthPage,
@@ -58,7 +58,7 @@ function AuthPage() {
         }
       }
 
-      await navigate({ to: '/' })
+      await navigate({ to: '/decks' })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Authentication failed.'
       if (mode === 'sign-in' && message === 'Invalid email or password') {
@@ -78,7 +78,7 @@ function AuthPage() {
       : 'Create an account to start building and saving decks.'
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex h-full items-center justify-center px-6 py-12">
       <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl shadow-black/40">
         <div className="space-y-2 text-center">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">DeckDiffer</p>
