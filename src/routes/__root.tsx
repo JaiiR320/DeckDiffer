@@ -1,5 +1,5 @@
 import { LogOut } from 'lucide-react'
-import { HeadContent, Scripts, createRootRoute, useLocation, useNavigate } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute, useLocation, useNavigate } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { Analytics } from '@vercel/analytics/react'
@@ -37,9 +37,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="bg-zinc-950 font-sans antialiased text-zinc-100 [overflow-wrap:anywhere]">
+      <body className="flex min-h-dvh flex-col bg-zinc-950 font-sans antialiased text-zinc-100 [overflow-wrap:anywhere]">
         <AppHeader />
-        {children}
+        <div className="flex-1">{children}</div>
         <FeedbackGate />
         <TanStackDevtools
           config={{
@@ -70,24 +70,55 @@ function AppHeader() {
   }
 
   const isAuthPage = location.pathname === '/auth'
+  const isDecksPage = location.pathname === '/decks'
+  const isJudgePage = location.pathname === '/judge'
+  const username = session?.user.email.split('@')[0] ?? ''
+  const navLinkClass = 'inline-flex items-center rounded-xl border px-4 py-2 text-sm font-medium transition'
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur">
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
-        <div>
+        <div className="flex items-center gap-6">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">DeckDiffer</p>
-          {!isAuthPage && session ? <p className="text-sm text-zinc-400">{session.user.email}</p> : null}
+
+          {!isAuthPage && session ? (
+            <nav className="flex items-center gap-3">
+              <Link
+                to="/decks"
+                className={`${navLinkClass} ${
+                  isDecksPage
+                    ? 'border-cyan-800 bg-cyan-950/40 text-cyan-200'
+                    : 'border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900'
+                }`}
+              >
+                Decks
+              </Link>
+              <Link
+                to="/judge"
+                className={`${navLinkClass} ${
+                  isJudgePage
+                    ? 'border-cyan-800 bg-cyan-950/40 text-cyan-200'
+                    : 'border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900'
+                }`}
+              >
+                Judge
+              </Link>
+            </nav>
+          ) : null}
         </div>
 
         {!isAuthPage && session ? (
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-zinc-400">{username}</span>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </button>
+          </div>
         ) : isPending ? <div className="h-10 w-24" /> : null}
       </div>
     </header>
