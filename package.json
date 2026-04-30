@@ -7,6 +7,7 @@
     "check": "pnpm -r check",
     "dev:api": "pnpm --filter @deckdiff/api dev",
     "dev:web": "pnpm --filter @deckdiff/web dev",
+    "dev:sim": "pnpm --filter @deckdiff/sim dev",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",

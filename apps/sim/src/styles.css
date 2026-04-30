@@ -1,0 +1,176 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  color: #f4f4f5;
+  background: #09090b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.sim-table {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #09090b;
+}
+
+.zone-tray {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 20;
+  display: flex;
+  gap: 12px;
+  height: 252px;
+  overflow: hidden;
+  border-top: 1px solid rgba(63, 63, 70, 0.9);
+  background: rgba(9, 9, 11, 0.92);
+  padding: 16px;
+}
+
+.battlefield {
+  position: absolute;
+  inset: 0 0 252px 0;
+  overflow: hidden;
+  background-color: #10251b;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.battlefield-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.hand-zone {
+  width: 50vw;
+  min-width: 420px;
+  height: 220px;
+  border: 1px solid rgba(103, 232, 249, 0.42);
+  border-radius: 12px;
+  background: rgba(9, 9, 11, 0.54);
+  padding: 10px;
+}
+
+.hand-cards {
+  position: relative;
+  height: 184px;
+  margin-top: 8px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.hand-card-position {
+  position: absolute;
+  top: 0;
+  width: 120px;
+}
+
+.pile-zone {
+  display: flex;
+  width: 156px;
+  min-height: 220px;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: flex-start;
+  border: 1px solid rgba(63, 63, 70, 0.9);
+  border-radius: 12px;
+  background: rgba(9, 9, 11, 0.54);
+  padding: 10px;
+}
+
+.zone-label {
+  color: #a5f3fc;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.card-frame {
+  width: 120px;
+  height: 168px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.card-frame:active {
+  cursor: grabbing;
+}
+
+.selection-marquee {
+  position: absolute;
+  z-index: 1000;
+  pointer-events: none;
+  border: 1px solid #67e8f9;
+  background: rgba(103, 232, 249, 0.16);
+}
+
+.card-frame-hovered .card,
+.card-frame-selected .card {
+  outline: 3px solid #67e8f9;
+  outline-offset: 0;
+}
+
+.card {
+  display: flex;
+  width: 120px;
+  height: 168px;
+  cursor: inherit;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  background: #fafafa;
+  color: #18181b;
+  padding: 8px;
+  text-align: left;
+  transform: rotate(0deg);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.card-tapped {
+  border-color: #67e8f9;
+  transform: rotate(90deg);
+}
+
+.card-face-down {
+  align-items: center;
+  justify-content: center;
+  background: #18181b;
+  color: #a5f3fc;
+}
+
+.card-type,
+.card-status {
+  color: #71717a;
+  font-size: 10px;
+}
+
+.card-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
