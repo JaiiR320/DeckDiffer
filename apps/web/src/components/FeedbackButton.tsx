@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer } from "react";
 import type { FormEvent } from "react";
 import { Bug, Check, Lightbulb, MessageSquarePlus, X } from "lucide-react";
 import { createGithubIssue } from "#/server/github";
@@ -12,18 +12,35 @@ type SubmitState =
   | { status: "error"; message: string };
 
 export function FeedbackButton() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [issueType, setIssueType] = useState<IssueType>("bug");
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
+  const [state, setState] = useReducer(
+    (
+      current: {
+        isOpen: boolean;
+        issueType: IssueType;
+        title: string;
+        body: string;
+        submitState: SubmitState;
+      },
+      next: Partial<typeof current>,
+    ) => ({ ...current, ...next }),
+    {
+      isOpen: false,
+      issueType: "bug" as IssueType,
+      title: "",
+      body: "",
+      submitState: { status: "idle" } as SubmitState,
+    },
+  );
+  const { isOpen, issueType, title, body, submitState } = state;
 
   function handleClose() {
-    setIsOpen(false);
-    setIssueType("bug");
-    setTitle("");
-    setBody("");
-    setSubmitState({ status: "idle" });
+    setState({
+      isOpen: false,
+      issueType: "bug",
+      title: "",
+      body: "",
+      submitState: { status: "idle" },
+    });
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -32,20 +49,24 @@ export function FeedbackButton() {
     const trimmedBody = body.trim();
     if (!trimmedTitle || !trimmedBody) return;
 
-    setSubmitState({ status: "loading" });
+    setState({ submitState: { status: "loading" } });
     try {
       const result = await createGithubIssue({
         data: { issueType, title: trimmedTitle, body: trimmedBody },
       });
-      setSubmitState({
-        status: "success",
-        issueNumber: result.number,
-        issueUrl: result.html_url,
+      setState({
+        submitState: {
+          status: "success",
+          issueNumber: result.number,
+          issueUrl: result.html_url,
+        },
       });
     } catch (err) {
-      setSubmitState({
-        status: "error",
-        message: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+      setState({
+        submitState: {
+          status: "error",
+          message: err instanceof Error ? err.message : "Something went wrong. Please try again.",
+        },
       });
     }
   }
@@ -58,10 +79,10 @@ export function FeedbackButton() {
       <button
         type="button"
         aria-label="Send feedback"
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-zinc-300 shadow-lg shadow-black/40 transition hover:bg-zinc-700 hover:text-cyan-300"
+        onClick={() => setState({ isOpen: true })}
+        className="fixed bottom-6 right-6 z-50 flex size-12 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-zinc-300 shadow-lg shadow-black/40 transition hover:bg-zinc-700 hover:text-cyan-300"
       >
-        <MessageSquarePlus className="h-5 w-5" strokeWidth={1.75} />
+        <MessageSquarePlus className="size-5" strokeWidth={1.75} />
       </button>
 
       {/* Modal */}
@@ -83,15 +104,15 @@ export function FeedbackButton() {
                 onClick={handleClose}
                 className="rounded-lg p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-300"
               >
-                <X className="h-5 w-5" />
+                <X className="size-5" />
               </button>
             </div>
 
             {/* Success state */}
             {submitState.status === "success" ? (
               <div className="mt-6 flex flex-col items-center gap-4 py-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-800 bg-cyan-950/50">
-                  <Check className="h-6 w-6 text-cyan-400" />
+                <div className="flex size-12 items-center justify-center rounded-full border border-cyan-800 bg-cyan-950/50">
+                  <Check className="size-6 text-cyan-400" />
                 </div>
                 <div>
                   <p className="text-base font-semibold text-zinc-100">Issue created!</p>
@@ -117,7 +138,7 @@ export function FeedbackButton() {
               /* Form state */
               <form className="mt-5" onSubmit={handleSubmit}>
                 {/* Issue type selector */}
-                <label className="block text-sm font-medium text-zinc-400">Type</label>
+                <p className="block text-sm font-medium text-zinc-400">Type</p>
                 <div className="mt-2 flex gap-2">
                   {(["bug", "feature"] as const).map((type) => {
                     const isActive = issueType === type;
@@ -127,14 +148,14 @@ export function FeedbackButton() {
                       <button
                         key={type}
                         type="button"
-                        onClick={() => setIssueType(type)}
+                        onClick={() => setState({ issueType: type })}
                         className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
                           isActive
                             ? "border-cyan-800 bg-cyan-950/40 text-cyan-200"
                             : "border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
                         }`}
                       >
-                        <Icon className="h-4 w-4" strokeWidth={1.75} />
+                        <Icon className="size-4" strokeWidth={1.75} />
                         {label}
                       </button>
                     );
@@ -150,10 +171,9 @@ export function FeedbackButton() {
                 </label>
                 <input
                   id="feedback-title"
-                  autoFocus
                   required
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => setState({ title: e.target.value })}
                   placeholder="Brief summary"
                   className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
                 />
@@ -169,8 +189,8 @@ export function FeedbackButton() {
                   id="feedback-description"
                   required
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="Describe the issue or feature in detail..."
+                  onChange={(e) => setState({ body: e.target.value })}
+                  placeholder="Describe the issue or feature in detail…"
                   rows={5}
                   className="mt-2 w-full resize-y rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
                 />
@@ -194,7 +214,7 @@ export function FeedbackButton() {
                   <button
                     type="submit"
                     disabled={isLoading || !title.trim() || !body.trim()}
-                    className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isLoading ? "Submitting…" : "Submit"}
                   </button>

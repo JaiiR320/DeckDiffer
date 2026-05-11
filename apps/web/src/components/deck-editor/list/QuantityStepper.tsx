@@ -35,7 +35,7 @@ export function QuantityStepper({
         aria-label={decrementLabel}
         onClick={onDecrement}
         disabled={quantity === 0 && baselineQuantity === 0}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex size-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
       >
         -
       </button>
@@ -48,7 +48,7 @@ export function QuantityStepper({
         type="button"
         aria-label={incrementLabel}
         onClick={onIncrement}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
+        className="inline-flex size-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-[10px] font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
       >
         +
       </button>

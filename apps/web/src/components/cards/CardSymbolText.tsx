@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { getCardSymbols, type CardSymbol } from "../../lib/scryfall";
 
 type CardSymbolTextProps = {
@@ -8,18 +8,32 @@ type CardSymbolTextProps = {
   as?: "span" | "div";
 };
 
-type CardTextToken = { type: "text"; value: string } | { type: "symbol"; value: string };
+type CardTextToken = { key: string; type: "text"; value: string } | { key: string; type: "symbol"; value: string };
 
 const CARD_SYMBOL_PATTERN = /(\{[^}]+\})/;
+const CARD_SYMBOL_GLOBAL_PATTERN = new RegExp(CARD_SYMBOL_PATTERN, "g");
 
 export function splitCardSymbolText(text: string): CardTextToken[] {
-  return text
-    .split(CARD_SYMBOL_PATTERN)
-    .filter(Boolean)
-    .map((part) => ({
-      type: CARD_SYMBOL_PATTERN.test(part) ? "symbol" : "text",
-      value: part,
-    }));
+  const tokens: CardTextToken[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(CARD_SYMBOL_GLOBAL_PATTERN)) {
+    const symbol = match[0];
+    const symbolIndex = match.index ?? cursor;
+
+    if (symbolIndex > cursor) {
+      tokens.push({ key: `text-${cursor}`, type: "text", value: text.slice(cursor, symbolIndex) });
+    }
+
+    tokens.push({ key: `symbol-${symbolIndex}`, type: "symbol", value: symbol });
+    cursor = symbolIndex + symbol.length;
+  }
+
+  if (cursor < text.length) {
+    tokens.push({ key: `text-${cursor}`, type: "text", value: text.slice(cursor) });
+  }
+
+  return tokens;
 }
 
 export function CardSymbolText({
@@ -28,12 +42,15 @@ export function CardSymbolText({
   symbolClassName,
   as = "span",
 }: CardSymbolTextProps) {
-  const [symbols, setSymbols] = useState<Map<string, CardSymbol> | null>(null);
+  const [symbols, setSymbols] = useReducer(
+    (_current: Map<string, CardSymbol> | null, nextSymbols: Map<string, CardSymbol> | null) =>
+      nextSymbols,
+    null,
+  );
   const hasSymbols = text.includes("{");
 
   useEffect(() => {
     if (!hasSymbols) {
-      setSymbols(null);
       return;
     }
 
@@ -43,11 +60,6 @@ export function CardSymbolText({
       .then((nextSymbols) => {
         if (!isCancelled) {
           setSymbols(nextSymbols);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setSymbols(null);
         }
       });
 
@@ -61,20 +73,20 @@ export function CardSymbolText({
 
   return (
     <Component className={className}>
-      {tokens.map((token, index) => {
+      {tokens.map((token) => {
         if (token.type === "text") {
-          return <span key={`${index}-${token.value}`}>{token.value}</span>;
+          return <span key={token.key}>{token.value}</span>;
         }
 
         const symbol = symbols?.get(token.value);
 
         if (!symbol) {
-          return <span key={`${index}-${token.value}`}>{token.value}</span>;
+          return <span key={token.key}>{token.value}</span>;
         }
 
         return (
           <img
-            key={`${index}-${token.value}`}
+            key={token.key}
             src={symbol.svgUri}
             alt={symbol.english}
             title={symbol.english}

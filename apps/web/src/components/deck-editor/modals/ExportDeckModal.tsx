@@ -36,7 +36,7 @@ export function ExportDeckModal({
               onClick={onClose}
               className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-900 hover:text-zinc-200"
             >
-              <X className="h-5 w-5" />
+              <X className="size-5" />
             </button>
           </div>
         </div>
@@ -68,7 +68,7 @@ export function ExportDeckModal({
           <button
             type="button"
             onClick={onCopy}
-            className="rounded-xl bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
+            className="rounded-xl bg-cyan-500 px-5 py-2.5 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-400"
           >
             Copy to Clipboard
           </button>

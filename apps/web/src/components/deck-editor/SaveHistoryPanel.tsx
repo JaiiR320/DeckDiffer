@@ -68,7 +68,7 @@ export function SaveHistoryPanel({
           onClick={onBackToEditor}
           className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="size-4" />
           Back to Editor
         </button>
       </div>
@@ -92,7 +92,7 @@ export function SaveHistoryPanel({
               onClick={toggleCompareMode}
               className={`rounded-xl px-3 py-2 text-sm transition ${
                 compareMode
-                  ? "bg-cyan-400 text-zinc-950"
+                  ? "bg-cyan-400 text-cyan-950"
                   : "border border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
               }`}
             >
@@ -104,7 +104,7 @@ export function SaveHistoryPanel({
             onClick={onBackToEditor}
             className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="size-4" />
             Back
           </button>
         </div>
@@ -120,7 +120,7 @@ export function SaveHistoryPanel({
             <button
               type="button"
               onClick={handleCompare}
-              className="mt-3 rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
+              className="mt-3 rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
             >
               Compare Selected
             </button>
@@ -133,24 +133,13 @@ export function SaveHistoryPanel({
         {saves.map((save) => {
           const isSelected = selectedSaves.includes(save.id);
           const selectionOrder = selectedSaves.indexOf(save.id) + 1;
-
-          return (
-            <div
-              key={save.id}
-              onClick={() => compareMode && toggleSaveSelection(save.id)}
-              className={`flex items-center justify-between rounded-xl border p-4 transition ${
-                compareMode
-                  ? isSelected
-                    ? "border-cyan-500 bg-cyan-950/20 cursor-pointer"
-                    : "border-zinc-800 bg-zinc-950 cursor-pointer hover:border-zinc-700"
-                  : "border-zinc-800 bg-zinc-950"
-              }`}
-            >
+          const saveContent = (
+            <>
               <div className="flex items-center gap-3">
                 {compareMode && (
                   <div
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      isSelected ? "bg-cyan-400 text-zinc-950" : "bg-zinc-800 text-zinc-500"
+                    className={`flex size-6 items-center justify-center rounded-full text-xs font-semibold ${
+                      isSelected ? "bg-cyan-400 text-cyan-950" : "bg-zinc-800 text-zinc-500"
                     }`}
                   >
                     {isSelected ? selectionOrder : ""}
@@ -165,15 +154,38 @@ export function SaveHistoryPanel({
               {!compareMode && (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLoadSave(save);
-                  }}
+                  onClick={() => onLoadSave(save)}
                   className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
                 >
                   Load
                 </button>
               )}
+            </>
+          );
+
+          if (compareMode) {
+            return (
+              <button
+                key={save.id}
+                type="button"
+                onClick={() => toggleSaveSelection(save.id)}
+                className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
+                  isSelected
+                    ? "border-cyan-500 bg-cyan-950/20 cursor-pointer"
+                    : "border-zinc-800 bg-zinc-950 cursor-pointer hover:border-zinc-700"
+                }`}
+              >
+                {saveContent}
+              </button>
+            );
+          }
+
+          return (
+            <div
+              key={save.id}
+              className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 p-4 transition"
+            >
+              {saveContent}
             </div>
           );
         })}

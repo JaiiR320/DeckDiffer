@@ -41,13 +41,12 @@ export function ImportDeckModal({
             onClick={onClose}
             className="rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-900 hover:text-zinc-200"
           >
-            <X className="h-5 w-5" />
+            <X className="size-5" />
           </button>
         </div>
 
         <form className="mt-5" onSubmit={onSubmit}>
           <textarea
-            autoFocus
             spellCheck={false}
             value={draftDeck}
             onChange={(event) => onDraftDeckChange(event.target.value)}
@@ -76,7 +75,7 @@ export function ImportDeckModal({
                 <button
                   type="submit"
                   disabled={!draftDeck.trim()}
-                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Bulk Add
                 </button>
@@ -85,7 +84,7 @@ export function ImportDeckModal({
               <button
                 type="submit"
                 disabled={!draftDeck.trim()}
-                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Validate Import
               </button>

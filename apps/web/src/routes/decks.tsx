@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useReducer } from "react";
 import type { FormEvent } from "react";
 import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { CreateDeckModal } from "../components/decks/CreateDeckModal";
@@ -28,19 +28,33 @@ export const Route = createFileRoute("/decks")({
 
 function DecksPage() {
   const initialDecks = Route.useLoaderData();
-  const [decks, setDecks] = useState<DeckItem[]>(initialDecks);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [deckName, setDeckName] = useState("");
-  const [editingDeck, setEditingDeck] = useState<DeckItem | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [state, setState] = useReducer(
+    (
+      current: {
+        decks: DeckItem[];
+        isCreateOpen: boolean;
+        deckName: string;
+        editingDeck: DeckItem | null;
+        errorMessage: string | null;
+      },
+      next: Partial<typeof current>,
+    ) => ({ ...current, ...next }),
+    {
+      decks: initialDecks,
+      isCreateOpen: false,
+      deckName: "",
+      editingDeck: null,
+      errorMessage: null,
+    },
+  );
+  const { decks, isCreateOpen, deckName, editingDeck, errorMessage } = state;
 
   function closeModal() {
-    setIsCreateOpen(false);
-    setDeckName("");
+    setState({ isCreateOpen: false, deckName: "" });
   }
 
   function closeEditModal() {
-    setEditingDeck(null);
+    setState({ editingDeck: null });
   }
 
   async function handleCreateDeck(event: FormEvent<HTMLFormElement>) {
@@ -60,15 +74,12 @@ function DecksPage() {
         throw new Error("Could not create deck.");
       }
 
-      setDecks((currentDecks) => [newDeck, ...currentDecks]);
-      setErrorMessage(null);
-      closeModal();
+      setState({ decks: [newDeck, ...decks], errorMessage: null, isCreateOpen: false, deckName: "" });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not create deck right now.",
-      );
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not create deck right now.",
+      });
     }
   }
 
@@ -82,17 +93,16 @@ function DecksPage() {
         throw new Error("Could not rename deck.");
       }
 
-      setDecks((currentDecks) =>
-        currentDecks.map((d) => (d.id === deckId ? updatedDeck : d)),
-      );
-      setEditingDeck(updatedDeck);
-      setErrorMessage(null);
+      setState({
+        decks: decks.map((d) => (d.id === deckId ? updatedDeck : d)),
+        editingDeck: updatedDeck,
+        errorMessage: null,
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not rename deck right now.",
-      );
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not rename deck right now.",
+      });
     }
   }
 
@@ -102,15 +112,16 @@ function DecksPage() {
         data: { deckId },
       });
 
-      setDecks((currentDecks) => currentDecks.filter((d) => d.id !== deckId));
-      setEditingDeck(null);
-      setErrorMessage(null);
+      setState({
+        decks: decks.filter((d) => d.id !== deckId),
+        editingDeck: null,
+        errorMessage: null,
+      });
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not delete deck right now.",
-      );
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not delete deck right now.",
+      });
     }
   }
 
@@ -132,12 +143,12 @@ function DecksPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    setEditingDeck(null);
+    setState({ editingDeck: null });
   }
 
   return (
     <>
-      <main className="mx-auto w-full px-8 py-8">
+      <main className="mx-auto w-full p-8">
         {errorMessage ? (
           <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
             {errorMessage}
@@ -147,17 +158,17 @@ function DecksPage() {
         <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <button
             type="button"
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => setState({ isCreateOpen: true })}
             className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300"
           >
-            <Plus className="h-9 w-9" strokeWidth={1.75} />
+            <Plus className="size-9" strokeWidth={1.75} />
             <span className="mt-5 text-xl font-medium text-zinc-300">
               New Deck
             </span>
           </button>
 
           {decks.map((deck) => (
-            <DeckCard key={deck.id} deck={deck} onEdit={setEditingDeck} />
+            <DeckCard key={deck.id} deck={deck} onEdit={(editingDeck) => setState({ editingDeck })} />
           ))}
         </section>
 
@@ -171,7 +182,7 @@ function DecksPage() {
       {isCreateOpen ? (
         <CreateDeckModal
           deckName={deckName}
-          onDeckNameChange={setDeckName}
+          onDeckNameChange={(deckName) => setState({ deckName })}
           onClose={closeModal}
           onSubmit={handleCreateDeck}
         />

@@ -32,7 +32,7 @@ export function DeckAlerts({ deck, onDismissWarnings }: DeckAlertsProps) {
               className="rounded-lg p-1.5 text-amber-300 transition hover:bg-amber-900/30 hover:text-amber-100"
               aria-label="Dismiss warnings"
             >
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </button>
           </div>
           <ul className="mt-3 space-y-2 text-sm text-amber-100/90">

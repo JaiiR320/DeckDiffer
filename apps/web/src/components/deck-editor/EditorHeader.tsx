@@ -1,5 +1,5 @@
 import { Download, Import } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { searchCards, type SearchCardResult } from "../../lib/scryfall";
 
 type EditorHeaderProps = {
@@ -12,6 +12,34 @@ type EditorHeaderProps = {
 
 const SEARCH_RESULTS_IDLE_CLOSE_MS = 10000;
 
+type SearchState = {
+  results: SearchCardResult[];
+  isSearching: boolean;
+  isResultsOpen: boolean;
+};
+
+type SearchAction =
+  | { type: "clear" }
+  | { type: "close" }
+  | { type: "open" }
+  | { type: "openLoading" }
+  | { type: "results"; results: SearchCardResult[] };
+
+function searchReducer(state: SearchState, action: SearchAction): SearchState {
+  switch (action.type) {
+    case "clear":
+      return { results: [], isSearching: false, isResultsOpen: false };
+    case "close":
+      return { ...state, isResultsOpen: false };
+    case "open":
+      return { ...state, isResultsOpen: true };
+    case "openLoading":
+      return { ...state, isSearching: true, isResultsOpen: true };
+    case "results":
+      return { ...state, results: action.results, isSearching: false };
+  }
+}
+
 export function EditorHeader({
   onImport,
   onExport,
@@ -22,9 +50,11 @@ export function EditorHeader({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inactivityTimeoutRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchCardResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const [{ results, isSearching, isResultsOpen }, dispatchSearch] = useReducer(searchReducer, {
+    results: [],
+    isSearching: false,
+    isResultsOpen: false,
+  });
 
   function clearInactivityTimer() {
     if (inactivityTimeoutRef.current !== null) {
@@ -37,34 +67,30 @@ export function EditorHeader({
     clearInactivityTimer();
 
     inactivityTimeoutRef.current = window.setTimeout(() => {
-      setIsResultsOpen(false);
+      dispatchSearch({ type: "close" });
     }, SEARCH_RESULTS_IDLE_CLOSE_MS);
   }
 
   useEffect(() => {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length < 3) {
-      setResults([]);
-      setIsSearching(false);
-      setIsResultsOpen(false);
+      dispatchSearch({ type: "clear" });
       clearInactivityTimer();
       return;
     }
 
     let isCancelled = false;
-    setIsSearching(true);
-    setIsResultsOpen(true);
+    dispatchSearch({ type: "openLoading" });
     resetInactivityTimer();
 
-    const timeoutId = window.setTimeout(async () => {
-      const nextResults = await searchCards(trimmedQuery);
+    const timeoutId = window.setTimeout(() => {
+      void searchCards(trimmedQuery).then((nextResults) => {
+        if (isCancelled) {
+          return;
+        }
 
-      if (isCancelled) {
-        return;
-      }
-
-      setResults(nextResults);
-      setIsSearching(false);
+        dispatchSearch({ type: "results", results: nextResults });
+      });
     }, 300);
 
     return () => {
@@ -81,7 +107,7 @@ export function EditorHeader({
 
     function handlePointerDown(event: PointerEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
-        setIsResultsOpen(false);
+        dispatchSearch({ type: "close" });
       }
     }
 
@@ -101,9 +127,7 @@ export function EditorHeader({
   function handleSelectCard(card: SearchCardResult) {
     onAddCard(card);
     setQuery("");
-    setResults([]);
-    setIsSearching(false);
-    setIsResultsOpen(false);
+    dispatchSearch({ type: "clear" });
     clearInactivityTimer();
   }
 
@@ -121,13 +145,13 @@ export function EditorHeader({
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
-                setIsResultsOpen(false);
+                dispatchSearch({ type: "close" });
                 clearInactivityTimer();
               }
             }}
             onFocus={() => {
               if (query.trim().length >= 3) {
-                setIsResultsOpen(true);
+                dispatchSearch({ type: "open" });
                 resetInactivityTimer();
               }
             }}
@@ -138,7 +162,7 @@ export function EditorHeader({
           {query.trim().length >= 3 && isResultsOpen ? (
             <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
               {isSearching ? (
-                <div className="px-4 py-3 text-sm text-zinc-500">Searching cards...</div>
+                <div className="px-4 py-3 text-sm text-zinc-500">Searching cards…</div>
               ) : results.length > 0 ? (
                 <div className="divide-y divide-zinc-800">
                   {results.map((card) => (
@@ -175,7 +199,7 @@ export function EditorHeader({
             disabled={exportDisabled}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Download className="h-4 w-4" strokeWidth={1.75} />
+            <Download className="size-4" strokeWidth={1.75} />
             Export
           </button>
           <button
@@ -183,7 +207,7 @@ export function EditorHeader({
             onClick={onImport}
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
           >
-            <Import className="h-4 w-4" strokeWidth={1.75} />
+            <Import className="size-4" strokeWidth={1.75} />
             Import
           </button>
         </div>

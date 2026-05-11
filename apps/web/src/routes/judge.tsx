@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { getCurrentSession } from "#/server/session";
 import {
@@ -45,7 +45,7 @@ function JudgePage() {
   }
 
   return (
-    <main className="mx-auto w-full px-8 py-8">
+    <main className="mx-auto w-full p-8">
       <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 shadow-2xl shadow-black/20">
         <div className="border-b border-zinc-800 pb-4">
           <h1 className="text-2xl font-semibold text-zinc-100">Judge</h1>
@@ -65,11 +65,6 @@ function JudgeChat({ getResponse }: JudgeChatProps) {
   const [draft, setDraft] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [hasHydrated, setHasHydrated] = useState(false);
-
-  useEffect(() => {
-    setHasHydrated(true);
-  }, []);
 
   async function submitQuestion(question: string) {
     const message = question.trim();
@@ -93,7 +88,7 @@ function JudgeChat({ getResponse }: JudgeChatProps) {
     const pendingAssistantMessage: JudgeMessage = {
       id: crypto.randomUUID(),
       role: "assistant",
-      content: "Thinking...",
+      content: "Thinking…",
       isPending: true,
     };
 
@@ -154,7 +149,7 @@ function JudgeChat({ getResponse }: JudgeChatProps) {
     await submitQuestion(updatedQuestion);
   }
 
-  const isSendDisabled = !hasHydrated || isSubmitting || !draft.trim();
+  const isSendDisabled = isSubmitting || !draft.trim();
 
   return (
     <div className="mt-6 space-y-4">
@@ -223,9 +218,9 @@ function JudgeChat({ getResponse }: JudgeChatProps) {
           <button
             type="submit"
             disabled={isSendDisabled}
-            className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Sending..." : "Send"}
+            {isSubmitting ? "Sending…" : "Send"}
           </button>
         </div>
       </form>

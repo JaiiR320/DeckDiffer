@@ -1,6 +1,6 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
-import { useState } from "react";
+import { useReducer } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "#/lib/auth-client";
 import { getCurrentSession } from "#/server/session";
@@ -17,13 +17,28 @@ export const Route = createFileRoute("/auth")({
 
 type Mode = "sign-in" | "sign-up";
 
+type AuthState = {
+  mode: Mode;
+  email: string;
+  password: string;
+  errorMessage: string | null;
+  isSubmitting: boolean;
+};
+
+const initialAuthState: AuthState = {
+  mode: "sign-up",
+  email: "",
+  password: "",
+  errorMessage: null,
+  isSubmitting: false,
+};
+
 function AuthPage() {
-  const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("sign-up");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [state, setState] = useReducer(
+    (current: AuthState, next: Partial<AuthState>) => ({ ...current, ...next }),
+    initialAuthState,
+  );
+  const { mode, email, password, errorMessage, isSubmitting } = state;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,8 +48,7 @@ function AuthPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    setErrorMessage(null);
+    setState({ isSubmitting: true, errorMessage: null });
 
     try {
       if (mode === "sign-up") {
@@ -58,16 +72,16 @@ function AuthPage() {
         }
       }
 
-      await navigate({ to: "/decks" });
+      window.location.assign("/decks");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Authentication failed.";
       if (mode === "sign-in" && message === "Invalid email or password") {
-        setErrorMessage("No account was found for that email/password. Try Sign up first.");
+        setState({ errorMessage: "No account was found for that email/password. Try Sign up first." });
       } else {
-        setErrorMessage(message);
+        setState({ errorMessage: message });
       }
     } finally {
-      setIsSubmitting(false);
+      setState({ isSubmitting: false });
     }
   }
 
@@ -89,18 +103,18 @@ function AuthPage() {
         <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 p-1">
           <button
             type="button"
-            onClick={() => setMode("sign-in")}
+            onClick={() => setState({ mode: "sign-in" })}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              mode === "sign-in" ? "bg-cyan-400 text-zinc-950" : "text-zinc-400 hover:text-zinc-200"
+              mode === "sign-in" ? "bg-cyan-400 text-cyan-950" : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             Sign in
           </button>
           <button
             type="button"
-            onClick={() => setMode("sign-up")}
+            onClick={() => setState({ mode: "sign-up" })}
             className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              mode === "sign-up" ? "bg-cyan-400 text-zinc-950" : "text-zinc-400 hover:text-zinc-200"
+              mode === "sign-up" ? "bg-cyan-400 text-cyan-950" : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             Sign up
@@ -116,9 +130,8 @@ function AuthPage() {
               id="auth-email"
               type="email"
               autoComplete="email"
-              autoFocus
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => setState({ email: event.target.value })}
               className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
               placeholder="you@example.com"
               required
@@ -134,7 +147,7 @@ function AuthPage() {
               type="password"
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => setState({ password: event.target.value })}
               className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
               placeholder="At least 8 characters"
               required
@@ -151,9 +164,9 @@ function AuthPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+            {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {mode === "sign-in" ? "Sign in" : "Create account"}
           </button>
         </form>

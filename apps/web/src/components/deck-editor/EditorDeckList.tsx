@@ -95,26 +95,26 @@ export function EditorDeckList({
             aria-pressed={showDiffOnly}
             aria-label={showDiffOnly ? "Show all cards" : "Show differences only"}
             title={showDiffOnly ? "Show all cards" : "Show differences only"}
-            className={`relative inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
+            className={`relative inline-flex size-7 items-center justify-center rounded-md border transition ${
               showDiffOnly
                 ? "border-cyan-500/70 bg-cyan-500/15 text-cyan-300"
                 : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800"
             }`}
           >
-            <Minus className="h-3.5 w-3.5 translate-y-[2px]" strokeWidth={2} />
-            <Plus className="absolute h-3.5 w-3.5 -translate-y-[2px]" strokeWidth={2} />
+            <Minus className="size-3.5 translate-y-[2px]" strokeWidth={2} />
+            <Plus className="absolute size-3.5 -translate-y-[2px]" strokeWidth={2} />
           </button>
           <button
             type="button"
             onClick={() => setAllCategoriesCollapsed(!areAllCollapsed)}
             aria-label={areAllCollapsed ? "Expand all categories" : "Collapse all categories"}
             title={areAllCollapsed ? "Expand all categories" : "Collapse all categories"}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
+            className="inline-flex size-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800"
           >
             {areAllCollapsed ? (
-              <ChevronsUpDown className="h-3.5 w-3.5" />
+              <ChevronsUpDown className="size-3.5" />
             ) : (
-              <ChevronsDownUp className="h-3.5 w-3.5" />
+              <ChevronsDownUp className="size-3.5" />
             )}
           </button>
         </div>
@@ -158,7 +158,7 @@ export function EditorDeckList({
                     <span className="text-rose-300">-{removedCount}</span>
                   </div>
                   <ChevronDown
-                    className={`h-4 w-4 text-zinc-500 transition ${collapsedCategories[category] ? "-rotate-90" : "rotate-0"}`}
+                    className={`size-4 text-zinc-500 transition ${collapsedCategories[category] ? "-rotate-90" : "rotate-0"}`}
                   />
                 </div>
               </button>
@@ -209,9 +209,9 @@ export function EditorDeckList({
                                 title={`Restore ${row.name}`}
                                 onClick={() => onRestoreCard?.(row)}
                                 disabled={row.status === "same"}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="inline-flex size-7 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                <RotateCcw className="h-3.5 w-3.5" />
+                                <RotateCcw className="size-3.5" />
                               </button>
                             </>
                           )}

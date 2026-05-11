@@ -20,7 +20,7 @@ export function DeckActionsModal({
   onDelete,
   onExport,
 }: DeckActionsModalProps) {
-  const [newName, setNewName] = useState(deck.name);
+  const [newName, setNewName] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -60,7 +60,6 @@ export function DeckActionsModal({
               </label>
               <input
                 id="deck-rename"
-                autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Enter a new name"
@@ -69,17 +68,14 @@ export function DeckActionsModal({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setNewName(deck.name);
-                  }}
+                  onClick={() => setIsEditing(false)}
                   className="flex-1 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
+                  className="flex-1 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
                 >
                   Save
                 </button>
@@ -88,10 +84,13 @@ export function DeckActionsModal({
           ) : (
             <button
               type="button"
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                setNewName(deck.name);
+                setIsEditing(true);
+              }}
               className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
             >
-              <Pencil className="h-5 w-5 text-zinc-500" strokeWidth={1.75} />
+              <Pencil className="size-5 text-zinc-500" strokeWidth={1.75} />
               <span>Rename deck</span>
             </button>
           )}
@@ -102,7 +101,7 @@ export function DeckActionsModal({
             onClick={() => onExport(deck)}
             className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
           >
-            <Download className="h-5 w-5 text-zinc-500" strokeWidth={1.75} />
+            <Download className="size-5 text-zinc-500" strokeWidth={1.75} />
             <span>Export deck list</span>
           </button>
 
@@ -136,7 +135,7 @@ export function DeckActionsModal({
               onClick={() => setShowDeleteConfirm(true)}
               className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-rose-400 transition hover:border-rose-900/50 hover:bg-rose-950/20"
             >
-              <Trash2 className="h-5 w-5" strokeWidth={1.75} />
+              <Trash2 className="size-5" strokeWidth={1.75} />
               <span>Delete deck</span>
             </button>
           )}

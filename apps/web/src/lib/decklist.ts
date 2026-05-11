@@ -53,22 +53,6 @@ export type InvalidDeckCard = {
   reason: string;
 };
 
-export type GroupedDeckCards = Record<CardCategory, ValidatedDeckCard[]>;
-
-export function createEmptyGroupedDeck(): GroupedDeckCards {
-  return {
-    Land: [],
-    Creature: [],
-    Artifact: [],
-    Enchantment: [],
-    Instant: [],
-    Sorcery: [],
-    Planeswalker: [],
-    Battle: [],
-    Other: [],
-  };
-}
-
 export function parseDecklist(rawText: string) {
   const entries: ParsedDeckEntry[] = [];
   const errors: ParsedDeckError[] = [];
@@ -142,21 +126,6 @@ export function getCardCategory(typeLine: string): CardCategory {
   if (typeLine.includes("Planeswalker")) return "Planeswalker";
   if (typeLine.includes("Battle")) return "Battle";
   return "Other";
-}
-
-export function groupValidatedCards(cards: ValidatedDeckCard[]) {
-  const groupedDeck = createEmptyGroupedDeck();
-  const mergedCards = mergeValidatedCards(cards);
-
-  for (const card of mergedCards) {
-    groupedDeck[card.category].push(card);
-  }
-
-  for (const category of CARD_CATEGORIES) {
-    groupedDeck[category].sort((left, right) => left.name.localeCompare(right.name));
-  }
-
-  return groupedDeck;
 }
 
 export function mergeValidatedCards(cards: ValidatedDeckCard[]) {

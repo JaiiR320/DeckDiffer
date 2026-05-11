@@ -1,5 +1,5 @@
 import { RefreshCw, Pin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CardSymbolText } from "./CardSymbolText";
 import type { CardPreviewResult } from "../../lib/scryfall";
 
@@ -19,12 +19,47 @@ export function CardPreviewPanel({
   onTogglePinned,
 }: CardPreviewPanelProps) {
   const hasPreview = preview !== null;
+  const previewKey = preview
+    ? `${preview.name}:${preview.setCode ?? ""}:${preview.collectorNumber ?? ""}`
+    : "empty";
+
+  return (
+    <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-24">
+      {hasPreview ? (
+        <CardPreviewContent
+          key={previewKey}
+          preview={preview}
+          status={status}
+          isPinned={isPinned}
+          onTogglePinned={onTogglePinned}
+        />
+      ) : (
+        <div className="flex min-h-105 items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-5 text-center">
+          <p className="max-w-[18rem] text-sm leading-6 text-zinc-500">
+            {status === "loading" && requestedName
+              ? `Loading ${requestedName}…`
+              : status === "error" && requestedName
+                ? `Could not load ${requestedName}.`
+                : "Hover a card in the deck list or search results to pin its preview here."}
+          </p>
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function CardPreviewContent({
+  preview,
+  status,
+  isPinned,
+  onTogglePinned,
+}: {
+  preview: CardPreviewResult;
+  status: "idle" | "loading" | "ready" | "error";
+  isPinned: boolean;
+  onTogglePinned: () => void;
+}) {
   const [selectedFaceIndex, setSelectedFaceIndex] = useState(0);
-
-  useEffect(() => {
-    setSelectedFaceIndex(0);
-  }, [preview]);
-
   const faces = preview?.faces ?? [];
   const canFlip = faces.length > 1;
   const shownFace = canFlip ? faces[selectedFaceIndex] : preview;
@@ -34,9 +69,7 @@ export function CardPreviewPanel({
   }
 
   return (
-    <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-24">
-      {hasPreview ? (
-        <>
+    <>
           <div className="relative group">
             <img
               src={shownFace?.imageUrl}
@@ -51,12 +84,12 @@ export function CardPreviewPanel({
               title={isPinned ? "Unpin card preview" : "Pin card preview"}
               className={
                 isPinned
-                  ? "absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-300/60 bg-cyan-400/50 text-zinc-950 shadow-lg shadow-cyan-500/20 transition opacity-60 group-hover:opacity-100"
-                  : "absolute left-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 shadow-lg shadow-black/25 transition opacity-0 group-hover:opacity-100 hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100"
+                  ? "absolute left-2 top-2 inline-flex size-9 items-center justify-center rounded-full border border-cyan-300/60 bg-cyan-400/50 text-zinc-950 shadow-lg shadow-cyan-500/20 transition opacity-60 group-hover:opacity-100"
+                  : "absolute left-2 top-2 inline-flex size-9 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 shadow-lg shadow-black/25 transition opacity-0 group-hover:opacity-100 hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100"
               }
-            >
-              <Pin
-                className={isPinned ? "h-4.5 w-4.5 fill-current" : "h-4.5 w-4.5"}
+              >
+                <Pin
+                className={isPinned ? "size-4.5 fill-current" : "size-4.5"}
                 strokeWidth={2}
               />
             </button>
@@ -66,9 +99,9 @@ export function CardPreviewPanel({
                 onClick={flipCardFace}
                 aria-label="Show other card face"
                 title="Show other card face"
-                className="absolute left-2 top-12 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 opacity-0 shadow-lg shadow-black/25 transition group-hover:opacity-100 hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100"
+                className="absolute left-2 top-12 inline-flex size-9 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 opacity-0 shadow-lg shadow-black/25 transition group-hover:opacity-100 hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100"
               >
-                <RefreshCw className="h-4.5 w-4.5" strokeWidth={2} />
+                <RefreshCw className="size-4.5" strokeWidth={2} />
               </button>
             ) : null}
           </div>
@@ -81,7 +114,7 @@ export function CardPreviewPanel({
                   <CardSymbolText
                     text={shownFace.manaCost}
                     className="shrink-0 text-xs font-medium text-cyan-300"
-                    symbolClassName="mx-[1px] inline-block h-4 w-4 align-[-0.2em]"
+                    symbolClassName="mx-[1px] inline-block size-4 align-[-0.2em]"
                   />
                 ) : null}
               </div>
@@ -108,21 +141,9 @@ export function CardPreviewPanel({
             </div>
 
             {status === "loading" ? (
-              <p className="text-xs text-zinc-500">Updating preview...</p>
+              <p className="text-xs text-zinc-500">Updating preview…</p>
             ) : null}
           </div>
-        </>
-      ) : (
-        <div className="flex min-h-105 items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 px-5 text-center">
-          <p className="max-w-[18rem] text-sm leading-6 text-zinc-500">
-            {status === "loading" && requestedName
-              ? `Loading ${requestedName}...`
-              : status === "error" && requestedName
-                ? `Could not load ${requestedName}.`
-                : "Hover a card in the deck list or search results to pin its preview here."}
-          </p>
-        </div>
-      )}
-    </aside>
+    </>
   );
 }

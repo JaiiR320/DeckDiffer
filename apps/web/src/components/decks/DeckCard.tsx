@@ -12,7 +12,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
     <div className="group relative flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left shadow-[0_24px_60px_rgba(0,0,0,0.25)] transition hover:border-zinc-700">
       {/* Content - sits below the Link */}
       <div className="pointer-events-none">
-        <Layers className="h-8 w-8 text-cyan-300" strokeWidth={1.75} />
+        <Layers className="size-8 text-cyan-300" strokeWidth={1.75} />
       </div>
 
       <div className="pointer-events-none mt-8">
@@ -41,7 +41,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
         aria-label={`Edit ${deck.name}`}
         className="absolute right-6 top-6 cursor-pointer rounded-lg p-2 text-zinc-500 opacity-0 transition hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100"
       >
-        <MoreVertical className="h-5 w-5" strokeWidth={1.75} />
+        <MoreVertical className="size-5" strokeWidth={1.75} />
       </button>
     </div>
   );

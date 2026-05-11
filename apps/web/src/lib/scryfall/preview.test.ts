@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getCardPreview, getCardSymbols, searchCards, validateDeckEntries } from "./scryfall";
+import { getCardPreview } from "./preview";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,16 +26,18 @@ describe("getCardPreview", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const firstPreview = await getCardPreview({
-      name: "Lightning Bolt",
-      setCode: "LEA",
-      collectorNumber: "161",
-    });
-    const secondPreview = await getCardPreview({
-      name: "Lightning Bolt",
-      setCode: "LEA",
-      collectorNumber: "161",
-    });
+    const [firstPreview, secondPreview] = await Promise.all([
+      getCardPreview({
+        name: "Lightning Bolt",
+        setCode: "LEA",
+        collectorNumber: "161",
+      }),
+      getCardPreview({
+        name: "Lightning Bolt",
+        setCode: "LEA",
+        collectorNumber: "161",
+      }),
+    ]);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith("https://api.scryfall.com/cards/lea/161", {
@@ -84,9 +86,7 @@ describe("getCardPreview", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "https://api.scryfall.com/cards/named?exact=Counterspell",
-      {
-        headers: { Accept: "application/json" },
-      },
+      { headers: { Accept: "application/json" } },
     );
     expect(preview?.name).toBe("Counterspell");
     expect(preview?.imageUrl).toContain("counterspell.jpg");
@@ -128,11 +128,7 @@ describe("getCardPreview", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const preview = await getCardPreview({
-      name: "Arlinn Kord",
-      setCode: "SOI",
-      collectorNumber: "243",
-    });
+    const preview = await getCardPreview({ name: "Arlinn Kord", setCode: "SOI", collectorNumber: "243" });
 
     expect(preview?.name).toBe("Arlinn Kord");
     expect(preview?.manaCost).toBe("{2}{R}{G}");
@@ -157,121 +153,5 @@ describe("getCardPreview", () => {
         imageUrl: "https://cards.scryfall.io/normal/back/a/r/arlinn-moon.jpg",
       },
     ]);
-  });
-});
-
-describe("getCardSymbols", () => {
-  it("fetches and caches Scryfall symbology", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [
-          {
-            symbol: "{T}",
-            english: "tap this permanent",
-            svg_uri: "https://svgs.scryfall.io/card-symbols/T.svg",
-          },
-          {
-            symbol: "{C}",
-            english: "one colorless mana",
-            svg_uri: "https://svgs.scryfall.io/card-symbols/C.svg",
-          },
-        ],
-      }),
-    });
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const firstSymbols = await getCardSymbols();
-    const secondSymbols = await getCardSymbols();
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith("https://api.scryfall.com/symbology", {
-      headers: { Accept: "application/json" },
-    });
-    expect(firstSymbols).toBe(secondSymbols);
-    expect(firstSymbols.get("{T}")).toEqual({
-      symbol: "{T}",
-      english: "tap this permanent",
-      svgUri: "https://svgs.scryfall.io/card-symbols/T.svg",
-    });
-  });
-});
-
-describe("searchCards", () => {
-  it("includes image URLs in search results", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [
-          {
-            name: "Opt",
-            oracle_id: "oracle-4",
-            id: "card-4",
-            type_line: "Instant",
-            cmc: 1,
-            set: "dom",
-            collector_number: "60",
-            image_uris: {
-              small: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
-              normal: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
-            },
-          },
-        ],
-      }),
-    });
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const results = await searchCards("opt");
-
-    expect(results[0]).toMatchObject({
-      name: "Opt",
-      manaValue: 1,
-      smallImageUrl: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
-      imageUrl: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
-    });
-  });
-});
-
-describe("validateDeckEntries", () => {
-  it("stores image URLs on validated cards", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        data: [
-          {
-            name: "Island",
-            oracle_id: "oracle-5",
-            id: "card-5",
-            type_line: "Basic Land - Island",
-            cmc: 0,
-            set: "und",
-            collector_number: "90",
-            image_uris: {
-              small: "https://cards.scryfall.io/small/front/i/s/island.jpg",
-              normal: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
-            },
-          },
-        ],
-      }),
-    });
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { validCards } = await validateDeckEntries([
-      {
-        lineNumber: 1,
-        quantity: 1,
-        name: "Island",
-      },
-    ]);
-
-    expect(validCards[0]).toMatchObject({
-      name: "Island",
-      manaValue: 0,
-      smallImageUrl: "https://cards.scryfall.io/small/front/i/s/island.jpg",
-      imageUrl: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
-    });
   });
 });

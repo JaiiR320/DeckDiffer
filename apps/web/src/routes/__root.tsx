@@ -5,7 +5,6 @@ import {
   Scripts,
   createRootRoute,
   useLocation,
-  useNavigate,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -92,12 +91,11 @@ function ReactScan() {
 
 function AppHeader() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
 
   async function handleSignOut() {
     await authClient.signOut();
-    await navigate({ to: "/auth" });
+    window.location.assign("/auth");
   }
 
   const isAuthPage = location.pathname === "/auth";
@@ -147,7 +145,7 @@ function AppHeader() {
               onClick={handleSignOut}
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="size-4" />
               Sign out
             </button>
           </div>

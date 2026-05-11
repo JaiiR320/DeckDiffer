@@ -1,5 +1,4 @@
 import type { FormEvent } from "react";
-import { useState } from "react";
 
 type SaveDeckModalProps = {
   defaultLabel: string;
@@ -9,18 +8,17 @@ type SaveDeckModalProps = {
 };
 
 export function SaveDeckModal({ defaultLabel, isOpen, onClose, onSave }: SaveDeckModalProps) {
-  const [label, setLabel] = useState(defaultLabel);
-
   if (!isOpen) return null;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const label = String(formData.get("label") ?? "");
     const trimmed = label.trim();
     onSave(trimmed || defaultLabel);
   }
 
   function handleClose() {
-    setLabel(defaultLabel);
     onClose();
   }
 
@@ -42,9 +40,8 @@ export function SaveDeckModal({ defaultLabel, isOpen, onClose, onSave }: SaveDec
           </label>
           <input
             id="save-label"
-            autoFocus
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
+            name="label"
+            defaultValue={defaultLabel}
             placeholder={defaultLabel}
             className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
           />
@@ -59,7 +56,7 @@ export function SaveDeckModal({ defaultLabel, isOpen, onClose, onSave }: SaveDec
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
             >
               Save
             </button>
