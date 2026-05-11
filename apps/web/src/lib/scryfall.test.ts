@@ -91,6 +91,73 @@ describe("getCardPreview", () => {
     expect(preview?.name).toBe("Counterspell");
     expect(preview?.imageUrl).toContain("counterspell.jpg");
   });
+
+  it("keeps two-sided card faces separate", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        name: "Arlinn Kord // Arlinn, Embraced by the Moon",
+        oracle_id: "oracle-3",
+        id: "card-3",
+        type_line: "Legendary Planeswalker - Arlinn",
+        set: "soi",
+        collector_number: "243",
+        card_faces: [
+          {
+            name: "Arlinn Kord",
+            mana_cost: "{2}{R}{G}",
+            type_line: "Legendary Planeswalker - Arlinn",
+            oracle_text: "+1: Until end of turn, up to one target creature gets +2/+2.",
+            image_uris: {
+              small: "https://cards.scryfall.io/small/front/a/r/arlinn-kord.jpg",
+              normal: "https://cards.scryfall.io/normal/front/a/r/arlinn-kord.jpg",
+            },
+          },
+          {
+            name: "Arlinn, Embraced by the Moon",
+            type_line: "Legendary Planeswalker - Arlinn",
+            oracle_text: "+1: Creatures you control get +1/+1 and gain trample.",
+            image_uris: {
+              small: "https://cards.scryfall.io/small/back/a/r/arlinn-moon.jpg",
+              normal: "https://cards.scryfall.io/normal/back/a/r/arlinn-moon.jpg",
+            },
+          },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const preview = await getCardPreview({
+      name: "Arlinn Kord",
+      setCode: "SOI",
+      collectorNumber: "243",
+    });
+
+    expect(preview?.name).toBe("Arlinn Kord");
+    expect(preview?.manaCost).toBe("{2}{R}{G}");
+    expect(preview?.oracleText).toBe(
+      "+1: Until end of turn, up to one target creature gets +2/+2.",
+    );
+    expect(preview?.imageUrl).toContain("arlinn-kord.jpg");
+    expect(preview?.faces).toEqual([
+      {
+        name: "Arlinn Kord",
+        typeLine: "Legendary Planeswalker - Arlinn",
+        manaCost: "{2}{R}{G}",
+        oracleText: "+1: Until end of turn, up to one target creature gets +2/+2.",
+        smallImageUrl: "https://cards.scryfall.io/small/front/a/r/arlinn-kord.jpg",
+        imageUrl: "https://cards.scryfall.io/normal/front/a/r/arlinn-kord.jpg",
+      },
+      {
+        name: "Arlinn, Embraced by the Moon",
+        typeLine: "Legendary Planeswalker - Arlinn",
+        oracleText: "+1: Creatures you control get +1/+1 and gain trample.",
+        smallImageUrl: "https://cards.scryfall.io/small/back/a/r/arlinn-moon.jpg",
+        imageUrl: "https://cards.scryfall.io/normal/back/a/r/arlinn-moon.jpg",
+      },
+    ]);
+  });
 });
 
 describe("getCardSymbols", () => {

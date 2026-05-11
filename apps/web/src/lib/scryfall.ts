@@ -19,6 +19,9 @@ type ScryfallCard = {
     normal?: string;
   };
   card_faces?: Array<{
+    name?: string;
+    mana_cost?: string;
+    type_line?: string;
     oracle_text?: string;
     image_uris?: {
       small?: string;
@@ -139,6 +142,15 @@ export type CardPreviewLookup = {
   collectorNumber?: string;
 };
 
+export type CardPreviewFace = {
+  name: string;
+  typeLine: string;
+  manaCost?: string;
+  oracleText?: string;
+  smallImageUrl: string;
+  imageUrl: string;
+};
+
 export type CardPreviewResult = {
   name: string;
   typeLine: string;
@@ -148,6 +160,7 @@ export type CardPreviewResult = {
   collectorNumber?: string;
   smallImageUrl: string;
   imageUrl: string;
+  faces?: CardPreviewFace[];
 };
 
 export type CardSymbol = {
@@ -254,21 +267,42 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
 }
 
 function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
-  const faceWithImage = card.card_faces?.find(
-    (face) => face.image_uris?.normal || face.image_uris?.small,
-  );
-  const smallImageUrl = card.image_uris?.small ?? faceWithImage?.image_uris?.small;
-  const imageUrl = card.image_uris?.normal ?? faceWithImage?.image_uris?.normal;
+  const faces = card.card_faces
+    ?.map((face): CardPreviewFace | null => {
+      const smallImageUrl = face.image_uris?.small;
+      const imageUrl = face.image_uris?.normal;
+
+      if (!smallImageUrl || !imageUrl) {
+        return null;
+      }
+
+      return {
+        name: face.name ?? card.name,
+        typeLine: face.type_line ?? card.type_line,
+        manaCost: face.mana_cost,
+        oracleText: face.oracle_text,
+        smallImageUrl,
+        imageUrl,
+      };
+    })
+    .filter((face): face is CardPreviewFace => face !== null);
+  const previewFaces = faces && faces.length > 1 ? faces : undefined;
+  const frontFace = previewFaces?.[0];
+  const faceWithImage = faces?.[0];
+  const smallImageUrl =
+    frontFace?.smallImageUrl ?? card.image_uris?.small ?? faceWithImage?.smallImageUrl;
+  const imageUrl = frontFace?.imageUrl ?? card.image_uris?.normal ?? faceWithImage?.imageUrl;
 
   if (!smallImageUrl || !imageUrl) {
     return null;
   }
 
   return {
-    name: card.name,
-    typeLine: card.type_line,
-    manaCost: card.mana_cost,
+    name: frontFace?.name ?? card.name,
+    typeLine: frontFace?.typeLine ?? card.type_line,
+    manaCost: frontFace?.manaCost ?? card.mana_cost,
     oracleText:
+      frontFace?.oracleText ??
       card.oracle_text ??
       card.card_faces
         ?.map((face) => face.oracle_text)
@@ -278,6 +312,7 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
     collectorNumber: card.collector_number,
     smallImageUrl,
     imageUrl,
+    faces: previewFaces,
   };
 }
 

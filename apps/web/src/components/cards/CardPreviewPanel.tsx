@@ -1,4 +1,5 @@
-import { Pin } from "lucide-react";
+import { RefreshCw, Pin } from "lucide-react";
+import { useEffect, useState } from "react";
 import { CardSymbolText } from "./CardSymbolText";
 import type { CardPreviewResult } from "../../lib/scryfall";
 
@@ -18,6 +19,19 @@ export function CardPreviewPanel({
   onTogglePinned,
 }: CardPreviewPanelProps) {
   const hasPreview = preview !== null;
+  const [selectedFaceIndex, setSelectedFaceIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedFaceIndex(0);
+  }, [preview]);
+
+  const faces = preview?.faces ?? [];
+  const canFlip = faces.length > 1;
+  const shownFace = canFlip ? faces[selectedFaceIndex] : preview;
+
+  function flipCardFace() {
+    setSelectedFaceIndex((currentIndex) => (currentIndex + 1) % faces.length);
+  }
 
   return (
     <aside className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] lg:sticky lg:top-24">
@@ -25,8 +39,8 @@ export function CardPreviewPanel({
         <>
           <div className="relative group">
             <img
-              src={preview.imageUrl}
-              alt={preview.name}
+              src={shownFace?.imageUrl}
+              alt={shownFace?.name}
               className="block w-full rounded-xl border border-zinc-800 bg-zinc-900"
             />
             <button
@@ -46,21 +60,32 @@ export function CardPreviewPanel({
                 strokeWidth={2}
               />
             </button>
+            {canFlip ? (
+              <button
+                type="button"
+                onClick={flipCardFace}
+                aria-label="Show other card face"
+                title="Show other card face"
+                className="absolute left-2 top-12 inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700/70 bg-zinc-950/45 text-zinc-300 opacity-0 shadow-lg shadow-black/25 transition group-hover:opacity-100 hover:border-zinc-500/80 hover:bg-zinc-950/60 hover:text-zinc-100"
+              >
+                <RefreshCw className="h-4.5 w-4.5" strokeWidth={2} />
+              </button>
+            ) : null}
           </div>
 
           <div className="mt-4 space-y-3">
             <div>
               <div className="flex items-start justify-between gap-3">
-                <h2 className="text-sm font-semibold text-zinc-100">{preview.name}</h2>
-                {preview.manaCost ? (
+                <h2 className="text-sm font-semibold text-zinc-100">{shownFace?.name}</h2>
+                {shownFace?.manaCost ? (
                   <CardSymbolText
-                    text={preview.manaCost}
+                    text={shownFace.manaCost}
                     className="shrink-0 text-xs font-medium text-cyan-300"
                     symbolClassName="mx-[1px] inline-block h-4 w-4 align-[-0.2em]"
                   />
                 ) : null}
               </div>
-              <p className="mt-1 text-xs text-zinc-500">{preview.typeLine}</p>
+              <p className="mt-1 text-xs text-zinc-500">{shownFace?.typeLine}</p>
               {preview.setCode ? (
                 <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-zinc-600">
                   {preview.setCode}
@@ -70,10 +95,10 @@ export function CardPreviewPanel({
             </div>
 
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-sm leading-6 text-zinc-300">
-              {preview.oracleText ? (
+              {shownFace?.oracleText ? (
                 <CardSymbolText
                   as="div"
-                  text={preview.oracleText}
+                  text={shownFace.oracleText}
                   className="whitespace-pre-line"
                   symbolClassName="mx-[1px] inline-block h-[0.95em] w-[0.95em] align-[-0.15em]"
                 />
