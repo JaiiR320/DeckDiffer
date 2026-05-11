@@ -10,9 +10,12 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Analytics } from "@vercel/analytics/react";
+import { useEffect } from "react";
 import { authClient } from "#/lib/auth-client";
 import appCss from "../styles.css?url";
 import { FeedbackButton } from "../components/FeedbackButton";
+
+let isReactScanStarted = false;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -48,6 +51,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <AppHeader />
         <div className="flex-1">{children}</div>
         <FeedbackGate />
+        <ReactScan />
         <TanStackDevtools
           config={{
             position: "bottom-right",
@@ -64,6 +68,26 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   );
+}
+
+function ReactScan() {
+  useEffect(() => {
+    if (!import.meta.env.DEV || isReactScanStarted) {
+      return;
+    }
+
+    isReactScanStarted = true;
+    void import("react-scan").then(({ scan }) => {
+      scan({
+        enabled: true,
+        showToolbar: true,
+        showFPS: true,
+        animationSpeed: "fast",
+      });
+    });
+  }, []);
+
+  return null;
 }
 
 function AppHeader() {

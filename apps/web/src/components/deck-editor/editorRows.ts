@@ -30,6 +30,8 @@ export function buildEditorRows(
       typeLine: workingCard?.typeLine ?? baselineCard?.typeLine ?? "",
       setCode: workingCard?.setCode ?? baselineCard?.setCode,
       collectorNumber: workingCard?.collectorNumber ?? baselineCard?.collectorNumber,
+      smallImageUrl: workingCard?.smallImageUrl ?? baselineCard?.smallImageUrl,
+      imageUrl: workingCard?.imageUrl ?? baselineCard?.imageUrl,
       baselineQuantity,
       currentQuantity,
       status:

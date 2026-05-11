@@ -6,6 +6,7 @@ import { CardPreviewPanel } from "../components/cards/CardPreviewPanel";
 import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { DeckAlerts } from "../components/deck-editor/DeckAlerts";
 import { EditorDeckList } from "../components/deck-editor/EditorDeckList";
+import { EditorDeckStack } from "../components/deck-editor/EditorDeckStack";
 import { EditorHeader } from "../components/deck-editor/EditorHeader";
 import { ExportDeckModal } from "../components/deck-editor/modals/ExportDeckModal";
 import { ImportDeckModal } from "../components/deck-editor/modals/ImportDeckModal";
@@ -67,6 +68,11 @@ const emptyDeckState: DeckState = {
 };
 
 type ImportMode = "replace-empty" | "bulk-add" | "override";
+type DeckEditorViewMode = "list" | "stack";
+
+const DECK_VIEW_MODE_STORAGE_KEY = "deckdiff.deckEditor.viewMode";
+const STACK_COLUMNS_STORAGE_KEY = "deckdiff.deckEditor.stackColumns";
+const STACK_COLUMN_OPTIONS = [2, 3, 4, 5, 6, 7, 8];
 
 function DeckDetailPage() {
   const { deckId } = Route.useParams();
@@ -86,6 +92,9 @@ function DeckDetailPage() {
     includeQuantity: true,
   });
   const [activeTab, setActiveTab] = useState<"editor" | "history">("editor");
+  const [deckViewMode, setDeckViewMode] = useState<DeckEditorViewMode>("list");
+  const [stackColumnCount, setStackColumnCount] = useState(5);
+  const [areEditorPreferencesHydrated, setAreEditorPreferencesHydrated] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSaves, setCompareSaves] = useState<{
     saveA: DeckSave;
@@ -106,6 +115,30 @@ function DeckDetailPage() {
     setDeck(loaderData.deck ?? undefined);
     setDeckErrorMessage(loaderData.errorMessage);
   }, [loaderData.deck, loaderData.errorMessage]);
+
+  useEffect(() => {
+    const storedViewMode = window.localStorage.getItem(DECK_VIEW_MODE_STORAGE_KEY);
+    const storedStackColumns = Number(window.localStorage.getItem(STACK_COLUMNS_STORAGE_KEY));
+
+    if (storedViewMode === "list" || storedViewMode === "stack") {
+      setDeckViewMode(storedViewMode);
+    }
+
+    if (STACK_COLUMN_OPTIONS.includes(storedStackColumns)) {
+      setStackColumnCount(storedStackColumns);
+    }
+
+    setAreEditorPreferencesHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!areEditorPreferencesHydrated) {
+      return;
+    }
+
+    window.localStorage.setItem(DECK_VIEW_MODE_STORAGE_KEY, deckViewMode);
+    window.localStorage.setItem(STACK_COLUMNS_STORAGE_KEY, String(stackColumnCount));
+  }, [areEditorPreferencesHydrated, deckViewMode, stackColumnCount]);
 
   // In compare mode, use the two saves being compared
   const compareBaselineCards = compareSaves?.saveA.cards ?? baselineDeck.cards;
@@ -499,6 +532,8 @@ function DeckDetailPage() {
         category: card.category,
         setCode: card.setCode,
         collectorNumber: card.collectorNumber,
+        smallImageUrl: card.smallImageUrl,
+        imageUrl: card.imageUrl,
       },
     ]);
   }
@@ -522,6 +557,8 @@ function DeckDetailPage() {
             category: row.category,
             setCode: row.setCode,
             collectorNumber: row.collectorNumber,
+            smallImageUrl: row.smallImageUrl,
+            imageUrl: row.imageUrl,
           },
         ];
       }
@@ -557,6 +594,8 @@ function DeckDetailPage() {
           category: row.category,
           setCode: row.setCode,
           collectorNumber: row.collectorNumber,
+          smallImageUrl: row.smallImageUrl,
+          imageUrl: row.imageUrl,
         },
       ];
     });
@@ -720,39 +759,101 @@ function DeckDetailPage() {
                 }
               />
 
-              <div className="grid gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
-                <div className="p-5 lg:pr-0">
-                  <CardPreviewPanel
-                    preview={previewCard}
-                    status={previewStatus}
-                    requestedName={previewLookup?.name ?? null}
-                    isPinned={isPreviewPinned}
-                    onTogglePinned={togglePreviewPinned}
-                  />
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
+                <div className="inline-flex overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setDeckViewMode("list")}
+                    aria-pressed={deckViewMode === "list"}
+                    className={`rounded-md px-3 py-1.5 text-sm transition ${
+                      deckViewMode === "list"
+                        ? "bg-cyan-400 text-zinc-950"
+                        : "text-zinc-400 hover:text-zinc-100"
+                    }`}
+                  >
+                    List
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeckViewMode("stack")}
+                    aria-pressed={deckViewMode === "stack"}
+                    className={`rounded-md px-3 py-1.5 text-sm transition ${
+                      deckViewMode === "stack"
+                        ? "bg-cyan-400 text-zinc-950"
+                        : "text-zinc-400 hover:text-zinc-100"
+                    }`}
+                  >
+                    Stack
+                  </button>
                 </div>
 
+                {deckViewMode === "stack" ? (
+                  <label className="flex items-center gap-2 text-sm text-zinc-500">
+                    Columns
+                    <select
+                      value={stackColumnCount}
+                      onChange={(event) => setStackColumnCount(Number(event.target.value))}
+                      className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
+                    >
+                      {STACK_COLUMN_OPTIONS.map((columns) => (
+                        <option key={columns} value={columns}>
+                          {columns}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+              </div>
+
+              {deckViewMode === "list" ? (
+                <div className="grid gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
+                  <div className="p-5 lg:pr-0">
+                    <CardPreviewPanel
+                      preview={previewCard}
+                      status={previewStatus}
+                      requestedName={previewLookup?.name ?? null}
+                      isPinned={isPreviewPinned}
+                      onTogglePinned={togglePreviewPinned}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
+
+                    <EditorDeckList
+                      groupedRows={groupedRows}
+                      emptyMessage={emptyMessage}
+                      resultCardTotal={resultCardTotal}
+                      showDiffOnly={showDiffOnly}
+                      onToggleShowDiffOnly={toggleShowDiffOnly}
+                      onAdjustQuantity={compareMode ? undefined : adjustQuantity}
+                      onRestoreCard={compareMode ? undefined : restoreCard}
+                      onPreviewCard={(row) =>
+                        updatePreviewCard({
+                          name: row.name,
+                          setCode: row.setCode,
+                          collectorNumber: row.collectorNumber,
+                        })
+                      }
+                      readOnly={compareMode}
+                    />
+                  </div>
+                </div>
+              ) : (
                 <div className="min-w-0">
                   <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
 
-                  <EditorDeckList
+                  <EditorDeckStack
                     groupedRows={groupedRows}
-                    emptyMessage={emptyMessage}
                     resultCardTotal={resultCardTotal}
                     showDiffOnly={showDiffOnly}
+                    columnCount={stackColumnCount}
                     onToggleShowDiffOnly={toggleShowDiffOnly}
                     onAdjustQuantity={compareMode ? undefined : adjustQuantity}
-                    onRestoreCard={compareMode ? undefined : restoreCard}
-                    onPreviewCard={(row) =>
-                      updatePreviewCard({
-                        name: row.name,
-                        setCode: row.setCode,
-                        collectorNumber: row.collectorNumber,
-                      })
-                    }
                     readOnly={compareMode}
                   />
                 </div>
-              </div>
+              )}
             </>
           ) : deck ? (
             <SaveHistoryPanel

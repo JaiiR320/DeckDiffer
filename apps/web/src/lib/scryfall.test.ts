@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getCardPreview, getCardSymbols } from "./scryfall";
+import { getCardPreview, getCardSymbols, searchCards, validateDeckEntries } from "./scryfall";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -194,6 +194,80 @@ describe("getCardSymbols", () => {
       symbol: "{T}",
       english: "tap this permanent",
       svgUri: "https://svgs.scryfall.io/card-symbols/T.svg",
+    });
+  });
+});
+
+describe("searchCards", () => {
+  it("includes image URLs in search results", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: "Opt",
+            oracle_id: "oracle-4",
+            id: "card-4",
+            type_line: "Instant",
+            set: "dom",
+            collector_number: "60",
+            image_uris: {
+              small: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
+              normal: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
+            },
+          },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await searchCards("opt");
+
+    expect(results[0]).toMatchObject({
+      name: "Opt",
+      smallImageUrl: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
+      imageUrl: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
+    });
+  });
+});
+
+describe("validateDeckEntries", () => {
+  it("stores image URLs on validated cards", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: "Island",
+            oracle_id: "oracle-5",
+            id: "card-5",
+            type_line: "Basic Land - Island",
+            set: "und",
+            collector_number: "90",
+            image_uris: {
+              small: "https://cards.scryfall.io/small/front/i/s/island.jpg",
+              normal: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
+            },
+          },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { validCards } = await validateDeckEntries([
+      {
+        lineNumber: 1,
+        quantity: 1,
+        name: "Island",
+      },
+    ]);
+
+    expect(validCards[0]).toMatchObject({
+      name: "Island",
+      smallImageUrl: "https://cards.scryfall.io/small/front/i/s/island.jpg",
+      imageUrl: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
     });
   });
 });

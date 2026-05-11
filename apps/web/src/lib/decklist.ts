@@ -34,6 +34,8 @@ export type ValidatedDeckCard = {
   category: CardCategory;
   setCode?: string;
   collectorNumber?: string;
+  smallImageUrl?: string;
+  imageUrl?: string;
 };
 
 export type DeckExportOptions = {

@@ -134,6 +134,8 @@ export type SearchCardResult = {
   category: ReturnType<typeof getCardCategory>;
   setCode?: string;
   collectorNumber?: string;
+  smallImageUrl?: string;
+  imageUrl?: string;
 };
 
 export type CardPreviewLookup = {
@@ -256,6 +258,8 @@ function getCollectionLookupName(name: string) {
 }
 
 function toSearchCardResult(card: ScryfallCard): SearchCardResult {
+  const imageUris = card.image_uris ?? card.card_faces?.find((face) => face.image_uris)?.image_uris;
+
   return {
     oracleId: card.oracle_id ?? card.id,
     name: card.name,
@@ -263,6 +267,8 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     category: getCardCategory(card.type_line),
     setCode: card.set?.toUpperCase(),
     collectorNumber: card.collector_number,
+    smallImageUrl: imageUris?.small,
+    imageUrl: imageUris?.normal,
   };
 }
 
@@ -633,6 +639,12 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       category: getCardCategory(matchedCard.type_line),
       setCode: matchedCard.set?.toUpperCase(),
       collectorNumber: matchedCard.collector_number,
+      smallImageUrl:
+        matchedCard.image_uris?.small ??
+        matchedCard.card_faces?.find((face) => face.image_uris)?.image_uris?.small,
+      imageUrl:
+        matchedCard.image_uris?.normal ??
+        matchedCard.card_faces?.find((face) => face.image_uris)?.image_uris?.normal,
     });
   }
 

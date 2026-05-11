@@ -15,6 +15,8 @@ export type EditorRow = {
   typeLine: string;
   setCode?: string;
   collectorNumber?: string;
+  smallImageUrl?: string;
+  imageUrl?: string;
   baselineQuantity: number;
   currentQuantity: number;
   status: "same" | "added" | "removed" | "changed";

@@ -56,4 +56,37 @@ describe("buildEditorRows", () => {
         .sort(),
     ).toEqual(["added", "changed", "removed"]);
   });
+
+  it("preserves image URLs from working and baseline cards", () => {
+    const baselineCards = [
+      {
+        oracleId: "card-1",
+        name: "Counterspell",
+        quantity: 1,
+        typeLine: "Instant",
+        category: "Instant" as const,
+        imageUrl: "https://cards.example/counterspell.jpg",
+      },
+    ];
+    const workingCards = [
+      {
+        oracleId: "card-2",
+        name: "Opt",
+        quantity: 1,
+        typeLine: "Instant",
+        category: "Instant" as const,
+        smallImageUrl: "https://cards.example/opt-small.jpg",
+        imageUrl: "https://cards.example/opt.jpg",
+      },
+    ];
+
+    const rows = buildEditorRows(baselineCards, workingCards);
+
+    expect(rows.find((row) => row.name === "Counterspell")?.imageUrl).toBe(
+      "https://cards.example/counterspell.jpg",
+    );
+    expect(rows.find((row) => row.name === "Opt")?.smallImageUrl).toBe(
+      "https://cards.example/opt-small.jpg",
+    );
+  });
 });
