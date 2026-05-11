@@ -70,16 +70,7 @@ export function DeckActionsModal({
     showDeleteConfirm,
   } = state;
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 
@@ -90,11 +81,6 @@ export function DeckActionsModal({
       onRename(deck.id, trimmed);
     }
     setState({ isEditing: false });
-  }
-
-  function handleDelete() {
-    onDelete(deck.id);
-    onClose();
   }
 
   function handleAddCategory(event: FormEvent<HTMLFormElement>) {
@@ -132,12 +118,6 @@ export function DeckActionsModal({
     setState({ renamingCategoryId: null, categoryName: "" });
   }
 
-  function removeCategory(categoryId: string) {
-    if (!categories || !onCategoriesChange || cards.some((card) => card.categoryId === categoryId))
-      return;
-    onCategoriesChange(categories.filter((category) => category.id !== categoryId));
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-6">
       <button
@@ -167,7 +147,6 @@ export function DeckActionsModal({
 
         {activeTab === "general" ? (
           <div className="mt-5 space-y-2">
-            {/* Rename Section */}
             {isEditing ? (
               <form onSubmit={handleRenameSubmit} className="space-y-3">
                 <label className="block text-sm font-medium text-zinc-400" htmlFor="deck-rename">
@@ -199,9 +178,7 @@ export function DeckActionsModal({
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setState({ newName: deck.name, isEditing: true });
-                }}
+                onClick={() => setState({ newName: deck.name, isEditing: true })}
                 className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
               >
                 <Pencil className="size-5 text-zinc-500" strokeWidth={1.75} />
@@ -209,7 +186,6 @@ export function DeckActionsModal({
               </button>
             )}
 
-            {/* Export Button */}
             <button
               type="button"
               onClick={() => onExport(deck)}
@@ -219,7 +195,6 @@ export function DeckActionsModal({
               <span>Export deck list</span>
             </button>
 
-            {/* Delete Section */}
             {showDeleteConfirm ? (
               <div className="space-y-3 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4">
                 <p className="text-sm text-rose-300">
@@ -236,7 +211,10 @@ export function DeckActionsModal({
                   </button>
                   <button
                     type="button"
-                    onClick={handleDelete}
+                    onClick={() => {
+                      onDelete(deck.id);
+                      onClose();
+                    }}
                     className="flex-1 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400"
                   >
                     Delete
@@ -319,19 +297,21 @@ export function DeckActionsModal({
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={() =>
                               setState({
                                 renamingCategoryId: category.id,
                                 categoryName: category.name,
-                              });
-                            }}
+                              })
+                            }
                             className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 hover:border-zinc-700"
                           >
                             Rename
                           </button>
                           <button
                             type="button"
-                            onClick={() => removeCategory(category.id)}
+                            onClick={() =>
+                              removeCategory(category.id, categories, cards, onCategoriesChange)
+                            }
                             disabled={isBlocked}
                             title={
                               isBlocked ? "Move cards out before removing." : "Remove category"
@@ -360,6 +340,31 @@ export function DeckActionsModal({
       </div>
     </div>
   );
+}
+
+function removeCategory(
+  categoryId: string,
+  categories: DeckCategory[] | undefined,
+  cards: ValidatedDeckCard[],
+  onCategoriesChange: ((categories: DeckCategory[]) => void) | undefined,
+) {
+  if (!categories || !onCategoriesChange || cards.some((card) => card.categoryId === categoryId)) {
+    return;
+  }
+  onCategoriesChange(categories.filter((category) => category.id !== categoryId));
+}
+
+function useLockBodyScroll(isOpen: boolean) {
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 }
 
 function SettingsTab({
