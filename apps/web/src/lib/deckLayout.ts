@@ -16,6 +16,7 @@ export function defaultStackLayout(): DeckStackLayout {
       ["instant", "sorcery"],
       ["planeswalker", "battle", "other"],
     ],
+    showRemovedCardGhosts: true,
   };
 }
 
@@ -50,10 +51,14 @@ export function normalizeStackLayout(
     }
   }
 
-  return lanes.length > 0 ? { lanes } : defaultStackLayout();
+  return lanes.length > 0
+    ? { lanes, showRemovedCardGhosts: layout.showRemovedCardGhosts !== false }
+    : defaultStackLayout();
 }
 
-function isStackLayoutLike(layout: unknown): layout is { lanes: string[][] } {
+function isStackLayoutLike(
+  layout: unknown,
+): layout is { lanes: string[][]; showRemovedCardGhosts?: boolean } {
   return (
     !!layout &&
     typeof layout === "object" &&

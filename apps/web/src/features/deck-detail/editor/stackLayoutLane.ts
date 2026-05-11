@@ -1,7 +1,7 @@
 import type { DeckStackLayout } from "#/lib/deck";
 
 export function addEmptyStackLane(currentLayout: DeckStackLayout): DeckStackLayout {
-  return { lanes: [...currentLayout.lanes, []] };
+  return { ...currentLayout, lanes: [...currentLayout.lanes, []] };
 }
 
 export function removeStackLane(
@@ -13,5 +13,5 @@ export function removeStackLane(
     return currentLayout;
   }
 
-  return { lanes: currentLayout.lanes.filter((_, index) => index !== laneIndex) };
+  return { ...currentLayout, lanes: currentLayout.lanes.filter((_, index) => index !== laneIndex) };
 }

@@ -2,6 +2,7 @@ import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
 
 export type DeckStackLayout = {
   lanes: CardCategory[][];
+  showRemovedCardGhosts?: boolean;
 };
 
 export type DeckSave = {

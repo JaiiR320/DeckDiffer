@@ -39,12 +39,13 @@ export function StackCard({
   const isMoveDisabled =
     readOnly || (dragType === "card" && (!onMoveCardCategory || row.currentQuantity <= 0));
   const { isDragging, ref } = useDraggable({
-    id: dragId ?? cardDragId(row.oracleId),
+    id: dragId ?? cardDragId(row.oracleId, row.category),
     type: dragType,
     disabled: isMoveDisabled,
     data: dragData ?? { row },
   });
   const imageUrl = useFallbackCardImage(row);
+  const isChanged = row.status !== "same";
   const toneClass =
     row.status === "added"
       ? "ring-emerald-400/40"
@@ -67,7 +68,7 @@ export function StackCard({
       <div
         ref={ref}
         onPointerEnter={onHover}
-        className={`pointer-events-auto relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 ring-1 transition-all duration-300 ${isMoveDisabled ? "" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "scale-[1.04] rotate-1 opacity-90 shadow-2xl shadow-cyan-950/50 ring-2 ring-cyan-200" : isHovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
+        className={`pointer-events-auto relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 ${isChanged ? "ring-2" : "ring-1"} transition-all duration-300 ${isMoveDisabled ? "" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "scale-[1.04] rotate-1 opacity-90 shadow-2xl shadow-cyan-950/50 ring-2 ring-cyan-200" : isHovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
       >
         {imageUrl ? (
           <img

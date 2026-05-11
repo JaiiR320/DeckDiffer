@@ -65,6 +65,7 @@ const validatedDeckCardSchema = z.object({
 
 const deckStackLayoutSchema = z.object({
   lanes: z.array(z.array(z.string().trim().min(1))),
+  showRemovedCardGhosts: z.boolean().optional(),
 });
 
 export const saveDeckInputSchema = z.object({

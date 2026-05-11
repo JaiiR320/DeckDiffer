@@ -31,7 +31,7 @@ export function moveLayoutByPointer(
   );
   lanes[laneIndex]?.splice(insertIndex, 0, sourceCategory);
 
-  return { lanes };
+  return { ...layout, lanes };
 }
 
 export function getDropPlacement(

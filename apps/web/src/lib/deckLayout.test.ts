@@ -15,6 +15,15 @@ describe("normalizeStackLayout", () => {
       ["instant", "sorcery"],
       ["planeswalker", "battle", "other"],
     ]);
+    expect(defaultStackLayout().showRemovedCardGhosts).toBe(true);
+  });
+
+  it("preserves the removed-card ghost display setting", () => {
+    expect(normalizeStackLayout({ lanes: [["Land"]], showRemovedCardGhosts: false })).toMatchObject(
+      {
+        showRemovedCardGhosts: false,
+      },
+    );
   });
 
   it("preserves empty lanes", () => {

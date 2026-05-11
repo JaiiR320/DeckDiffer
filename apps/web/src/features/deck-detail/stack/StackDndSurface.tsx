@@ -78,9 +78,11 @@ export function EditorDeckStack({
   const visibleGroupedRows = Object.fromEntries(
     categories.map((category) => [
       category.id,
-      showDiffOnly
-        ? (groupedRows[category.id] ?? []).filter((row) => row.status !== "same")
-        : (groupedRows[category.id] ?? []),
+      (groupedRows[category.id] ?? []).filter(
+        (row) =>
+          (!showDiffOnly || row.status !== "same") &&
+          (layout.showRemovedCardGhosts !== false || row.status !== "removed"),
+      ),
     ]),
   ) as Record<CardCategory, EditorRow[]>;
   const visibleRows = Object.values(visibleGroupedRows).flat();
@@ -286,7 +288,10 @@ export function EditorDeckStack({
                         }
                         categoryDiff={categoryDiffs[category]}
                         categories={categories}
-                        cardCount={groupedRows[category]?.length ?? 0}
+                        cardCount={
+                          (groupedRows[category] ?? []).filter((row) => row.currentQuantity > 0)
+                            .length
+                        }
                         diffCounts={getCategoryDiffCounts(groupedRows[category] ?? [])}
                         shouldStartRenaming={renamingCategoryId === category}
                         rows={visibleGroupedRows[category] ?? []}

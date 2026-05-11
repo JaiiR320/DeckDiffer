@@ -11,7 +11,7 @@ import {
 } from "./deckDetailContext";
 
 export function DeckDetailModals() {
-  const { categories, compareMode, deck, workingCards } = useDeckDetailState();
+  const { categories, compareMode, deck, stackLayout, workingCards } = useDeckDetailState();
   const { defaultSaveLabel, exportPreview, hasCards } = useDeckDetailModel();
   const actions = useDeckDetailActions();
   const { deckActions, deckImport } = useDeckDetailServices();
@@ -66,12 +66,19 @@ export function DeckDetailModals() {
           onExport={deckActions.exportDeck}
           categories={categories}
           cards={workingCards}
+          showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}
           onAddLane={compareMode ? undefined : actions.onAddStackLane}
           onCategoriesChange={(nextCategories) => {
             actions.updateEditorSnapshot((current) => ({
               ...current,
               categories: nextCategories,
               stackLayout: normalizeStackLayout(current.stackLayout, nextCategories),
+            }));
+          }}
+          onShowRemovedCardGhostsChange={(showRemovedCardGhosts) => {
+            actions.updateEditorSnapshot((current) => ({
+              ...current,
+              stackLayout: { ...current.stackLayout, showRemovedCardGhosts },
             }));
           }}
         />
