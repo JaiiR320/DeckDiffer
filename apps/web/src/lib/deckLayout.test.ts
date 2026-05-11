@@ -3,8 +3,18 @@ import { CARD_CATEGORIES } from "./decklist";
 import { defaultStackLayout, normalizeStackLayout } from "./deckLayout";
 
 describe("normalizeStackLayout", () => {
-  it("falls back to one category per lane when layout is missing", () => {
+  it("falls back to the default five-lane layout when layout is missing", () => {
     expect(normalizeStackLayout(undefined)).toEqual(defaultStackLayout());
+  });
+
+  it("starts with five default lanes", () => {
+    expect(defaultStackLayout().lanes).toEqual([
+      ["Land"],
+      ["Creature"],
+      ["Artifact", "Enchantment"],
+      ["Instant", "Sorcery"],
+      ["Planeswalker", "Battle", "Other"],
+    ]);
   });
 
   it("preserves empty lanes", () => {

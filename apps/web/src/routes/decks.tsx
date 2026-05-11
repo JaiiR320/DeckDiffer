@@ -7,7 +7,12 @@ import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
 import { formatDeckExport } from "../lib/decklist";
-import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from "#/server/decks";
+import {
+  createDeckForUser,
+  deleteDeckForUser,
+  listDecks,
+  renameDeckForUser,
+} from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 
 export const Route = createFileRoute("/decks")({
@@ -59,7 +64,11 @@ function DecksPage() {
       setErrorMessage(null);
       closeModal();
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not create deck right now.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not create deck right now.",
+      );
     }
   }
 
@@ -73,11 +82,17 @@ function DecksPage() {
         throw new Error("Could not rename deck.");
       }
 
-      setDecks((currentDecks) => currentDecks.map((d) => (d.id === deckId ? updatedDeck : d)));
+      setDecks((currentDecks) =>
+        currentDecks.map((d) => (d.id === deckId ? updatedDeck : d)),
+      );
       setEditingDeck(updatedDeck);
       setErrorMessage(null);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not rename deck right now.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not rename deck right now.",
+      );
     }
   }
 
@@ -91,7 +106,11 @@ function DecksPage() {
       setEditingDeck(null);
       setErrorMessage(null);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not delete deck right now.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not delete deck right now.",
+      );
     }
   }
 
@@ -118,7 +137,7 @@ function DecksPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-7xl px-8 py-8">
+      <main className="mx-auto w-full px-8 py-8">
         {errorMessage ? (
           <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
             {errorMessage}
@@ -132,7 +151,9 @@ function DecksPage() {
             className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300"
           >
             <Plus className="h-9 w-9" strokeWidth={1.75} />
-            <span className="mt-5 text-xl font-medium text-zinc-300">New Deck</span>
+            <span className="mt-5 text-xl font-medium text-zinc-300">
+              New Deck
+            </span>
           </button>
 
           {decks.map((deck) => (
@@ -141,7 +162,9 @@ function DecksPage() {
         </section>
 
         {decks.length === 0 ? (
-          <p className="mt-8 text-sm text-zinc-500">No decks yet. Create one to get started.</p>
+          <p className="mt-8 text-sm text-zinc-500">
+            No decks yet. Create one to get started.
+          </p>
         ) : null}
       </main>
 

@@ -5,7 +5,13 @@ const categorySet = new Set<string>(CARD_CATEGORIES);
 
 export function defaultStackLayout(): DeckStackLayout {
   return {
-    lanes: CARD_CATEGORIES.map((category) => [category]),
+    lanes: [
+      ["Land"],
+      ["Creature"],
+      ["Artifact", "Enchantment"],
+      ["Instant", "Sorcery"],
+      ["Planeswalker", "Battle", "Other"],
+    ],
   };
 }
 

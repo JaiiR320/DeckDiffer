@@ -45,7 +45,7 @@ function JudgePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-8 py-8">
+    <main className="mx-auto w-full px-8 py-8">
       <section className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-6 shadow-2xl shadow-black/20">
         <div className="border-b border-zinc-800 pb-4">
           <h1 className="text-2xl font-semibold text-zinc-100">Judge</h1>
