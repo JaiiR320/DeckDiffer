@@ -1,10 +1,15 @@
-import type { ValidatedDeckCard } from "./decklist";
+import type { CardCategory, ValidatedDeckCard } from "./decklist";
+
+export type DeckStackLayout = {
+  lanes: CardCategory[][];
+};
 
 export type DeckSave = {
   id: string; // crypto.randomUUID()
   savedAt: string; // ISO-8601
   label: string; // "Save #N" or user-provided
   cards: ValidatedDeckCard[];
+  layout?: DeckStackLayout;
 };
 
 export type DeckItem = {

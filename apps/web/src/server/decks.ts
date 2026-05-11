@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "#/db";
 import { deckSaves, decks } from "#/db/schema";
 import { auth } from "#/lib/auth";
-import { slugifyName, type DeckItem, type DeckSave } from "#/lib/deck";
+import { slugifyName, type DeckItem, type DeckSave, type DeckStackLayout } from "#/lib/deck";
 import type { ValidatedDeckCard } from "#/lib/decklist";
 
 type CreateDeckInput = {
@@ -25,6 +25,7 @@ type SaveDeckInput = {
   deckId: string;
   label: string;
   cards: ValidatedDeckCard[];
+  layout?: DeckStackLayout;
 };
 
 type GetDeckInput = {
@@ -67,14 +68,20 @@ const validatedDeckCardSchema = z.object({
   quantity: z.number().int().positive("Card quantity must be greater than zero."),
   typeLine: z.string().trim().min(1, "Card type line is required."),
   category: cardCategorySchema,
+  manaValue: z.number().nonnegative().optional(),
   setCode: z.string().trim().min(1, "Card set code is required."),
   collectorNumber: z.string().trim().min(1, "Card collector number is required."),
+});
+
+const deckStackLayoutSchema = z.object({
+  lanes: z.array(z.array(cardCategorySchema)),
 });
 
 const saveDeckInputSchema = z.object({
   deckId: z.string().trim().min(1, "Deck ID is required."),
   label: z.string(),
   cards: z.array(validatedDeckCardSchema),
+  layout: deckStackLayoutSchema.optional(),
 });
 
 async function requireUserId() {
@@ -96,6 +103,7 @@ function mapDeckSave(save: DeckSaveRow): DeckSave {
     label: save.label,
     savedAt: save.savedAt.toISOString(),
     cards: save.cards,
+    layout: save.layout ?? undefined,
   };
 }
 
@@ -305,6 +313,7 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
       label: saveLabel,
       savedAt: now,
       cards: data.cards,
+      layout: data.layout ?? null,
     });
 
     await db

@@ -209,6 +209,7 @@ describe("searchCards", () => {
             oracle_id: "oracle-4",
             id: "card-4",
             type_line: "Instant",
+            cmc: 1,
             set: "dom",
             collector_number: "60",
             image_uris: {
@@ -226,6 +227,7 @@ describe("searchCards", () => {
 
     expect(results[0]).toMatchObject({
       name: "Opt",
+      manaValue: 1,
       smallImageUrl: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
       imageUrl: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
     });
@@ -243,6 +245,7 @@ describe("validateDeckEntries", () => {
             oracle_id: "oracle-5",
             id: "card-5",
             type_line: "Basic Land - Island",
+            cmc: 0,
             set: "und",
             collector_number: "90",
             image_uris: {
@@ -266,6 +269,7 @@ describe("validateDeckEntries", () => {
 
     expect(validCards[0]).toMatchObject({
       name: "Island",
+      manaValue: 0,
       smallImageUrl: "https://cards.scryfall.io/small/front/i/s/island.jpg",
       imageUrl: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
     });

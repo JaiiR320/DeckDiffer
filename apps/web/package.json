@@ -16,6 +16,9 @@
   },
   "dependencies": {
     "@better-auth/infra": "^0.2.3",
+    "@dnd-kit/abstract": "^0.4.0",
+    "@dnd-kit/helpers": "^0.4.0",
+    "@dnd-kit/react": "^0.4.0",
     "@neondatabase/serverless": "^1.0.2",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",

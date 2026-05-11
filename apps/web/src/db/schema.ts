@@ -1,3 +1,4 @@
+import type { DeckStackLayout } from "#/lib/deck";
 import type { ValidatedDeckCard } from "#/lib/decklist";
 import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
@@ -97,6 +98,7 @@ export const deckSaves = pgTable(
     label: text("label").notNull(),
     savedAt: timestamp("saved_at", { withTimezone: true, mode: "date" }).notNull(),
     cards: jsonb("cards").$type<ValidatedDeckCard[]>().notNull(),
+    layout: jsonb("layout").$type<DeckStackLayout | null>(),
   },
   (table) => [index("deck_saves_deck_id_saved_at_idx").on(table.deckId, table.savedAt)],
 );

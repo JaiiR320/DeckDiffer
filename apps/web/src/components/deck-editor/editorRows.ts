@@ -28,6 +28,7 @@ export function buildEditorRows(
       name: workingCard?.name ?? baselineCard?.name ?? "Unknown Card",
       category: workingCard?.category ?? baselineCard?.category ?? "Other",
       typeLine: workingCard?.typeLine ?? baselineCard?.typeLine ?? "",
+      manaValue: workingCard?.manaValue ?? baselineCard?.manaValue ?? 0,
       setCode: workingCard?.setCode ?? baselineCard?.setCode,
       collectorNumber: workingCard?.collectorNumber ?? baselineCard?.collectorNumber,
       smallImageUrl: workingCard?.smallImageUrl ?? baselineCard?.smallImageUrl,

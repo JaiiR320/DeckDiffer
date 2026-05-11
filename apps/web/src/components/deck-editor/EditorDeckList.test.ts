@@ -65,6 +65,7 @@ describe("buildEditorRows", () => {
         quantity: 1,
         typeLine: "Instant",
         category: "Instant" as const,
+        manaValue: 2,
         imageUrl: "https://cards.example/counterspell.jpg",
       },
     ];
@@ -75,6 +76,7 @@ describe("buildEditorRows", () => {
         quantity: 1,
         typeLine: "Instant",
         category: "Instant" as const,
+        manaValue: 1,
         smallImageUrl: "https://cards.example/opt-small.jpg",
         imageUrl: "https://cards.example/opt.jpg",
       },
@@ -88,5 +90,6 @@ describe("buildEditorRows", () => {
     expect(rows.find((row) => row.name === "Opt")?.smallImageUrl).toBe(
       "https://cards.example/opt-small.jpg",
     );
+    expect(rows.find((row) => row.name === "Counterspell")?.manaValue).toBe(2);
   });
 });

@@ -32,6 +32,7 @@ export type ValidatedDeckCard = {
   quantity: number;
   typeLine: string;
   category: CardCategory;
+  manaValue?: number;
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;

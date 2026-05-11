@@ -13,7 +13,7 @@ import { ImportDeckModal } from "../components/deck-editor/modals/ImportDeckModa
 import { SaveDeckModal } from "../components/deck-editor/modals/SaveDeckModal";
 import { SaveHistoryPanel } from "../components/deck-editor/SaveHistoryPanel";
 import { buildEditorRows, groupEditorRows } from "../components/deck-editor/editorRows";
-import type { DeckSave } from "../lib/deck";
+import type { DeckSave, DeckStackLayout } from "../lib/deck";
 import type { DeckState, ExportModalState, EditorRow } from "../components/deck-editor/types";
 import {
   formatDecklist,
@@ -22,6 +22,7 @@ import {
   parseDecklist,
   type ValidatedDeckCard,
 } from "../lib/decklist";
+import { defaultStackLayout, normalizeStackLayout } from "../lib/deckLayout";
 import { getLatestSave, type DeckItem } from "../lib/deck";
 import {
   getCardPreview,
@@ -71,8 +72,6 @@ type ImportMode = "replace-empty" | "bulk-add" | "override";
 type DeckEditorViewMode = "list" | "stack";
 
 const DECK_VIEW_MODE_STORAGE_KEY = "deckdiff.deckEditor.viewMode";
-const STACK_COLUMNS_STORAGE_KEY = "deckdiff.deckEditor.stackColumns";
-const STACK_COLUMN_OPTIONS = [2, 3, 4, 5, 6, 7, 8];
 
 function DeckDetailPage() {
   const { deckId } = Route.useParams();
@@ -93,7 +92,10 @@ function DeckDetailPage() {
   });
   const [activeTab, setActiveTab] = useState<"editor" | "history">("editor");
   const [deckViewMode, setDeckViewMode] = useState<DeckEditorViewMode>("list");
-  const [stackColumnCount, setStackColumnCount] = useState(5);
+  const [stackLayout, setStackLayout] = useState<DeckStackLayout>(() => defaultStackLayout());
+  const [baselineStackLayout, setBaselineStackLayout] = useState<DeckStackLayout>(() =>
+    defaultStackLayout(),
+  );
   const [areEditorPreferencesHydrated, setAreEditorPreferencesHydrated] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareSaves, setCompareSaves] = useState<{
@@ -118,14 +120,9 @@ function DeckDetailPage() {
 
   useEffect(() => {
     const storedViewMode = window.localStorage.getItem(DECK_VIEW_MODE_STORAGE_KEY);
-    const storedStackColumns = Number(window.localStorage.getItem(STACK_COLUMNS_STORAGE_KEY));
 
     if (storedViewMode === "list" || storedViewMode === "stack") {
       setDeckViewMode(storedViewMode);
-    }
-
-    if (STACK_COLUMN_OPTIONS.includes(storedStackColumns)) {
-      setStackColumnCount(storedStackColumns);
     }
 
     setAreEditorPreferencesHydrated(true);
@@ -137,8 +134,7 @@ function DeckDetailPage() {
     }
 
     window.localStorage.setItem(DECK_VIEW_MODE_STORAGE_KEY, deckViewMode);
-    window.localStorage.setItem(STACK_COLUMNS_STORAGE_KEY, String(stackColumnCount));
-  }, [areEditorPreferencesHydrated, deckViewMode, stackColumnCount]);
+  }, [areEditorPreferencesHydrated, deckViewMode]);
 
   // In compare mode, use the two saves being compared
   const compareBaselineCards = compareSaves?.saveA.cards ?? baselineDeck.cards;
@@ -160,6 +156,8 @@ function DeckDetailPage() {
     if (!deck || deck.saves.length === 0) {
       setBaselineDeck(emptyDeckState);
       setWorkingCards([]);
+      setStackLayout(defaultStackLayout());
+      setBaselineStackLayout(defaultStackLayout());
       return;
     }
 
@@ -173,6 +171,9 @@ function DeckDetailPage() {
         errorMessage: null,
       });
       setWorkingCards(latestSave.cards);
+      const latestLayout = normalizeStackLayout(latestSave.layout);
+      setStackLayout(latestLayout);
+      setBaselineStackLayout(latestLayout);
     }
   }, [deck]);
 
@@ -347,6 +348,7 @@ function DeckDetailPage() {
           deckId: deck.id,
           label,
           cards: workingCards,
+          layout: stackLayout,
         },
       });
 
@@ -363,6 +365,7 @@ function DeckDetailPage() {
         status: "ready",
         errorMessage: null,
       });
+      setBaselineStackLayout(stackLayout);
       closeSaveModal();
     } catch (error) {
       setDeckErrorMessage(
@@ -437,6 +440,7 @@ function DeckDetailPage() {
   }
 
   function handleLoadSave(save: DeckSave) {
+    const saveLayout = normalizeStackLayout(save.layout);
     setWorkingCards(save.cards);
     setBaselineDeck({
       rawText: "",
@@ -445,6 +449,8 @@ function DeckDetailPage() {
       status: "ready",
       errorMessage: null,
     });
+    setStackLayout(saveLayout);
+    setBaselineStackLayout(saveLayout);
     setCompareMode(false);
     setCompareSaves(null);
     setActiveTab("editor");
@@ -455,6 +461,7 @@ function DeckDetailPage() {
     const olderSave = new Date(saveA.savedAt) <= new Date(saveB.savedAt) ? saveA : saveB;
     const newerSave = new Date(saveA.savedAt) <= new Date(saveB.savedAt) ? saveB : saveA;
     setCompareSaves({ saveA: olderSave, saveB: newerSave });
+    setStackLayout(normalizeStackLayout(newerSave.layout));
     setCompareMode(true);
     setActiveTab("editor");
   }
@@ -466,6 +473,7 @@ function DeckDetailPage() {
     if (deck && deck.saves.length > 0) {
       const latestSave = getLatestSave(deck);
       if (latestSave) {
+        const latestLayout = normalizeStackLayout(latestSave.layout);
         setWorkingCards(latestSave.cards);
         setBaselineDeck({
           rawText: "",
@@ -474,6 +482,8 @@ function DeckDetailPage() {
           status: "ready",
           errorMessage: null,
         });
+        setStackLayout(latestLayout);
+        setBaselineStackLayout(latestLayout);
       }
     }
   }
@@ -530,6 +540,7 @@ function DeckDetailPage() {
         quantity: 1,
         typeLine: card.typeLine,
         category: card.category,
+        manaValue: card.manaValue,
         setCode: card.setCode,
         collectorNumber: card.collectorNumber,
         smallImageUrl: card.smallImageUrl,
@@ -555,6 +566,7 @@ function DeckDetailPage() {
             quantity: 1,
             typeLine: row.typeLine,
             category: row.category,
+            manaValue: row.manaValue,
             setCode: row.setCode,
             collectorNumber: row.collectorNumber,
             smallImageUrl: row.smallImageUrl,
@@ -592,6 +604,7 @@ function DeckDetailPage() {
           quantity: row.baselineQuantity,
           typeLine: row.typeLine,
           category: row.category,
+          manaValue: row.manaValue,
           setCode: row.setCode,
           collectorNumber: row.collectorNumber,
           smallImageUrl: row.smallImageUrl,
@@ -625,13 +638,45 @@ function DeckDetailPage() {
   const hasCards = workingCards.length > 0;
   const cardsDifferFromBaseline =
     JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards);
+  const layoutDiffersFromBaseline =
+    JSON.stringify(stackLayout) !== JSON.stringify(baselineStackLayout);
   const hasNoSavesYet = !deck || deck.saves.length === 0;
   // Allow save if: has cards AND (differs from baseline OR no saves yet)
-  const canSave = hasCards && (cardsDifferFromBaseline || hasNoSavesYet);
+  const canSave =
+    hasCards && (cardsDifferFromBaseline || layoutDiffersFromBaseline || hasNoSavesYet);
+
+  function updateStackLayout(layout: DeckStackLayout) {
+    setStackLayout(normalizeStackLayout(layout));
+  }
+
+  function toggleEmptyStackLane() {
+    setStackLayout((currentLayout) => {
+      let emptyLaneIndex = -1;
+
+      for (let index = currentLayout.lanes.length - 1; index >= 0; index -= 1) {
+        if (currentLayout.lanes[index]?.length === 0) {
+          emptyLaneIndex = index;
+          break;
+        }
+      }
+
+      if (emptyLaneIndex >= 0) {
+        return {
+          lanes: currentLayout.lanes.filter((_, index) => index !== emptyLaneIndex),
+        };
+      }
+
+      return {
+        lanes: [...currentLayout.lanes, []],
+      };
+    });
+  }
+
+  const hasEmptyStackLane = stackLayout.lanes.some((lane) => lane.length === 0);
 
   if (loaderData.errorMessage) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full px-8 py-8">
         <p className="rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
           {loaderData.errorMessage}
         </p>
@@ -641,7 +686,7 @@ function DeckDetailPage() {
 
   if (!deck) {
     return (
-      <main className="mx-auto w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full px-8 py-8">
         <div className="flex items-center gap-4">
           <Link
             to="/decks"
@@ -657,7 +702,7 @@ function DeckDetailPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-6xl px-8 py-8">
+      <main className="mx-auto w-full px-8 py-8">
         {deckErrorMessage ? (
           <p className="mb-6 rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
             {deckErrorMessage}
@@ -788,20 +833,14 @@ function DeckDetailPage() {
                 </div>
 
                 {deckViewMode === "stack" ? (
-                  <label className="flex items-center gap-2 text-sm text-zinc-500">
-                    Columns
-                    <select
-                      value={stackColumnCount}
-                      onChange={(event) => setStackColumnCount(Number(event.target.value))}
-                      className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
-                    >
-                      {STACK_COLUMN_OPTIONS.map((columns) => (
-                        <option key={columns} value={columns}>
-                          {columns}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleEmptyStackLane}
+                    disabled={compareMode}
+                    className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {hasEmptyStackLane ? "Remove empty lane" : "Add lane"}
+                  </button>
                 ) : null}
               </div>
 
@@ -847,8 +886,9 @@ function DeckDetailPage() {
                     groupedRows={groupedRows}
                     resultCardTotal={resultCardTotal}
                     showDiffOnly={showDiffOnly}
-                    columnCount={stackColumnCount}
+                    layout={stackLayout}
                     onToggleShowDiffOnly={toggleShowDiffOnly}
+                    onLayoutChange={updateStackLayout}
                     onAdjustQuantity={compareMode ? undefined : adjustQuantity}
                     readOnly={compareMode}
                   />

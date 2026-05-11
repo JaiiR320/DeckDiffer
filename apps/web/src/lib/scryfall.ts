@@ -10,6 +10,7 @@ type ScryfallCard = {
   oracle_id: string | null;
   id: string;
   type_line: string;
+  cmc?: number;
   set: string;
   collector_number: string;
   mana_cost?: string;
@@ -132,6 +133,7 @@ export type SearchCardResult = {
   name: string;
   typeLine: string;
   category: ReturnType<typeof getCardCategory>;
+  manaValue: number;
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;
@@ -265,6 +267,7 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     name: card.name,
     typeLine: card.type_line,
     category: getCardCategory(card.type_line),
+    manaValue: card.cmc ?? 0,
     setCode: card.set?.toUpperCase(),
     collectorNumber: card.collector_number,
     smallImageUrl: imageUris?.small,
@@ -637,6 +640,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       quantity: entry.quantity,
       typeLine: matchedCard.type_line,
       category: getCardCategory(matchedCard.type_line),
+      manaValue: matchedCard.cmc ?? 0,
       setCode: matchedCard.set?.toUpperCase(),
       collectorNumber: matchedCard.collector_number,
       smallImageUrl:

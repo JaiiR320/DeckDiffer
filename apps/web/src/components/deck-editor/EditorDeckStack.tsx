@@ -1,6 +1,15 @@
+import { CollisionPriority } from "@dnd-kit/abstract";
+import {
+  DragDropProvider,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+  type DragOverEvent,
+} from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
-import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { DeckStackLayout } from "../../lib/deck";
 import { CARD_CATEGORIES, type CardCategory } from "../../lib/decklist";
 import { getCardPreview } from "../../lib/scryfall";
 import type { EditorRow } from "./types";
@@ -9,21 +18,34 @@ type EditorDeckStackProps = {
   groupedRows: Record<CardCategory, EditorRow[]>;
   resultCardTotal: number;
   showDiffOnly: boolean;
-  columnCount: number;
+  layout: DeckStackLayout;
   onToggleShowDiffOnly: () => void;
+  onLayoutChange: (layout: DeckStackLayout) => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   readOnly?: boolean;
+};
+
+type DropPreview = {
+  category: CardCategory;
+  laneIndex: number;
+  insertIndex: number;
+  height: number;
 };
 
 export function EditorDeckStack({
   groupedRows,
   resultCardTotal,
   showDiffOnly,
-  columnCount,
+  layout,
   onToggleShowDiffOnly,
+  onLayoutChange,
   onAdjustQuantity,
   readOnly = false,
 }: EditorDeckStackProps) {
+  const previousLayout = useRef(layout);
+  const laneElements = useRef(new Map<number, HTMLDivElement>());
+  const categoryElements = useRef(new Map<CardCategory, HTMLElement>());
+  const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
   const allRows = Object.values(groupedRows).flat();
   const visibleGroupedRows = Object.fromEntries(
     CARD_CATEGORIES.map((category) => [
@@ -37,6 +59,107 @@ export function EditorDeckStack({
   const totalAdded = allRows.filter((row) => row.status === "added").length;
   const totalChanged = allRows.filter((row) => row.status === "changed").length;
   const totalRemoved = allRows.filter((row) => row.status === "removed").length;
+
+  function handleDragStart() {
+    previousLayout.current = layout;
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { source } = event.operation;
+
+    if (readOnly || source?.type !== "category") {
+      return;
+    }
+
+    const category = source.id as CardCategory;
+    if (!CARD_CATEGORIES.includes(category)) {
+      return;
+    }
+
+    const placement = getDropPlacement(
+      layout,
+      category,
+      event.operation.position.current.x,
+      event.operation.position.current.y,
+      laneElements.current,
+      categoryElements.current,
+    );
+    const height = categoryElements.current.get(category)?.getBoundingClientRect().height ?? 96;
+
+    setDropPreview((current) => {
+      if (
+        current?.category === category &&
+        current.laneIndex === placement.laneIndex &&
+        current.insertIndex === placement.insertIndex &&
+        current.height === height
+      ) {
+        return current;
+      }
+
+      return { category, height, ...placement };
+    });
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { source } = event.operation;
+
+    if (readOnly || source?.type !== "category") {
+      setDropPreview(null);
+      return;
+    }
+
+    if (event.operation.canceled) {
+      onLayoutChange(previousLayout.current);
+      setDropPreview(null);
+      return;
+    }
+
+    onLayoutChange(
+      moveLayoutByPointer(
+        layout,
+        source.id,
+        event.operation.position.current.x,
+        event.operation.position.current.y,
+        laneElements.current,
+        categoryElements.current,
+      ),
+    );
+    setDropPreview(null);
+  }
+
+  function renderCategoryStacks(lane: CardCategory[], laneIndex: number) {
+    const placeholderIndex = getPlaceholderRenderIndex(lane, laneIndex, dropPreview);
+    const nodes: ReactNode[] = [];
+
+    for (const [categoryIndex, category] of lane.entries()) {
+      if (placeholderIndex === categoryIndex) {
+        nodes.push(<DropPlaceholder key="drop-placeholder" height={dropPreview?.height ?? 96} />);
+      }
+
+      nodes.push(
+        <CategoryStack
+          key={category}
+          category={category}
+          rows={visibleGroupedRows[category]}
+          onAdjustQuantity={onAdjustQuantity}
+          readOnly={readOnly}
+          onCategoryRef={(element) => {
+            if (element) {
+              categoryElements.current.set(category, element);
+            } else {
+              categoryElements.current.delete(category);
+            }
+          }}
+        />,
+      );
+    }
+
+    if (placeholderIndex === lane.length) {
+      nodes.push(<DropPlaceholder key="drop-placeholder" height={dropPreview?.height ?? 96} />);
+    }
+
+    return nodes;
+  }
 
   return (
     <div className="space-y-4 px-5 pb-5 pt-5">
@@ -70,21 +193,203 @@ export function EditorDeckStack({
         </div>
       </div>
 
-      <div
-        className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(var(--stack-columns),minmax(0,1fr))]"
-        style={{ "--stack-columns": columnCount } as CSSProperties}
+      <DragDropProvider
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
       >
-        {CARD_CATEGORIES.map((category) => (
-          <CategoryStack
-            key={category}
-            category={category}
-            rows={visibleGroupedRows[category]}
-            onAdjustQuantity={onAdjustQuantity}
-            readOnly={readOnly}
-          />
-        ))}
-      </div>
+        <div
+          className="grid items-start gap-0 pb-2"
+          style={
+            {
+              gridTemplateColumns: `repeat(${layout.lanes.length}, minmax(0, 1fr))`,
+            } as CSSProperties
+          }
+        >
+          {layout.lanes.map((lane, laneIndex) => (
+            <CategoryLane
+              key={laneIndex}
+              laneIndex={laneIndex}
+              categories={lane}
+              hasPreview={dropPreview?.laneIndex === laneIndex}
+              onLaneRef={(element) => {
+                if (element) {
+                  laneElements.current.set(laneIndex, element);
+                } else {
+                  laneElements.current.delete(laneIndex);
+                }
+              }}
+            >
+              {renderCategoryStacks(lane, laneIndex)}
+            </CategoryLane>
+          ))}
+        </div>
+      </DragDropProvider>
     </div>
+  );
+}
+
+function laneId(index: number) {
+  return `lane-${index}`;
+}
+
+function moveLayoutByPointer(
+  layout: DeckStackLayout,
+  sourceId: string | number,
+  pointerX: number,
+  pointerY: number,
+  laneElements: ReadonlyMap<number, HTMLElement>,
+  categoryElements: ReadonlyMap<CardCategory, HTMLElement>,
+): DeckStackLayout {
+  if (!CARD_CATEGORIES.includes(sourceId as CardCategory)) {
+    return layout;
+  }
+
+  const sourceCategory = sourceId as CardCategory;
+  const lanes = layout.lanes.map((lane) => lane.filter((category) => category !== sourceCategory));
+  const { laneIndex, insertIndex } = getDropPlacement(
+    layout,
+    sourceCategory,
+    pointerX,
+    pointerY,
+    laneElements,
+    categoryElements,
+  );
+  lanes[laneIndex]?.splice(insertIndex, 0, sourceCategory);
+
+  return { lanes };
+}
+
+function getDropPlacement(
+  layout: DeckStackLayout,
+  sourceCategory: CardCategory,
+  pointerX: number,
+  pointerY: number,
+  laneElements: ReadonlyMap<number, HTMLElement>,
+  categoryElements: ReadonlyMap<CardCategory, HTMLElement>,
+) {
+  const lanes = layout.lanes.map((lane) => lane.filter((category) => category !== sourceCategory));
+  const laneIndex = getPointerLaneIndex(lanes, pointerX, laneElements);
+  const insertIndex = getPointerCategoryIndex(lanes[laneIndex] ?? [], pointerY, categoryElements);
+
+  return { laneIndex, insertIndex };
+}
+
+function getPlaceholderRenderIndex(
+  lane: CardCategory[],
+  laneIndex: number,
+  preview: DropPreview | null,
+) {
+  if (!preview || preview.laneIndex !== laneIndex) {
+    return -1;
+  }
+
+  const sourceIndex = lane.indexOf(preview.category);
+
+  if (sourceIndex === preview.insertIndex) {
+    return -1;
+  }
+
+  if (sourceIndex !== -1 && sourceIndex <= preview.insertIndex) {
+    return preview.insertIndex + 1;
+  }
+
+  return preview.insertIndex;
+}
+
+function getPointerLaneIndex(
+  lanes: CardCategory[][],
+  pointerX: number,
+  laneElements: ReadonlyMap<number, HTMLElement>,
+) {
+  let nearestLaneIndex = 0;
+  let nearestLaneDistance = Number.POSITIVE_INFINITY;
+
+  for (const [laneIndex, element] of laneElements) {
+    const rect = element.getBoundingClientRect();
+
+    if (pointerX >= rect.left && pointerX <= rect.right) {
+      return laneIndex;
+    }
+
+    const distance = Math.abs(pointerX - (rect.left + rect.width / 2));
+    if (distance < nearestLaneDistance) {
+      nearestLaneDistance = distance;
+      nearestLaneIndex = laneIndex;
+    }
+  }
+
+  return Math.min(nearestLaneIndex, Math.max(0, lanes.length - 1));
+}
+
+function getPointerCategoryIndex(
+  lane: CardCategory[],
+  pointerY: number,
+  categoryElements: ReadonlyMap<CardCategory, HTMLElement>,
+) {
+  for (const [index, category] of lane.entries()) {
+    const element = categoryElements.get(category);
+    if (!element) {
+      continue;
+    }
+
+    const rect = element.getBoundingClientRect();
+    if (pointerY < rect.top + rect.height / 2) {
+      return index;
+    }
+  }
+
+  return lane.length;
+}
+
+type CategoryLaneProps = {
+  laneIndex: number;
+  categories: CardCategory[];
+  hasPreview: boolean;
+  onLaneRef: (element: HTMLDivElement | null) => void;
+  children: ReactNode;
+};
+
+function CategoryLane({
+  laneIndex,
+  categories,
+  hasPreview,
+  onLaneRef,
+  children,
+}: CategoryLaneProps) {
+  const { ref } = useDroppable({
+    id: laneId(laneIndex),
+    type: "lane",
+    accept: "category",
+    collisionPriority: CollisionPriority.Low,
+  });
+
+  return (
+    <div
+      ref={(element) => {
+        ref(element);
+        onLaneRef(element);
+      }}
+      className="flex min-h-80 min-w-0 flex-col gap-3 p-1"
+    >
+      {categories.length === 0 && !hasPreview ? (
+        <div className="flex min-h-64 items-center justify-center rounded-xl bg-zinc-900/25 px-4 text-center text-sm font-semibold text-zinc-600">
+          Empty lane
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+}
+
+function DropPlaceholder({ height }: { height: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="rounded-xl border border-dashed border-cyan-500/40 bg-cyan-500/5 transition-all duration-150"
+      style={{ minHeight: `${height}px` }}
+    />
   );
 }
 
@@ -93,18 +398,41 @@ type CategoryStackProps = {
   rows: EditorRow[];
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   readOnly: boolean;
+  onCategoryRef: (element: HTMLElement | null) => void;
 };
 
-function CategoryStack({ category, rows, onAdjustQuantity, readOnly }: CategoryStackProps) {
+function CategoryStack({
+  category,
+  rows,
+  onAdjustQuantity,
+  readOnly,
+  onCategoryRef,
+}: CategoryStackProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const lastCardOffset = Math.max(0, rows.length - 1) * 36;
-  const totalQuantity = rows.reduce((sum, row) => sum + row.currentQuantity, 0);
-  const addedCount = rows.filter((row) => row.status === "added").length;
-  const changedCount = rows.filter((row) => row.status === "changed").length;
-  const removedCount = rows.filter((row) => row.status === "removed").length;
+  const sortedRows = [...rows].sort(
+    (left, right) => right.manaValue - left.manaValue || left.name.localeCompare(right.name),
+  );
+  const lastCardOffset = Math.max(0, sortedRows.length - 1) * 36;
+  const totalQuantity = sortedRows.reduce((sum, row) => sum + row.currentQuantity, 0);
+  const addedCount = sortedRows.filter((row) => row.status === "added").length;
+  const changedCount = sortedRows.filter((row) => row.status === "changed").length;
+  const removedCount = sortedRows.filter((row) => row.status === "removed").length;
+  const { isDragging, ref } = useDraggable({
+    id: category,
+    type: "category",
+    disabled: readOnly,
+  });
 
   return (
-    <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/80">
+    <section
+      ref={(element) => {
+        ref(element);
+        onCategoryRef(element);
+      }}
+      className={`overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/80 transition ${
+        isDragging ? "scale-[1.02] border-cyan-400/70 shadow-2xl shadow-cyan-950/30" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
         <div className="min-w-0">
           <h3 className="truncate font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-300">
@@ -129,7 +457,7 @@ function CategoryStack({ category, rows, onAdjustQuantity, readOnly }: CategoryS
         </div>
       </div>
 
-      {rows.length === 0 ? (
+      {sortedRows.length === 0 ? (
         <div className="flex min-h-64 items-center justify-center bg-zinc-900/40 px-5 text-center text-sm font-semibold text-zinc-500">
           Empty stack
         </div>
@@ -138,7 +466,7 @@ function CategoryStack({ category, rows, onAdjustQuantity, readOnly }: CategoryS
           className="relative min-h-64 overflow-hidden px-3 pb-3 pt-2"
           onPointerLeave={() => setHoveredIndex(null)}
         >
-          {rows.map((row, index) => (
+          {sortedRows.map((row, index) => (
             <StackCard
               key={row.oracleId}
               row={row}

@@ -13,6 +13,7 @@ export type EditorRow = {
   name: string;
   category: CardCategory;
   typeLine: string;
+  manaValue: number;
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;
