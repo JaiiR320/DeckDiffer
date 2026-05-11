@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { DeckStackLayout } from "#/lib/deck";
-import type { ValidatedDeckCard } from "#/lib/decklist";
+import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 
 export type CreateDeckInput = { name: string };
 export type RenameDeckInput = { deckId: string; newName: string };
@@ -9,6 +9,7 @@ export type GetDeckInput = { deckId: string };
 export type SaveDeckInput = {
   deckId: string;
   label: string;
+  categories?: DeckCategory[];
   cards: ValidatedDeckCard[];
   layout?: DeckStackLayout;
 };
@@ -28,7 +29,7 @@ export const renameDeckInputSchema = z.object({
   newName: deckNameSchema,
 });
 
-const cardCategorySchema = z.enum([
+const legacyCardCategorySchema = z.enum([
   "Land",
   "Creature",
   "Artifact",
@@ -40,24 +41,32 @@ const cardCategorySchema = z.enum([
   "Other",
 ]);
 
+const deckCategorySchema = z.object({
+  id: z.string().trim().min(1, "Category ID is required."),
+  name: z.string().trim().min(1, "Category name is required."),
+  kind: z.enum(["default", "custom"]).optional(),
+});
+
 const validatedDeckCardSchema = z.object({
   oracleId: z.string().trim().min(1, "Card oracle ID is required."),
   name: z.string().trim().min(1, "Card name is required."),
   quantity: z.number().int().positive("Card quantity must be greater than zero."),
   typeLine: z.string().trim().min(1, "Card type line is required."),
-  category: cardCategorySchema,
+  categoryId: z.string().trim().min(1, "Card category ID is required.").optional(),
+  category: legacyCardCategorySchema.optional(),
   manaValue: z.number().nonnegative().optional(),
   setCode: z.string().trim().min(1, "Card set code is required."),
   collectorNumber: z.string().trim().min(1, "Card collector number is required."),
 });
 
 const deckStackLayoutSchema = z.object({
-  lanes: z.array(z.array(cardCategorySchema)),
+  lanes: z.array(z.array(z.string().trim().min(1))),
 });
 
 export const saveDeckInputSchema = z.object({
   deckId: z.string().trim().min(1, "Deck ID is required."),
   label: z.string(),
+  categories: z.array(deckCategorySchema).optional(),
   cards: z.array(validatedDeckCardSchema),
   layout: deckStackLayoutSchema.optional(),
 });

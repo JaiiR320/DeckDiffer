@@ -1,5 +1,5 @@
 import type { DeckStackLayout } from "#/lib/deck";
-import type { ValidatedDeckCard } from "#/lib/decklist";
+import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 const timestamps = {
@@ -7,7 +7,7 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
 };
 
-export const user = pgTable("user", {
+const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -16,7 +16,7 @@ export const user = pgTable("user", {
   ...timestamps,
 });
 
-export const session = pgTable(
+const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
@@ -32,7 +32,7 @@ export const session = pgTable(
   (table) => [index("session_user_id_idx").on(table.userId)],
 );
 
-export const account = pgTable(
+const account = pgTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -59,7 +59,7 @@ export const account = pgTable(
   (table) => [index("account_user_id_idx").on(table.userId)],
 );
 
-export const verification = pgTable(
+const verification = pgTable(
   "verification",
   {
     id: text("id").primaryKey(),
@@ -97,6 +97,7 @@ export const deckSaves = pgTable(
       .references(() => decks.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     savedAt: timestamp("saved_at", { withTimezone: true, mode: "date" }).notNull(),
+    categories: jsonb("categories").$type<DeckCategory[] | null>(),
     cards: jsonb("cards").$type<ValidatedDeckCard[]>().notNull(),
     layout: jsonb("layout").$type<DeckStackLayout | null>(),
   },
@@ -111,5 +112,3 @@ export const schema = {
   decks,
   deckSaves,
 };
-
-export type AppSchema = typeof schema;

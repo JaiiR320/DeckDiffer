@@ -1,16 +1,17 @@
 import type { DeckStackLayout } from "../../lib/deck";
 
-export function toggleEmptyStackLaneInLayout(currentLayout: DeckStackLayout): DeckStackLayout {
-  let emptyLaneIndex = -1;
+export function addEmptyStackLane(currentLayout: DeckStackLayout): DeckStackLayout {
+  return { lanes: [...currentLayout.lanes, []] };
+}
 
-  for (let index = currentLayout.lanes.length - 1; index >= 0; index -= 1) {
-    if (currentLayout.lanes[index]?.length === 0) {
-      emptyLaneIndex = index;
-      break;
-    }
+export function removeStackLane(
+  currentLayout: DeckStackLayout,
+  laneIndex: number,
+): DeckStackLayout {
+  const lane = currentLayout.lanes[laneIndex];
+  if (!lane || lane.length > 0) {
+    return currentLayout;
   }
 
-  return emptyLaneIndex >= 0
-    ? { lanes: currentLayout.lanes.filter((_, index) => index !== emptyLaneIndex) }
-    : { lanes: [...currentLayout.lanes, []] };
+  return { lanes: currentLayout.lanes.filter((_, index) => index !== laneIndex) };
 }

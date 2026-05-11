@@ -15,6 +15,13 @@
       "when": 1778466257235,
       "tag": "0001_flippant_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778526108049,
+      "tag": "0002_robust_sauron",
+      "breakpoints": true
     }
   ]
 }

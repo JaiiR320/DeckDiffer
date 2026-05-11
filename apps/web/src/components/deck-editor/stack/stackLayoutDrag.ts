@@ -1,5 +1,5 @@
 import type { DeckStackLayout } from "../../../lib/deck";
-import { CARD_CATEGORIES, type CardCategory } from "../../../lib/decklist";
+import type { CardCategory } from "../../../lib/decklist";
 
 export type DropPreview = {
   category: CardCategory;
@@ -16,11 +16,10 @@ export function moveLayoutByPointer(
   laneElements: ReadonlyMap<number, HTMLElement>,
   categoryElements: ReadonlyMap<CardCategory, HTMLElement>,
 ): DeckStackLayout {
-  if (!CARD_CATEGORIES.includes(sourceId as CardCategory)) {
+  const sourceCategory = sourceId as CardCategory;
+  if (!layout.lanes.some((lane) => lane.includes(sourceCategory))) {
     return layout;
   }
-
-  const sourceCategory = sourceId as CardCategory;
   const lanes = layout.lanes.map((lane) => lane.filter((category) => category !== sourceCategory));
   const { laneIndex, insertIndex } = getDropPlacement(
     layout,

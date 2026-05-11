@@ -128,7 +128,11 @@ describe("getCardPreview", () => {
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const preview = await getCardPreview({ name: "Arlinn Kord", setCode: "SOI", collectorNumber: "243" });
+    const preview = await getCardPreview({
+      name: "Arlinn Kord",
+      setCode: "SOI",
+      collectorNumber: "243",
+    });
 
     expect(preview?.name).toBe("Arlinn Kord");
     expect(preview?.manaCost).toBe("{2}{R}{G}");

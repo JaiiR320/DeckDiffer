@@ -7,12 +7,7 @@ import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
 import { formatDeckExport } from "../lib/decklist";
-import {
-  createDeckForUser,
-  deleteDeckForUser,
-  listDecks,
-  renameDeckForUser,
-} from "#/server/decks";
+import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 
 export const Route = createFileRoute("/decks")({
@@ -74,11 +69,15 @@ function DecksPage() {
         throw new Error("Could not create deck.");
       }
 
-      setState({ decks: [newDeck, ...decks], errorMessage: null, isCreateOpen: false, deckName: "" });
+      setState({
+        decks: [newDeck, ...decks],
+        errorMessage: null,
+        isCreateOpen: false,
+        deckName: "",
+      });
     } catch (error) {
       setState({
-        errorMessage:
-          error instanceof Error ? error.message : "Could not create deck right now.",
+        errorMessage: error instanceof Error ? error.message : "Could not create deck right now.",
       });
     }
   }
@@ -100,8 +99,7 @@ function DecksPage() {
       });
     } catch (error) {
       setState({
-        errorMessage:
-          error instanceof Error ? error.message : "Could not rename deck right now.",
+        errorMessage: error instanceof Error ? error.message : "Could not rename deck right now.",
       });
     }
   }
@@ -119,8 +117,7 @@ function DecksPage() {
       });
     } catch (error) {
       setState({
-        errorMessage:
-          error instanceof Error ? error.message : "Could not delete deck right now.",
+        errorMessage: error instanceof Error ? error.message : "Could not delete deck right now.",
       });
     }
   }
@@ -162,20 +159,20 @@ function DecksPage() {
             className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300"
           >
             <Plus className="size-9" strokeWidth={1.75} />
-            <span className="mt-5 text-xl font-medium text-zinc-300">
-              New Deck
-            </span>
+            <span className="mt-5 text-xl font-medium text-zinc-300">New Deck</span>
           </button>
 
           {decks.map((deck) => (
-            <DeckCard key={deck.id} deck={deck} onEdit={(editingDeck) => setState({ editingDeck })} />
+            <DeckCard
+              key={deck.id}
+              deck={deck}
+              onEdit={(editingDeck) => setState({ editingDeck })}
+            />
           ))}
         </section>
 
         {decks.length === 0 ? (
-          <p className="mt-8 text-sm text-zinc-500">
-            No decks yet. Create one to get started.
-          </p>
+          <p className="mt-8 text-sm text-zinc-500">No decks yet. Create one to get started.</p>
         ) : null}
       </main>
 

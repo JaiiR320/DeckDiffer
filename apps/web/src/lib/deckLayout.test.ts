@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CARD_CATEGORIES } from "./decklist";
+import { defaultDeckCategories } from "./decklist";
 import { defaultStackLayout, normalizeStackLayout } from "./deckLayout";
 
 describe("normalizeStackLayout", () => {
@@ -9,11 +9,11 @@ describe("normalizeStackLayout", () => {
 
   it("starts with five default lanes", () => {
     expect(defaultStackLayout().lanes).toEqual([
-      ["Land"],
-      ["Creature"],
-      ["Artifact", "Enchantment"],
-      ["Instant", "Sorcery"],
-      ["Planeswalker", "Battle", "Other"],
+      ["land"],
+      ["creature"],
+      ["artifact", "enchantment"],
+      ["instant", "sorcery"],
+      ["planeswalker", "battle", "other"],
     ]);
   });
 
@@ -26,14 +26,14 @@ describe("normalizeStackLayout", () => {
       lanes: [["Creature", "Creature", "Bad"], ["Land"]],
     });
 
-    expect(layout.lanes[0]).toEqual(["Creature"]);
-    expect(layout.lanes[1]).toEqual(["Land"]);
+    expect(layout.lanes[0]).toEqual(["creature"]);
+    expect(layout.lanes[1]).toEqual(["land"]);
     expect(layout.lanes.flat()).not.toContain("Bad");
   });
 
   it("appends missing categories", () => {
     const layout = normalizeStackLayout({ lanes: [["Land"]] });
 
-    expect(layout.lanes.flat()).toEqual(CARD_CATEGORIES);
+    expect(layout.lanes.flat()).toEqual(defaultDeckCategories().map((category) => category.id));
   });
 });

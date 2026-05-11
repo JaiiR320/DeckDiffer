@@ -115,7 +115,7 @@ describe("buildEditorRows", () => {
 
     const groupedRows = groupEditorRows(buildEditorRows(baselineCards, workingCards));
 
-    expect(groupedRows.Land).toHaveLength(0);
-    expect(groupedRows.Creature[0]?.name).toBe("Dryad Arbor");
+    expect(groupedRows.land).toHaveLength(0);
+    expect(groupedRows.creature[0]?.name).toBe("Dryad Arbor");
   });
 });

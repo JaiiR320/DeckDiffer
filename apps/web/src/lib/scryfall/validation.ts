@@ -1,4 +1,10 @@
-import { getCardCategory, type InvalidDeckCard, type ParsedDeckEntry, type ValidatedDeckCard } from "../decklist";
+import {
+  getCardCategory,
+  getDefaultCategoryId,
+  type InvalidDeckCard,
+  type ParsedDeckEntry,
+  type ValidatedDeckCard,
+} from "../decklist";
 import { getCollectionLookupName, normalizeCardQuery } from "./query";
 import type { ScryfallCard, ScryfallCollectionResponse } from "./types";
 
@@ -115,6 +121,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       name: matchedCard.name,
       quantity: entry.quantity,
       typeLine: matchedCard.type_line,
+      categoryId: getDefaultCategoryId(matchedCard.type_line),
       category: getCardCategory(matchedCard.type_line),
       manaValue: matchedCard.cmc ?? 0,
       setCode: matchedCard.set?.toUpperCase(),

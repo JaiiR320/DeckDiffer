@@ -9,6 +9,7 @@ type CategoryLaneProps = {
   categories: CardCategory[];
   hasPreview: boolean;
   onLaneRef: (element: HTMLDivElement | null) => void;
+  onRemoveLane?: (laneIndex: number) => void;
   children: ReactNode;
 };
 
@@ -17,6 +18,7 @@ export function CategoryLane({
   categories,
   hasPreview,
   onLaneRef,
+  onRemoveLane,
   children,
 }: CategoryLaneProps) {
   const { ref } = useDroppable({
@@ -35,8 +37,17 @@ export function CategoryLane({
       className="flex min-h-80 min-w-0 flex-col gap-3 p-1"
     >
       {categories.length === 0 && !hasPreview ? (
-        <div className="flex min-h-64 items-center justify-center rounded-xl bg-zinc-900/25 px-4 text-center text-sm font-semibold text-zinc-600">
-          Empty lane
+        <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl bg-zinc-900/25 px-4 text-center text-sm font-semibold text-zinc-600">
+          <span>Empty lane</span>
+          {onRemoveLane ? (
+            <button
+              type="button"
+              onClick={() => onRemoveLane(laneIndex)}
+              className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+            >
+              Remove lane
+            </button>
+          ) : null}
         </div>
       ) : (
         children

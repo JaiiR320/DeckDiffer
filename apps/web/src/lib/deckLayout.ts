@@ -1,40 +1,52 @@
-import { CARD_CATEGORIES, type CardCategory } from "./decklist";
+import {
+  CARD_CATEGORIES,
+  defaultCategoryIdForName,
+  defaultDeckCategories,
+  type CardCategory,
+  type DeckCategory,
+} from "./decklist";
 import type { DeckStackLayout } from "./deck";
-
-const categorySet = new Set<string>(CARD_CATEGORIES);
 
 export function defaultStackLayout(): DeckStackLayout {
   return {
     lanes: [
-      ["Land"],
-      ["Creature"],
-      ["Artifact", "Enchantment"],
-      ["Instant", "Sorcery"],
-      ["Planeswalker", "Battle", "Other"],
+      ["land"],
+      ["creature"],
+      ["artifact", "enchantment"],
+      ["instant", "sorcery"],
+      ["planeswalker", "battle", "other"],
     ],
   };
 }
 
-export function normalizeStackLayout(layout: unknown): DeckStackLayout {
+export function normalizeStackLayout(
+  layout: unknown,
+  categories: DeckCategory[] = defaultDeckCategories(),
+): DeckStackLayout {
   if (!isStackLayoutLike(layout)) {
-    return defaultStackLayout();
+    return normalizeStackLayout(defaultStackLayout(), categories);
   }
 
+  const categorySet = new Set(categories.map((category) => category.id));
+  const legacyNames = new Map(
+    CARD_CATEGORIES.map((name) => [name, defaultCategoryIdForName(name)]),
+  );
   const seen = new Set<CardCategory>();
   const lanes = layout.lanes.map((lane) =>
-    lane.filter((category): category is CardCategory => {
-      if (!categorySet.has(category) || seen.has(category as CardCategory)) {
-        return false;
+    lane.flatMap((category) => {
+      const categoryId = legacyNames.get(category as (typeof CARD_CATEGORIES)[number]) ?? category;
+      if (!categorySet.has(categoryId) || seen.has(categoryId)) {
+        return [];
       }
 
-      seen.add(category as CardCategory);
-      return true;
+      seen.add(categoryId);
+      return [categoryId];
     }),
   );
 
-  for (const category of CARD_CATEGORIES) {
-    if (!seen.has(category)) {
-      lanes.push([category]);
+  for (const category of categories) {
+    if (!seen.has(category.id)) {
+      lanes.push([category.id]);
     }
   }
 

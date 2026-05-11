@@ -76,7 +76,9 @@ function AuthPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Authentication failed.";
       if (mode === "sign-in" && message === "Invalid email or password") {
-        setState({ errorMessage: "No account was found for that email/password. Try Sign up first." });
+        setState({
+          errorMessage: "No account was found for that email/password. Try Sign up first.",
+        });
       } else {
         setState({ errorMessage: message });
       }

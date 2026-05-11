@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Pencil, Save } from "lucide-react";
+import { Save, Settings } from "lucide-react";
 import type { DeckItem } from "../../lib/deck";
 
 type DeckDetailHeaderProps = {
@@ -40,8 +40,8 @@ export function DeckDetailHeader({
           onClick={onOpenActions}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
         >
-          <Pencil className="size-4" strokeWidth={1.75} />
-          Edit
+          <Settings className="size-4" strokeWidth={1.75} />
+          Settings
         </button>
         <button
           type="button"

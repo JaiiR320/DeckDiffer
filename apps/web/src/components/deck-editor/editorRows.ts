@@ -1,6 +1,8 @@
 import {
-  CARD_CATEGORIES,
   type CardCategory,
+  defaultDeckCategories,
+  normalizeDeckCard,
+  type DeckCategory,
   mergeValidatedCards,
   type ValidatedDeckCard,
 } from "../../lib/decklist";
@@ -9,9 +11,15 @@ import type { EditorRow } from "./types";
 export function buildEditorRows(
   baselineCards: ValidatedDeckCard[],
   workingCards: ValidatedDeckCard[],
+  categories: DeckCategory[] = defaultDeckCategories(),
 ) {
-  const baseline = mergeValidatedCards(baselineCards);
-  const working = mergeValidatedCards(workingCards);
+  const baseline = mergeValidatedCards(
+    baselineCards.map((card) => normalizeDeckCard(card, categories)),
+  );
+  const working = mergeValidatedCards(
+    workingCards.map((card) => normalizeDeckCard(card, categories)),
+  );
+  const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
   const baselineById = new Map(baseline.map((card) => [card.oracleId, card]));
   const workingById = new Map(working.map((card) => [card.oracleId, card]));
   const allIds = new Set([...baselineById.keys(), ...workingById.keys()]);
@@ -26,7 +34,7 @@ export function buildEditorRows(
     rows.push({
       oracleId,
       name: workingCard?.name ?? baselineCard?.name ?? "Unknown Card",
-      category: workingCard?.category ?? baselineCard?.category ?? "Other",
+      category: workingCard?.categoryId ?? baselineCard?.categoryId ?? "other",
       typeLine: workingCard?.typeLine ?? baselineCard?.typeLine ?? "",
       manaValue: workingCard?.manaValue ?? baselineCard?.manaValue ?? 0,
       setCode: workingCard?.setCode ?? baselineCard?.setCode,
@@ -48,7 +56,8 @@ export function buildEditorRows(
 
   return rows.sort((left, right) => {
     const categoryCompare =
-      CARD_CATEGORIES.indexOf(left.category) - CARD_CATEGORIES.indexOf(right.category);
+      (categoryOrder.get(left.category) ?? Number.MAX_SAFE_INTEGER) -
+      (categoryOrder.get(right.category) ?? Number.MAX_SAFE_INTEGER);
     if (categoryCompare !== 0) {
       return categoryCompare;
     }
@@ -57,21 +66,17 @@ export function buildEditorRows(
   });
 }
 
-export function groupEditorRows(rows: EditorRow[]) {
-  const grouped: Record<CardCategory, EditorRow[]> = {
-    Land: [],
-    Creature: [],
-    Artifact: [],
-    Enchantment: [],
-    Instant: [],
-    Sorcery: [],
-    Planeswalker: [],
-    Battle: [],
-    Other: [],
-  };
+export function groupEditorRows(
+  rows: EditorRow[],
+  categories: DeckCategory[] = defaultDeckCategories(),
+) {
+  const grouped = Object.fromEntries(categories.map((category) => [category.id, []])) as Record<
+    CardCategory,
+    EditorRow[]
+  >;
 
   for (const row of rows) {
-    grouped[row.category].push(row);
+    (grouped[row.category] ??= []).push(row);
   }
 
   return grouped;

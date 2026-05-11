@@ -1,10 +1,8 @@
 import { Link, createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, type ReactNode } from "react";
 import type { SetStateAction } from "react";
-import { CardPreviewPanel } from "../components/cards/CardPreviewPanel";
 import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { DeckAlerts } from "../components/deck-editor/DeckAlerts";
-import { EditorDeckList } from "../components/deck-editor/EditorDeckList";
 import { EditorDeckStack } from "../components/deck-editor/EditorDeckStack";
 import { EditorHeader } from "../components/deck-editor/EditorHeader";
 import { ExportDeckModal } from "../components/deck-editor/modals/ExportDeckModal";
@@ -12,38 +10,30 @@ import { ImportDeckModal } from "../components/deck-editor/modals/ImportDeckModa
 import { SaveDeckModal } from "../components/deck-editor/modals/SaveDeckModal";
 import { SaveHistoryPanel } from "../components/deck-editor/SaveHistoryPanel";
 import type { DeckState, EditorRow } from "../components/deck-editor/types";
-import {
-  getLatestSave,
-  type DeckItem,
-  type DeckSave,
-  type DeckStackLayout,
-} from "../lib/deck";
+import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "../lib/deck";
 import { defaultStackLayout, normalizeStackLayout } from "../lib/deckLayout";
+import { normalizeDeckSave } from "../lib/deckSave";
 import {
+  defaultDeckCategories,
   formatDecklist,
   type CardCategory,
+  type DeckCategory,
   type ValidatedDeckCard,
 } from "../lib/decklist";
-import { type SearchCardResult } from "../lib/scryfall";
 import { getDeck } from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 import {
   adjustCardQuantity,
   appendSearchCard,
   moveEditorRowCategory,
-  restoreEditorRow,
 } from "../components/deck-detail/deckCardMutations";
 import { buildDeckEditorModel } from "../components/deck-detail/deckEditorModel";
 import { DeckDetailHeader } from "../components/deck-detail/DeckDetailHeader";
-import {
-  ErrorBanner,
-  StatusMessage,
-} from "../components/deck-detail/DeckStatusMessages";
-import { toggleEmptyStackLaneInLayout } from "../components/deck-detail/stackLayoutLane";
+import { ErrorBanner, StatusMessage } from "../components/deck-detail/DeckStatusMessages";
+import { addEmptyStackLane, removeStackLane } from "../components/deck-detail/stackLayoutLane";
 import { useDeckActions } from "../components/deck-detail/useDeckActions";
 import { useDeckImport } from "../components/deck-detail/useDeckImport";
 import { useDeckPreview } from "../components/deck-detail/useDeckPreview";
-import { useDeckViewMode } from "../components/deck-detail/useDeckViewMode";
 
 export const Route = createFileRoute("/decks_/$deckId")({
   beforeLoad: async () => {
@@ -62,9 +52,7 @@ export const Route = createFileRoute("/decks_/$deckId")({
       return {
         deck: null,
         errorMessage:
-          error instanceof Error
-            ? error.message
-            : "Could not load this deck right now.",
+          error instanceof Error ? error.message : "Could not load this deck right now.",
       };
     }
   },
@@ -82,6 +70,7 @@ const emptyDeckState: DeckState = {
 type PageState = {
   activeTab: "editor" | "history";
   baselineDeck: DeckState;
+  baselineCategories: DeckCategory[];
   baselineStackLayout: DeckStackLayout;
   compareMode: boolean;
   compareSaves: { saveA: DeckSave; saveB: DeckSave } | null;
@@ -90,6 +79,7 @@ type PageState = {
   isHydrated: boolean;
   showDiffOnly: boolean;
   stackLayout: DeckStackLayout;
+  categories: DeckCategory[];
   workingCards: ValidatedDeckCard[];
 };
 
@@ -106,10 +96,10 @@ function resolveStateAction<T>(current: T, action: SetStateAction<T>) {
 function DeckDetailPage() {
   const { deckId } = Route.useParams();
   const loaderData = Route.useLoaderData();
-  const [deckViewMode, setDeckViewMode] = useDeckViewMode();
   const [pageState, setPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
     baselineDeck: emptyDeckState,
+    baselineCategories: defaultDeckCategories(),
     baselineStackLayout: defaultStackLayout(),
     compareMode: false,
     compareSaves: null,
@@ -118,11 +108,13 @@ function DeckDetailPage() {
     isHydrated: false,
     showDiffOnly: false,
     stackLayout: defaultStackLayout(),
+    categories: defaultDeckCategories(),
     workingCards: [],
   });
   const {
     activeTab,
     baselineDeck,
+    baselineCategories,
     baselineStackLayout,
     compareMode,
     compareSaves,
@@ -131,6 +123,7 @@ function DeckDetailPage() {
     isHydrated,
     showDiffOnly,
     stackLayout,
+    categories,
     workingCards,
   } = pageState;
   const preview = useDeckPreview();
@@ -145,7 +138,9 @@ function DeckDetailPage() {
       baselineStackLayout: resolveStateAction(current.baselineStackLayout, baselineStackLayout),
     }));
   const setCompareMode = (compareMode: SetStateAction<boolean>) =>
-    setPageState((current) => ({ compareMode: resolveStateAction(current.compareMode, compareMode) }));
+    setPageState((current) => ({
+      compareMode: resolveStateAction(current.compareMode, compareMode),
+    }));
   const setCompareSaves = (
     compareSaves: SetStateAction<{ saveA: DeckSave; saveB: DeckSave } | null>,
   ) =>
@@ -163,7 +158,15 @@ function DeckDetailPage() {
       showDiffOnly: resolveStateAction(current.showDiffOnly, showDiffOnly),
     }));
   const setStackLayout = (stackLayout: SetStateAction<DeckStackLayout>) =>
-    setPageState((current) => ({ stackLayout: resolveStateAction(current.stackLayout, stackLayout) }));
+    setPageState((current) => ({
+      stackLayout: resolveStateAction(current.stackLayout, stackLayout),
+    }));
+  const setBaselineCategories = (baselineCategories: SetStateAction<DeckCategory[]>) =>
+    setPageState((current) => ({
+      baselineCategories: resolveStateAction(current.baselineCategories, baselineCategories),
+    }));
+  const setCategories = (categories: SetStateAction<DeckCategory[]>) =>
+    setPageState((current) => ({ categories: resolveStateAction(current.categories, categories) }));
   const setWorkingCards = (workingCards: SetStateAction<ValidatedDeckCard[]>) =>
     setPageState((current) => ({
       workingCards: resolveStateAction(current.workingCards, workingCards),
@@ -178,9 +181,12 @@ function DeckDetailPage() {
     deckState: { deck, setDeck, setDeckErrorMessage },
     editorState: {
       stackLayout,
+      categories,
       workingCards,
       setBaselineDeck,
+      setBaselineCategories,
       setBaselineStackLayout,
+      setCategories,
       setStackLayout,
       setWorkingCards,
     },
@@ -192,13 +198,16 @@ function DeckDetailPage() {
 
     if (!nextDeck || nextDeck.saves.length === 0) {
       const emptyLayout = defaultStackLayout();
+      const emptyCategories = defaultDeckCategories();
       setPageState({
         baselineDeck: emptyDeckState,
+        baselineCategories: emptyCategories,
         baselineStackLayout: emptyLayout,
         deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
         stackLayout: emptyLayout,
+        categories: emptyCategories,
         workingCards: [],
       });
       return;
@@ -206,32 +215,36 @@ function DeckDetailPage() {
 
     const latestSave = getLatestSave(nextDeck);
     if (latestSave) {
-      const latestLayout = normalizeStackLayout(latestSave.layout);
+      const normalizedSave = normalizeDeckSave(latestSave);
+      const latestCategories = normalizedSave.categories ?? defaultDeckCategories();
+      const latestLayout = normalizeStackLayout(normalizedSave.layout, latestCategories);
       setPageState({
         baselineDeck: {
           rawText: "",
-          cards: latestSave.cards,
+          cards: normalizedSave.cards,
           invalidCards: [],
           status: "ready",
           errorMessage: null,
         },
+        baselineCategories: latestCategories,
         baselineStackLayout: latestLayout,
         deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
         stackLayout: latestLayout,
-        workingCards: latestSave.cards,
+        categories: latestCategories,
+        workingCards: normalizedSave.cards,
       });
     }
   }, [loaderData.deck, loaderData.errorMessage]);
 
-  const { emptyMessage, groupedRows, mergedWorkingCards, resultCardTotal } =
-    buildDeckEditorModel({
-      baselineDeck,
-      compareMode,
-      compareSaves,
-      workingCards,
-    });
+  const { groupedRows, mergedWorkingCards, resultCardTotal } = buildDeckEditorModel({
+    baselineDeck,
+    categories,
+    compareMode,
+    compareSaves,
+    workingCards,
+  });
   const exportPreview = formatDecklist(mergedWorkingCards, {
     includeQuantity: deckImport.exportOptions.includeQuantity,
     includeSet: false,
@@ -239,16 +252,16 @@ function DeckDetailPage() {
     setStyle: "brackets",
   });
   const defaultSaveLabel = deck ? `Save #${deck.saves.length + 1}` : "Save #1";
-  const canSave =
-    hasCards &&
-    (JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||
-      JSON.stringify(stackLayout) !== JSON.stringify(baselineStackLayout) ||
-      !deck ||
-      deck.saves.length === 0);
-  const hasEmptyStackLane = stackLayout.lanes.some((lane) => lane.length === 0);
+  const hasEditorChanges =
+    JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||
+    JSON.stringify(categories) !== JSON.stringify(baselineCategories) ||
+    JSON.stringify(stackLayout) !== JSON.stringify(baselineStackLayout) ||
+    !deck ||
+    deck.saves.length === 0;
+  const canSave = hasEditorChanges && (hasCards || categories.length > 0);
 
-  function toggleEmptyStackLane() {
-    setStackLayout(toggleEmptyStackLaneInLayout);
+  function addStackLane() {
+    setStackLayout(addEmptyStackLane);
   }
 
   if (loaderData.errorMessage) {
@@ -274,9 +287,7 @@ function DeckDetailPage() {
   return (
     <>
       <main className="mx-auto w-full p-8">
-        {deckErrorMessage ? (
-          <ErrorBanner>{deckErrorMessage}</ErrorBanner>
-        ) : null}
+        {deckErrorMessage ? <ErrorBanner>{deckErrorMessage}</ErrorBanner> : null}
         <DeckDetailHeader
           deck={deck}
           deckName={deckName}
@@ -291,23 +302,20 @@ function DeckDetailPage() {
           deck={deck}
           deckActions={deckActions}
           deckImport={deckImport}
-          deckViewMode={deckViewMode}
-          emptyMessage={emptyMessage}
           groupedRows={groupedRows}
-          hasEmptyStackLane={hasEmptyStackLane}
+          categories={categories}
           isHydrated={isHydrated}
           mergedWorkingCardsLength={mergedWorkingCards.length}
           preview={preview}
           resultCardTotal={resultCardTotal}
           setActiveTab={setActiveTab}
           setBaselineDeck={setBaselineDeck}
-          setDeckViewMode={setDeckViewMode}
+          setCategories={setCategories}
           setShowDiffOnly={setShowDiffOnly}
           setStackLayout={setStackLayout}
           setWorkingCards={setWorkingCards}
           showDiffOnly={showDiffOnly}
           stackLayout={stackLayout}
-          toggleEmptyStackLane={toggleEmptyStackLane}
         />
       </main>
 
@@ -353,6 +361,13 @@ function DeckDetailPage() {
           onRename={(id, name) => void deckActions.renameDeck(id, name)}
           onDelete={(id) => void deckActions.deleteDeck(id)}
           onExport={deckActions.exportDeck}
+          categories={categories}
+          cards={workingCards}
+          onAddLane={compareMode ? undefined : addStackLane}
+          onCategoriesChange={(nextCategories) => {
+            setCategories(nextCategories);
+            setStackLayout((current) => normalizeStackLayout(current, nextCategories));
+          }}
         />
       ) : null}
     </>
@@ -366,23 +381,20 @@ type DeckEditorSurfaceProps = {
   deck: DeckItem;
   deckActions: ReturnType<typeof useDeckActions>;
   deckImport: ReturnType<typeof useDeckImport>;
-  deckViewMode: "list" | "stack";
-  emptyMessage: string;
+  categories: DeckCategory[];
   groupedRows: Record<CardCategory, EditorRow[]>;
-  hasEmptyStackLane: boolean;
   isHydrated: boolean;
   mergedWorkingCardsLength: number;
   preview: ReturnType<typeof useDeckPreview>;
   resultCardTotal: number;
   setActiveTab: (activeTab: SetStateAction<"editor" | "history">) => void;
   setBaselineDeck: (baselineDeck: SetStateAction<DeckState>) => void;
-  setDeckViewMode: (mode: "list" | "stack") => void;
+  setCategories: (categories: SetStateAction<DeckCategory[]>) => void;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
   setStackLayout: (stackLayout: SetStateAction<DeckStackLayout>) => void;
   setWorkingCards: (workingCards: SetStateAction<ValidatedDeckCard[]>) => void;
   showDiffOnly: boolean;
   stackLayout: DeckStackLayout;
-  toggleEmptyStackLane: () => void;
 };
 
 function DeckEditorSurface({
@@ -392,23 +404,20 @@ function DeckEditorSurface({
   deck,
   deckActions,
   deckImport,
-  deckViewMode,
-  emptyMessage,
+  categories,
   groupedRows,
-  hasEmptyStackLane,
   isHydrated,
   mergedWorkingCardsLength,
   preview,
   resultCardTotal,
   setActiveTab,
   setBaselineDeck,
-  setDeckViewMode,
+  setCategories,
   setShowDiffOnly,
   setStackLayout,
   setWorkingCards,
   showDiffOnly,
   stackLayout,
-  toggleEmptyStackLane,
 }: DeckEditorSurfaceProps) {
   function dismissWarnings() {
     setBaselineDeck((current) => ({ ...current, invalidCards: [] }));
@@ -439,63 +448,37 @@ function DeckEditorSurface({
 
       {activeTab === "editor" ? (
         <>
-          <EditorHeader
-            onImport={deckImport.openImportModal}
-            onExport={() => mergedWorkingCardsLength > 0 && deckImport.openExportModal()}
-            exportDisabled={isHydrated && (mergedWorkingCardsLength === 0 || baselineDeck.status === "loading")}
-            onAddCard={(card: SearchCardResult) =>
-              setWorkingCards((cards) => appendSearchCard(cards, card))
+          <StackEditor
+            baselineDeck={baselineDeck}
+            categories={categories}
+            compareMode={compareMode}
+            dismissWarnings={dismissWarnings}
+            groupedRows={groupedRows}
+            resultCardTotal={resultCardTotal}
+            searchToolbar={
+              <EditorHeader
+                onImport={deckImport.openImportModal}
+                onExport={() => mergedWorkingCardsLength > 0 && deckImport.openExportModal()}
+                exportDisabled={
+                  isHydrated &&
+                  (mergedWorkingCardsLength === 0 || baselineDeck.status === "loading")
+                }
+                onPreviewCard={(card) =>
+                  preview.updatePreviewCard({
+                    name: card.name,
+                    setCode: card.setCode,
+                    collectorNumber: card.collectorNumber,
+                  })
+                }
+              />
             }
-            onPreviewCard={(card) =>
-              preview.updatePreviewCard({
-                name: card.name,
-                setCode: card.setCode,
-                collectorNumber: card.collectorNumber,
-              })
-            }
+            setShowDiffOnly={setShowDiffOnly}
+            setCategories={setCategories}
+            setStackLayout={setStackLayout}
+            setWorkingCards={setWorkingCards}
+            showDiffOnly={showDiffOnly}
+            stackLayout={stackLayout}
           />
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 px-5 py-3">
-            <ViewModeSwitch mode={deckViewMode} onChange={setDeckViewMode} />
-            {deckViewMode === "stack" ? (
-              <button
-                type="button"
-                onClick={toggleEmptyStackLane}
-                disabled={compareMode}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {hasEmptyStackLane ? "Remove empty lane" : "Add lane"}
-              </button>
-            ) : null}
-          </div>
-
-          {deckViewMode === "list" ? (
-            <DeckListEditor
-              baselineDeck={baselineDeck}
-              compareMode={compareMode}
-              dismissWarnings={dismissWarnings}
-              emptyMessage={emptyMessage}
-              groupedRows={groupedRows}
-              preview={preview}
-              resultCardTotal={resultCardTotal}
-              setShowDiffOnly={setShowDiffOnly}
-              setWorkingCards={setWorkingCards}
-              showDiffOnly={showDiffOnly}
-            />
-          ) : (
-            <StackEditor
-              baselineDeck={baselineDeck}
-              compareMode={compareMode}
-              dismissWarnings={dismissWarnings}
-              groupedRows={groupedRows}
-              resultCardTotal={resultCardTotal}
-              setShowDiffOnly={setShowDiffOnly}
-              setStackLayout={setStackLayout}
-              setWorkingCards={setWorkingCards}
-              showDiffOnly={showDiffOnly}
-              stackLayout={stackLayout}
-            />
-          )}
         </>
       ) : (
         <SaveHistoryPanel
@@ -509,92 +492,30 @@ function DeckEditorSurface({
   );
 }
 
-function DeckListEditor({
-  baselineDeck,
-  compareMode,
-  dismissWarnings,
-  emptyMessage,
-  groupedRows,
-  preview,
-  resultCardTotal,
-  setShowDiffOnly,
-  setWorkingCards,
-  showDiffOnly,
-}: {
-  baselineDeck: DeckState;
-  compareMode: boolean;
-  dismissWarnings: () => void;
-  emptyMessage: string;
-  groupedRows: Record<CardCategory, EditorRow[]>;
-  preview: ReturnType<typeof useDeckPreview>;
-  resultCardTotal: number;
-  setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
-  setWorkingCards: (workingCards: SetStateAction<ValidatedDeckCard[]>) => void;
-  showDiffOnly: boolean;
-}) {
-  return (
-    <div className="grid gap-0 lg:grid-cols-[320px_minmax(0,1fr)]">
-      <div className="p-5 lg:pr-0">
-        <CardPreviewPanel
-          preview={preview.previewCard}
-          status={preview.previewStatus}
-          requestedName={preview.previewLookup?.name ?? null}
-          isPinned={preview.isPreviewPinned}
-          onTogglePinned={preview.togglePreviewPinned}
-        />
-      </div>
-
-      <div className="min-w-0">
-        <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
-        <EditorDeckList
-          groupedRows={groupedRows}
-          emptyMessage={emptyMessage}
-          resultCardTotal={resultCardTotal}
-          showDiffOnly={showDiffOnly}
-          onToggleShowDiffOnly={() => setShowDiffOnly((current) => !current)}
-          onAdjustQuantity={
-            compareMode
-              ? undefined
-              : (row: EditorRow, delta: number) =>
-                  setWorkingCards((cards) => adjustCardQuantity(cards, row, delta))
-          }
-          onRestoreCard={
-            compareMode
-              ? undefined
-              : (row: EditorRow) => setWorkingCards((cards) => restoreEditorRow(cards, row))
-          }
-          onPreviewCard={(row) =>
-            preview.updatePreviewCard({
-              name: row.name,
-              setCode: row.setCode,
-              collectorNumber: row.collectorNumber,
-            })
-          }
-          readOnly={compareMode}
-        />
-      </div>
-    </div>
-  );
-}
-
 function StackEditor({
   baselineDeck,
+  categories,
   compareMode,
   dismissWarnings,
   groupedRows,
   resultCardTotal,
+  searchToolbar,
   setShowDiffOnly,
+  setCategories,
   setStackLayout,
   setWorkingCards,
   showDiffOnly,
   stackLayout,
 }: {
   baselineDeck: DeckState;
+  categories: DeckCategory[];
   compareMode: boolean;
   dismissWarnings: () => void;
   groupedRows: Record<CardCategory, EditorRow[]>;
   resultCardTotal: number;
+  searchToolbar: ReactNode;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
+  setCategories: (categories: SetStateAction<DeckCategory[]>) => void;
   setStackLayout: (stackLayout: SetStateAction<DeckStackLayout>) => void;
   setWorkingCards: (workingCards: SetStateAction<ValidatedDeckCard[]>) => void;
   showDiffOnly: boolean;
@@ -604,12 +525,19 @@ function StackEditor({
     <div className="min-w-0">
       <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
       <EditorDeckStack
+        categories={categories}
         groupedRows={groupedRows}
         resultCardTotal={resultCardTotal}
         showDiffOnly={showDiffOnly}
         layout={stackLayout}
         onToggleShowDiffOnly={() => setShowDiffOnly((current) => !current)}
-        onLayoutChange={(layout: DeckStackLayout) => setStackLayout(normalizeStackLayout(layout))}
+        onLayoutChange={(layout: DeckStackLayout) =>
+          setStackLayout(normalizeStackLayout(layout, categories))
+        }
+        searchToolbar={searchToolbar}
+        onAddSearchCard={(card, category) =>
+          setWorkingCards((cards) => appendSearchCard(cards, card, category))
+        }
         onAdjustQuantity={
           compareMode
             ? undefined
@@ -622,6 +550,47 @@ function StackEditor({
             : (row: EditorRow, category: CardCategory) =>
                 setWorkingCards((cards) => moveEditorRowCategory(cards, row, category))
         }
+        onMoveCategoryCards={
+          compareMode
+            ? undefined
+            : (category: CardCategory, targetCategory: CardCategory) =>
+                setWorkingCards((cards) =>
+                  cards.map((card) =>
+                    card.categoryId === category ? { ...card, categoryId: targetCategory } : card,
+                  ),
+                )
+        }
+        onCreateCategoryInLane={(laneIndex, category) => {
+          if (compareMode) return;
+          setCategories((current) => [...current, category]);
+          setStackLayout((current) => ({
+            lanes: current.lanes.map((lane, index) =>
+              index === laneIndex ? [...lane, category.id] : lane,
+            ),
+          }));
+        }}
+        onRemoveLane={(laneIndex) => {
+          if (compareMode) return;
+          setStackLayout((current) => removeStackLane(current, laneIndex));
+        }}
+        onRenameCategory={(categoryId, name) => {
+          if (compareMode) return;
+          setCategories((current) =>
+            current.map((category) =>
+              category.id === categoryId ? { ...category, name } : category,
+            ),
+          );
+        }}
+        onRemoveCategory={(categoryId) => {
+          if (compareMode || (groupedRows[categoryId] ?? []).length > 0) return;
+          setCategories((current) => current.filter((category) => category.id !== categoryId));
+          setStackLayout((current) => ({
+            lanes: current.lanes.reduce<CardCategory[][]>((lanes, lane) => {
+              const nextLane = lane.filter((category) => category !== categoryId);
+              return nextLane.length > 0 ? [...lanes, nextLane] : lanes;
+            }, []),
+          }));
+        }}
         readOnly={compareMode}
       />
     </div>
@@ -642,40 +611,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={`px-5 py-3 text-sm font-medium transition ${
-        active
-          ? "border-b-2 border-cyan-400 text-cyan-400"
-          : "text-zinc-500 hover:text-zinc-300"
+        active ? "border-b-2 border-cyan-400 text-cyan-400" : "text-zinc-500 hover:text-zinc-300"
       }`}
     >
       {children}
     </button>
-  );
-}
-
-function ViewModeSwitch({
-  mode,
-  onChange,
-}: {
-  mode: "list" | "stack";
-  onChange: (mode: "list" | "stack") => void;
-}) {
-  return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 p-1">
-      {(["list", "stack"] as const).map((viewMode) => (
-        <button
-          key={viewMode}
-          type="button"
-          onClick={() => onChange(viewMode)}
-          aria-pressed={mode === viewMode}
-          className={`rounded-md px-3 py-1.5 text-sm capitalize transition ${
-            mode === viewMode
-              ? "bg-cyan-400 text-zinc-950"
-              : "text-zinc-400 hover:text-zinc-100"
-          }`}
-        >
-          {viewMode}
-        </button>
-      ))}
-    </div>
   );
 }

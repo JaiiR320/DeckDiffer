@@ -1,12 +1,14 @@
+import { useDragDropMonitor } from "@dnd-kit/react";
 import { Download, Import } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { searchCards, type SearchCardResult } from "../../lib/scryfall";
+import { StackCard } from "./stack/StackCard";
+import type { EditorRow } from "./types";
 
 type EditorHeaderProps = {
   onImport: () => void;
   onExport: () => void;
   exportDisabled: boolean;
-  onAddCard: (card: SearchCardResult) => void;
   onPreviewCard: (card: SearchCardResult) => void;
 };
 
@@ -44,12 +46,12 @@ export function EditorHeader({
   onImport,
   onExport,
   exportDisabled,
-  onAddCard,
   onPreviewCard,
 }: EditorHeaderProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inactivityTimeoutRef = useRef<number | null>(null);
   const [query, setQuery] = useState("");
+  const [isDraggingSearchCard, setIsDraggingSearchCard] = useState(false);
   const [{ results, isSearching, isResultsOpen }, dispatchSearch] = useReducer(searchReducer, {
     results: [],
     isSearching: false,
@@ -124,12 +126,24 @@ export function EditorHeader({
     };
   }, []);
 
-  function handleSelectCard(card: SearchCardResult) {
-    onAddCard(card);
-    setQuery("");
-    dispatchSearch({ type: "clear" });
-    clearInactivityTimer();
-  }
+  useDragDropMonitor({
+    onDragStart(event) {
+      if (event.operation.source?.type !== "search-card") {
+        return;
+      }
+
+      clearInactivityTimer();
+      setIsDraggingSearchCard(true);
+    },
+    onDragEnd(event) {
+      if (event.operation.source?.type !== "search-card") {
+        return;
+      }
+
+      setIsDraggingSearchCard(false);
+      dispatchSearch({ type: "close" });
+    },
+  });
 
   return (
     <div className="border-b border-zinc-800 p-5">
@@ -160,29 +174,23 @@ export function EditorHeader({
           />
 
           {query.trim().length >= 3 && isResultsOpen ? (
-            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40">
+            <div
+              className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${isDraggingSearchCard ? "pointer-events-none opacity-0" : "opacity-100"}`}
+            >
               {isSearching ? (
                 <div className="px-4 py-3 text-sm text-zinc-500">Searching cards…</div>
               ) : results.length > 0 ? (
-                <div className="divide-y divide-zinc-800">
-                  {results.map((card) => (
-                    <button
+                <div className="flex gap-3 overflow-x-auto p-4">
+                  {results.map((card, index) => (
+                    <SearchResultCard
                       key={`${card.oracleId}-${card.name}`}
-                      type="button"
-                      onMouseEnter={() => {
+                      card={card}
+                      index={index}
+                      onPreview={() => {
                         resetInactivityTimer();
                         onPreviewCard(card);
                       }}
-                      onFocus={() => {
-                        resetInactivityTimer();
-                        onPreviewCard(card);
-                      }}
-                      onClick={() => handleSelectCard(card)}
-                      className="block w-full px-4 py-3 text-left transition hover:bg-zinc-900"
-                    >
-                      <div className="text-sm font-medium text-zinc-100">{card.name}</div>
-                      <div className="mt-1 text-xs text-zinc-500">{card.typeLine}</div>
-                    </button>
+                    />
                   ))}
                 </div>
               ) : (
@@ -212,6 +220,49 @@ export function EditorHeader({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SearchResultCard({
+  card,
+  index,
+  onPreview,
+}: {
+  card: SearchCardResult;
+  index: number;
+  onPreview: () => void;
+}) {
+  const row: EditorRow = {
+    oracleId: card.oracleId,
+    name: card.name,
+    category: card.categoryId,
+    typeLine: card.typeLine,
+    manaValue: card.manaValue,
+    setCode: card.setCode,
+    collectorNumber: card.collectorNumber,
+    smallImageUrl: card.smallImageUrl,
+    imageUrl: card.imageUrl,
+    baselineQuantity: 0,
+    currentQuantity: 1,
+    status: "same",
+  };
+
+  return (
+    <div onMouseEnter={onPreview} onFocus={onPreview}>
+      <StackCard
+        row={row}
+        index={index}
+        isHovered={false}
+        isShifted={false}
+        onHover={onPreview}
+        dragId={`search-card:${card.oracleId}:${card.setCode ?? ""}:${card.collectorNumber ?? ""}`}
+        dragType="search-card"
+        dragData={{ card }}
+        layout="inline"
+        readOnly={false}
+        showControls={false}
+      />
     </div>
   );
 }

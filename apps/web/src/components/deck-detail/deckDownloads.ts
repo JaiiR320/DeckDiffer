@@ -8,7 +8,9 @@ export function downloadLatestDeckSave(deck: DeckItem) {
     return;
   }
 
-  const url = URL.createObjectURL(new Blob([formatDeckExport(latestSave.cards)], { type: "text/plain" }));
+  const url = URL.createObjectURL(
+    new Blob([formatDeckExport(latestSave.cards)], { type: "text/plain" }),
+  );
   const link = document.createElement("a");
   link.href = url;
   link.download = `${deck.name.replace(/\s+/g, "-").toLowerCase()}.txt`;

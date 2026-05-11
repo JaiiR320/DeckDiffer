@@ -17,10 +17,7 @@ type UseDeckImportOptions = {
   };
 };
 
-export function useDeckImport({
-  deckState,
-  editorActions,
-}: UseDeckImportOptions) {
+export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions) {
   const [draftDeck, setDraftDeck] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -95,7 +92,13 @@ export function useDeckImport({
         return;
       }
 
-      setBaselineDeck({ rawText, cards: validCards, invalidCards: warnings, status: "ready", errorMessage: null });
+      setBaselineDeck({
+        rawText,
+        cards: validCards,
+        invalidCards: warnings,
+        status: "ready",
+        errorMessage: null,
+      });
       setWorkingCards(validCards);
     } catch (error) {
       if (mode === "replace-empty") {
@@ -104,7 +107,8 @@ export function useDeckImport({
           cards: [],
           invalidCards: [],
           status: "error",
-          errorMessage: error instanceof Error ? error.message : "Could not import this deck right now.",
+          errorMessage:
+            error instanceof Error ? error.message : "Could not import this deck right now.",
         });
         setWorkingCards([]);
         return;

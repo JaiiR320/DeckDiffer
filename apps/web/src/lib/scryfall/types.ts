@@ -128,6 +128,7 @@ export type SearchCardResult = {
   name: string;
   typeLine: string;
   category: ReturnType<typeof getCardCategory>;
+  categoryId: string;
   manaValue: number;
   setCode?: string;
   collectorNumber?: string;

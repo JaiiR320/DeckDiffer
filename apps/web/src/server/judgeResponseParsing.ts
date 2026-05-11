@@ -68,11 +68,11 @@ export function getJudgeResponseText(payload: JudgeBackendResponse) {
         continue;
       }
 
-          const rule = typeof citation.rule === "string" ? citation.rule.trim() : "";
-          const excerpt = typeof citation.excerpt === "string" ? citation.excerpt.trim() : "";
-          if (!rule && !excerpt) {
+      const rule = typeof citation.rule === "string" ? citation.rule.trim() : "";
+      const excerpt = typeof citation.excerpt === "string" ? citation.excerpt.trim() : "";
+      if (!rule && !excerpt) {
         continue;
-          }
+      }
 
       citations.push(rule ? `${rule}: ${excerpt}`.trim() : excerpt);
     }

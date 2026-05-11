@@ -2,7 +2,21 @@ import type { EditorRow } from "../deck-editor/types";
 import type { CardCategory, ValidatedDeckCard } from "../../lib/decklist";
 import type { SearchCardResult } from "../../lib/scryfall";
 
-export function appendSearchCard(cards: ValidatedDeckCard[], card: SearchCardResult) {
+export function appendSearchCard(
+  cards: ValidatedDeckCard[],
+  card: SearchCardResult,
+  categoryId: CardCategory,
+) {
+  const existingIndex = cards.findIndex((existingCard) => existingCard.oracleId === card.oracleId);
+
+  if (existingIndex !== -1) {
+    return cards.map((existingCard, index) =>
+      index === existingIndex
+        ? { ...existingCard, quantity: existingCard.quantity + 1, categoryId }
+        : existingCard,
+    );
+  }
+
   return [
     ...cards,
     {
@@ -10,7 +24,7 @@ export function appendSearchCard(cards: ValidatedDeckCard[], card: SearchCardRes
       name: card.name,
       quantity: 1,
       typeLine: card.typeLine,
-      category: card.category,
+      categoryId,
       manaValue: card.manaValue,
       setCode: card.setCode,
       collectorNumber: card.collectorNumber,
@@ -33,7 +47,7 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
             name: row.name,
             quantity: 1,
             typeLine: row.typeLine,
-            category: row.category,
+            categoryId: row.category,
             manaValue: row.manaValue,
             setCode: row.setCode,
             collectorNumber: row.collectorNumber,
@@ -56,30 +70,6 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
   });
 }
 
-export function restoreEditorRow(cards: ValidatedDeckCard[], row: EditorRow) {
-  const nextCards = cards.filter((card) => card.oracleId !== row.oracleId);
-
-  if (row.baselineQuantity <= 0) {
-    return nextCards;
-  }
-
-  return [
-    ...nextCards,
-    {
-      oracleId: row.oracleId,
-      name: row.name,
-      quantity: row.baselineQuantity,
-      typeLine: row.typeLine,
-      category: row.category,
-      manaValue: row.manaValue,
-      setCode: row.setCode,
-      collectorNumber: row.collectorNumber,
-      smallImageUrl: row.smallImageUrl,
-      imageUrl: row.imageUrl,
-    },
-  ];
-}
-
 export function moveEditorRowCategory(
   cards: ValidatedDeckCard[],
   row: EditorRow,
@@ -93,7 +83,7 @@ export function moveEditorRowCategory(
     card.oracleId === row.oracleId
       ? {
           ...card,
-          category,
+          categoryId: category,
         }
       : card,
   );

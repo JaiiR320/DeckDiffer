@@ -4,7 +4,12 @@ import type { Dispatch, SetStateAction } from "react";
 import type { DeckState } from "../deck-editor/types";
 import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "../../lib/deck";
 import { normalizeStackLayout } from "../../lib/deckLayout";
-import type { ValidatedDeckCard } from "../../lib/decklist";
+import {
+  normalizeDeckCategories,
+  type DeckCategory,
+  type ValidatedDeckCard,
+} from "../../lib/decklist";
+import { normalizeDeckSave } from "../../lib/deckSave";
 import { deleteDeckForUser, renameDeckForUser, saveDeckForUser } from "#/server/decks";
 import { downloadLatestDeckSave } from "./deckDownloads";
 
@@ -16,10 +21,13 @@ type UseDeckActionsOptions = {
   };
   editorState: {
     stackLayout: DeckStackLayout;
+    categories: DeckCategory[];
     workingCards: ValidatedDeckCard[];
     setBaselineDeck: Dispatch<SetStateAction<DeckState>>;
+    setBaselineCategories: Dispatch<SetStateAction<DeckCategory[]>>;
     setBaselineStackLayout: Dispatch<SetStateAction<DeckStackLayout>>;
     setStackLayout: Dispatch<SetStateAction<DeckStackLayout>>;
+    setCategories: Dispatch<SetStateAction<DeckCategory[]>>;
     setWorkingCards: Dispatch<SetStateAction<ValidatedDeckCard[]>>;
   };
   navigationState: {
@@ -29,31 +37,40 @@ type UseDeckActionsOptions = {
   };
 };
 
-export function useDeckActions({
-  deckState,
-  editorState,
-  navigationState,
-}: UseDeckActionsOptions) {
+export function useDeckActions({ deckState, editorState, navigationState }: UseDeckActionsOptions) {
   const navigate = useNavigate();
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [isDeckActionsOpen, setIsDeckActionsOpen] = useState(false);
   const { deck, setDeck, setDeckErrorMessage } = deckState;
   const {
     stackLayout,
+    categories,
     workingCards,
     setBaselineDeck,
+    setBaselineCategories,
     setBaselineStackLayout,
     setStackLayout,
+    setCategories,
     setWorkingCards,
   } = editorState;
   const { setActiveTab, setCompareMode, setCompareSaves } = navigationState;
 
   function loadCardsFromSave(save: DeckSave, updateBaseline: boolean) {
-    const saveLayout = normalizeStackLayout(save.layout);
-    setWorkingCards(save.cards);
-    setBaselineDeck({ rawText: "", cards: save.cards, invalidCards: [], status: "ready", errorMessage: null });
+    const normalizedSave = normalizeDeckSave(save);
+    const saveCategories = normalizeDeckCategories(normalizedSave.categories);
+    const saveLayout = normalizeStackLayout(normalizedSave.layout, saveCategories);
+    setCategories(saveCategories);
+    setWorkingCards(normalizedSave.cards);
+    setBaselineDeck({
+      rawText: "",
+      cards: normalizedSave.cards,
+      invalidCards: [],
+      status: "ready",
+      errorMessage: null,
+    });
     setStackLayout(saveLayout);
     if (updateBaseline) {
+      setBaselineCategories(saveCategories);
       setBaselineStackLayout(saveLayout);
     }
   }
@@ -63,18 +80,27 @@ export function useDeckActions({
 
     try {
       const updatedDeck = await saveDeckForUser({
-        data: { deckId: deck.id, label, cards: workingCards, layout: stackLayout },
+        data: { deckId: deck.id, label, categories, cards: workingCards, layout: stackLayout },
       });
 
       if (!updatedDeck) throw new Error("Could not save deck.");
 
       setDeck(updatedDeck);
       setDeckErrorMessage(null);
-      setBaselineDeck({ rawText: "", cards: workingCards, invalidCards: [], status: "ready", errorMessage: null });
+      setBaselineDeck({
+        rawText: "",
+        cards: workingCards,
+        invalidCards: [],
+        status: "ready",
+        errorMessage: null,
+      });
+      setBaselineCategories(categories);
       setBaselineStackLayout(stackLayout);
       setIsSaveOpen(false);
     } catch (error) {
-      setDeckErrorMessage(error instanceof Error ? error.message : "Could not save deck right now.");
+      setDeckErrorMessage(
+        error instanceof Error ? error.message : "Could not save deck right now.",
+      );
     }
   }
 
@@ -95,7 +121,9 @@ export function useDeckActions({
 
       setIsDeckActionsOpen(false);
     } catch (error) {
-      setDeckErrorMessage(error instanceof Error ? error.message : "Could not rename deck right now.");
+      setDeckErrorMessage(
+        error instanceof Error ? error.message : "Could not rename deck right now.",
+      );
     }
   }
 
@@ -104,7 +132,9 @@ export function useDeckActions({
       await deleteDeckForUser({ data: { deckId } });
       await navigate({ to: "/decks" });
     } catch (error) {
-      setDeckErrorMessage(error instanceof Error ? error.message : "Could not delete deck right now.");
+      setDeckErrorMessage(
+        error instanceof Error ? error.message : "Could not delete deck right now.",
+      );
     }
   }
 
@@ -124,7 +154,10 @@ export function useDeckActions({
     const olderSave = new Date(saveA.savedAt) <= new Date(saveB.savedAt) ? saveA : saveB;
     const newerSave = new Date(saveA.savedAt) <= new Date(saveB.savedAt) ? saveB : saveA;
     setCompareSaves({ saveA: olderSave, saveB: newerSave });
-    setStackLayout(normalizeStackLayout(newerSave.layout));
+    const normalizedSave = normalizeDeckSave(newerSave);
+    const saveCategories = normalizeDeckCategories(normalizedSave.categories);
+    setCategories(saveCategories);
+    setStackLayout(normalizeStackLayout(normalizedSave.layout, saveCategories));
     setCompareMode(true);
     setActiveTab("editor");
   }

@@ -7,21 +7,21 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
   const faces: CardPreviewFace[] = [];
 
   for (const face of card.card_faces ?? []) {
-      const smallImageUrl = face.image_uris?.small;
-      const imageUrl = face.image_uris?.normal;
+    const smallImageUrl = face.image_uris?.small;
+    const imageUrl = face.image_uris?.normal;
 
-      if (!smallImageUrl || !imageUrl) {
-        continue;
-      }
+    if (!smallImageUrl || !imageUrl) {
+      continue;
+    }
 
-      faces.push({
-        name: face.name ?? card.name,
-        typeLine: face.type_line ?? card.type_line,
-        manaCost: face.mana_cost,
-        oracleText: face.oracle_text,
-        smallImageUrl,
-        imageUrl,
-      });
+    faces.push({
+      name: face.name ?? card.name,
+      typeLine: face.type_line ?? card.type_line,
+      manaCost: face.mana_cost,
+      oracleText: face.oracle_text,
+      smallImageUrl,
+      imageUrl,
+    });
   }
 
   const previewFaces = faces.length > 1 ? faces : undefined;

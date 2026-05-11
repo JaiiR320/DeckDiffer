@@ -38,23 +38,27 @@ function toJudgeCardContext(card: ScryfallJudgeCard, rulings: ScryfallRuling[]):
 
         const faceRecord = face as Record<string, unknown>;
 
-        return [{
-          object: typeof faceRecord.object === "string" ? faceRecord.object : null,
-          name: typeof faceRecord.name === "string" ? faceRecord.name : null,
-          mana_cost: typeof faceRecord.mana_cost === "string" ? faceRecord.mana_cost : null,
-          type_line: typeof faceRecord.type_line === "string" ? faceRecord.type_line : null,
-          oracle_text: typeof faceRecord.oracle_text === "string" ? faceRecord.oracle_text : null,
-          colors: Array.isArray(faceRecord.colors)
-            ? faceRecord.colors.filter((value): value is string => typeof value === "string")
-            : null,
-          color_indicator: Array.isArray(faceRecord.color_indicator)
-            ? faceRecord.color_indicator.filter((value): value is string => typeof value === "string")
-            : null,
-          power: typeof faceRecord.power === "string" ? faceRecord.power : null,
-          toughness: typeof faceRecord.toughness === "string" ? faceRecord.toughness : null,
-          loyalty: typeof faceRecord.loyalty === "string" ? faceRecord.loyalty : null,
-          defense: typeof faceRecord.defense === "string" ? faceRecord.defense : null,
-        }];
+        return [
+          {
+            object: typeof faceRecord.object === "string" ? faceRecord.object : null,
+            name: typeof faceRecord.name === "string" ? faceRecord.name : null,
+            mana_cost: typeof faceRecord.mana_cost === "string" ? faceRecord.mana_cost : null,
+            type_line: typeof faceRecord.type_line === "string" ? faceRecord.type_line : null,
+            oracle_text: typeof faceRecord.oracle_text === "string" ? faceRecord.oracle_text : null,
+            colors: Array.isArray(faceRecord.colors)
+              ? faceRecord.colors.filter((value): value is string => typeof value === "string")
+              : null,
+            color_indicator: Array.isArray(faceRecord.color_indicator)
+              ? faceRecord.color_indicator.filter(
+                  (value): value is string => typeof value === "string",
+                )
+              : null,
+            power: typeof faceRecord.power === "string" ? faceRecord.power : null,
+            toughness: typeof faceRecord.toughness === "string" ? faceRecord.toughness : null,
+            loyalty: typeof faceRecord.loyalty === "string" ? faceRecord.loyalty : null,
+            defense: typeof faceRecord.defense === "string" ? faceRecord.defense : null,
+          },
+        ];
       })
     : null;
 

@@ -1,6 +1,11 @@
-import { getCardCategory } from "../decklist";
+import { getCardCategory, getDefaultCategoryId } from "../decklist";
 import { normalizeCardQuery } from "./query";
-import type { ScryfallCard, ScryfallErrorResponse, ScryfallSearchResponse, SearchCardResult } from "./types";
+import type {
+  ScryfallCard,
+  ScryfallErrorResponse,
+  ScryfallSearchResponse,
+  SearchCardResult,
+} from "./types";
 
 function toSearchCardResult(card: ScryfallCard): SearchCardResult {
   const imageUris = card.image_uris ?? card.card_faces?.find((face) => face.image_uris)?.image_uris;
@@ -10,6 +15,7 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     name: card.name,
     typeLine: card.type_line,
     category: getCardCategory(card.type_line),
+    categoryId: getDefaultCategoryId(card.type_line),
     manaValue: card.cmc ?? 0,
     setCode: card.set?.toUpperCase(),
     collectorNumber: card.collector_number,

@@ -9,6 +9,7 @@ function mapDeckSave(save: DeckSaveRow): DeckSave {
     id: save.id,
     label: save.label,
     savedAt: save.savedAt.toISOString(),
+    categories: save.categories ?? undefined,
     cards: save.cards,
     layout: save.layout ?? undefined,
   };

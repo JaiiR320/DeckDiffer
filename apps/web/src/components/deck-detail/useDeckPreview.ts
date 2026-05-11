@@ -1,9 +1,5 @@
 import { useEffect, useReducer, useRef } from "react";
-import {
-  getCardPreview,
-  type CardPreviewLookup,
-  type CardPreviewResult,
-} from "../../lib/scryfall";
+import { getCardPreview, type CardPreviewLookup, type CardPreviewResult } from "../../lib/scryfall";
 
 type PreviewStatus = "idle" | "loading" | "ready" | "error";
 

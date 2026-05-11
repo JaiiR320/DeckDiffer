@@ -226,6 +226,7 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
       deckId: existingDeck.id,
       label: saveLabel,
       savedAt: now,
+      categories: data.categories ?? null,
       cards: data.cards,
       layout: data.layout ?? null,
     });
