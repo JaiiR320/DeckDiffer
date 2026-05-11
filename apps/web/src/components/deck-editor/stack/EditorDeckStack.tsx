@@ -1,4 +1,9 @@
-import { DragDropProvider, type DragEndEvent, type DragOverEvent } from "@dnd-kit/react";
+import {
+  DragDropProvider,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragOverEvent,
+} from "@dnd-kit/react";
 import { Minus, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
@@ -46,7 +51,9 @@ export function EditorDeckStack({
   const visibleGroupedRows = Object.fromEntries(
     CARD_CATEGORIES.map((category) => [
       category,
-      showDiffOnly ? groupedRows[category].filter((row) => row.status !== "same") : groupedRows[category],
+      showDiffOnly
+        ? groupedRows[category].filter((row) => row.status !== "same")
+        : groupedRows[category],
     ]),
   ) as Record<CardCategory, EditorRow[]>;
   const visibleRows = Object.values(visibleGroupedRows).flat();
@@ -58,8 +65,10 @@ export function EditorDeckStack({
     previousLayout.current = layout;
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { source } = event.operation;
+  function updateCategoryDropPreview(
+    operation: DragMoveEvent["operation"] | DragOverEvent["operation"],
+  ) {
+    const { source } = operation;
 
     if (readOnly || source?.type !== "category") {
       return;
@@ -73,8 +82,8 @@ export function EditorDeckStack({
     const placement = getDropPlacement(
       layout,
       category,
-      event.operation.position.current.x,
-      event.operation.position.current.y,
+      operation.position.current.x,
+      operation.position.current.y,
       laneElements.current,
       categoryElements.current,
     );
@@ -92,6 +101,14 @@ export function EditorDeckStack({
 
       return { category, height, ...placement };
     });
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    updateCategoryDropPreview(event.operation);
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    updateCategoryDropPreview(event.operation);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -142,7 +159,8 @@ export function EditorDeckStack({
     <div className="space-y-4 px-5 pb-5 pt-5">
       <div className="flex items-center justify-between gap-4">
         <p className="font-mono text-sm font-medium uppercase tracking-[0.08em] text-zinc-500">
-          {showDiffOnly ? visibleRows.length : resultCardTotal} {showDiffOnly ? "diff card" : "total card"}
+          {showDiffOnly ? visibleRows.length : resultCardTotal}{" "}
+          {showDiffOnly ? "diff card" : "total card"}
           {showDiffOnly ? (visibleRows.length === 1 ? "" : "s") : resultCardTotal === 1 ? "" : "s"}
         </p>
         <div className="flex items-center gap-4">
@@ -169,10 +187,19 @@ export function EditorDeckStack({
         </div>
       </div>
 
-      <DragDropProvider onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+      <DragDropProvider
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
         <div
           className="grid items-start gap-0 pb-2"
-          style={{ gridTemplateColumns: `repeat(${layout.lanes.length}, minmax(0, 1fr))` } as CSSProperties}
+          style={
+            {
+              gridTemplateColumns: `repeat(${layout.lanes.length}, minmax(0, 1fr))`,
+            } as CSSProperties
+          }
         >
           {layout.lanes.map((lane, laneIndex) => (
             <CategoryLane
