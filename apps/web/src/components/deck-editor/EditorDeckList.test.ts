@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildEditorRows } from "./editorRows";
+import { buildEditorRows, groupEditorRows } from "./editorRows";
 
 describe("buildEditorRows", () => {
   it("returns no diff rows for identical baseline and working cards", () => {
@@ -91,5 +91,31 @@ describe("buildEditorRows", () => {
       "https://cards.example/opt-small.jpg",
     );
     expect(rows.find((row) => row.name === "Counterspell")?.manaValue).toBe(2);
+  });
+
+  it("groups rows by the working card category", () => {
+    const baselineCards = [
+      {
+        oracleId: "card-1",
+        name: "Dryad Arbor",
+        quantity: 1,
+        typeLine: "Land Creature - Forest Dryad",
+        category: "Land" as const,
+      },
+    ];
+    const workingCards = [
+      {
+        oracleId: "card-1",
+        name: "Dryad Arbor",
+        quantity: 1,
+        typeLine: "Land Creature - Forest Dryad",
+        category: "Creature" as const,
+      },
+    ];
+
+    const groupedRows = groupEditorRows(buildEditorRows(baselineCards, workingCards));
+
+    expect(groupedRows.Land).toHaveLength(0);
+    expect(groupedRows.Creature[0]?.name).toBe("Dryad Arbor");
   });
 });

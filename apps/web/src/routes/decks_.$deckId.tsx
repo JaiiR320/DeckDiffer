@@ -20,6 +20,7 @@ import {
   formatDeckExport,
   mergeValidatedCards,
   parseDecklist,
+  type CardCategory,
   type ValidatedDeckCard,
 } from "../lib/decklist";
 import { defaultStackLayout, normalizeStackLayout } from "../lib/deckLayout";
@@ -614,6 +615,23 @@ function DeckDetailPage() {
     });
   }
 
+  function moveCardCategory(row: EditorRow, category: CardCategory) {
+    if (row.category === category || row.currentQuantity <= 0) {
+      return;
+    }
+
+    setWorkingCards((currentCards) =>
+      currentCards.map((card) =>
+        card.oracleId === row.oracleId
+          ? {
+              ...card,
+              category,
+            }
+          : card,
+      ),
+    );
+  }
+
   function exportResult() {
     if (mergedWorkingCards.length === 0) {
       return;
@@ -890,6 +908,7 @@ function DeckDetailPage() {
                     onToggleShowDiffOnly={toggleShowDiffOnly}
                     onLayoutChange={updateStackLayout}
                     onAdjustQuantity={compareMode ? undefined : adjustQuantity}
+                    onMoveCardCategory={compareMode ? undefined : moveCardCategory}
                     readOnly={compareMode}
                   />
                 </div>

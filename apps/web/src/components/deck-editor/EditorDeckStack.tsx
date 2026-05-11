@@ -22,6 +22,7 @@ type EditorDeckStackProps = {
   onToggleShowDiffOnly: () => void;
   onLayoutChange: (layout: DeckStackLayout) => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
+  onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   readOnly?: boolean;
 };
 
@@ -40,6 +41,7 @@ export function EditorDeckStack({
   onToggleShowDiffOnly,
   onLayoutChange,
   onAdjustQuantity,
+  onMoveCardCategory,
   readOnly = false,
 }: EditorDeckStackProps) {
   const previousLayout = useRef(layout);
@@ -101,9 +103,26 @@ export function EditorDeckStack({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { source } = event.operation;
+    const { source, target } = event.operation;
 
-    if (readOnly || source?.type !== "category") {
+    if (readOnly) {
+      setDropPreview(null);
+      return;
+    }
+
+    if (source?.type === "card") {
+      const row = source.data.row as EditorRow | undefined;
+      const category = target?.data.category as CardCategory | undefined;
+
+      if (!event.operation.canceled && row && category && CARD_CATEGORIES.includes(category)) {
+        onMoveCardCategory?.(row, category);
+      }
+
+      setDropPreview(null);
+      return;
+    }
+
+    if (source?.type !== "category") {
       setDropPreview(null);
       return;
     }
@@ -142,6 +161,7 @@ export function EditorDeckStack({
           category={category}
           rows={visibleGroupedRows[category]}
           onAdjustQuantity={onAdjustQuantity}
+          onMoveCardCategory={onMoveCardCategory}
           readOnly={readOnly}
           onCategoryRef={(element) => {
             if (element) {
@@ -231,6 +251,14 @@ export function EditorDeckStack({
 
 function laneId(index: number) {
   return `lane-${index}`;
+}
+
+function cardDragId(oracleId: string) {
+  return `card:${oracleId}`;
+}
+
+function cardCategoryDropId(category: CardCategory) {
+  return `card-category:${category}`;
 }
 
 function moveLayoutByPointer(
@@ -397,6 +425,7 @@ type CategoryStackProps = {
   category: CardCategory;
   rows: EditorRow[];
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
+  onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   readOnly: boolean;
   onCategoryRef: (element: HTMLElement | null) => void;
 };
@@ -405,6 +434,7 @@ function CategoryStack({
   category,
   rows,
   onAdjustQuantity,
+  onMoveCardCategory,
   readOnly,
   onCategoryRef,
 }: CategoryStackProps) {
@@ -417,23 +447,42 @@ function CategoryStack({
   const addedCount = sortedRows.filter((row) => row.status === "added").length;
   const changedCount = sortedRows.filter((row) => row.status === "changed").length;
   const removedCount = sortedRows.filter((row) => row.status === "removed").length;
-  const { isDragging, ref } = useDraggable({
+  const {
+    isDragging,
+    ref: draggableRef,
+    handleRef,
+  } = useDraggable({
     id: category,
     type: "category",
     disabled: readOnly,
+  });
+  const { isDropTarget: isCardDropTarget, ref: droppableRef } = useDroppable({
+    id: cardCategoryDropId(category),
+    type: "card-category",
+    accept: "card",
+    disabled: readOnly || !onMoveCardCategory,
+    data: { category },
   });
 
   return (
     <section
       ref={(element) => {
-        ref(element);
+        draggableRef(element);
+        droppableRef(element);
         onCategoryRef(element);
       }}
-      className={`overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950/80 transition ${
+      className={`relative overflow-hidden rounded-xl border bg-zinc-950/80 transition ${
         isDragging ? "scale-[1.02] border-cyan-400/70 shadow-2xl shadow-cyan-950/30" : ""
+      } ${
+        isCardDropTarget
+          ? "border-cyan-300/80 bg-cyan-950/20 shadow-2xl shadow-cyan-950/40 ring-2 ring-cyan-300/50"
+          : "border-zinc-800"
       }`}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
+      <div
+        ref={handleRef}
+        className={`flex items-start justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-3 py-2 ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`}
+      >
         <div className="min-w-0">
           <h3 className="truncate font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-300">
             {category}
@@ -457,6 +506,14 @@ function CategoryStack({
         </div>
       </div>
 
+      {isCardDropTarget ? (
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-start justify-center rounded-xl bg-cyan-400/5 p-3 ring-1 ring-inset ring-cyan-200/40">
+          <div className="rounded-full border border-cyan-300/50 bg-zinc-950/90 px-3 py-1 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-cyan-200 shadow-xl shadow-black/30">
+            Move to {category}
+          </div>
+        </div>
+      ) : null}
+
       {sortedRows.length === 0 ? (
         <div className="flex min-h-64 items-center justify-center bg-zinc-900/40 px-5 text-center text-sm font-semibold text-zinc-500">
           Empty stack
@@ -475,6 +532,7 @@ function CategoryStack({
               isShifted={hoveredIndex !== null && index > hoveredIndex}
               onHover={() => setHoveredIndex(index)}
               onAdjustQuantity={onAdjustQuantity}
+              onMoveCardCategory={onMoveCardCategory}
               readOnly={readOnly}
             />
           ))}
@@ -496,6 +554,7 @@ type StackCardProps = {
   isShifted: boolean;
   onHover: () => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
+  onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   readOnly: boolean;
 };
 
@@ -506,9 +565,17 @@ function StackCard({
   isShifted,
   onHover,
   onAdjustQuantity,
+  onMoveCardCategory,
   readOnly,
 }: StackCardProps) {
   const [fallbackImageUrl, setFallbackImageUrl] = useState<string | null>(null);
+  const isMoveDisabled = readOnly || !onMoveCardCategory || row.currentQuantity <= 0;
+  const { isDragging, ref } = useDraggable({
+    id: cardDragId(row.oracleId),
+    type: "card",
+    disabled: isMoveDisabled,
+    data: { row },
+  });
   const imageUrl = row.imageUrl ?? fallbackImageUrl;
   const toneClass =
     row.status === "added"
@@ -547,11 +614,9 @@ function StackCard({
       onFocus={onHover}
     >
       <div
-        className="pointer-events-auto absolute inset-x-0 top-0 z-20 h-9"
+        ref={ref}
         onPointerEnter={onHover}
-      />
-      <div
-        className={`relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 ring-1 transition-all duration-300 ${isHovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
+        className={`pointer-events-auto relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 ring-1 transition-all duration-300 ${isMoveDisabled ? "" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "scale-[1.04] rotate-1 opacity-90 shadow-2xl shadow-cyan-950/50 ring-2 ring-cyan-200" : isHovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
       >
         {imageUrl ? (
           <img
