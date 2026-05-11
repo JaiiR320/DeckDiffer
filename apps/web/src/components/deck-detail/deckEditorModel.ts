@@ -1,10 +1,17 @@
 import { buildEditorRows, groupEditorRows } from "../deck-editor/editorRows";
-import type { DeckState } from "../deck-editor/types";
+import type { CategoryDiff, DeckState } from "../deck-editor/types";
 import type { DeckSave } from "../../lib/deck";
-import { mergeValidatedCards, type DeckCategory, type ValidatedDeckCard } from "../../lib/decklist";
+import {
+  type CardCategory,
+  mergeValidatedCards,
+  normalizeDeckCategories,
+  type DeckCategory,
+  type ValidatedDeckCard,
+} from "../../lib/decklist";
 
 type BuildDeckEditorModelOptions = {
   baselineDeck: DeckState;
+  baselineCategories: DeckCategory[];
   compareMode: boolean;
   compareSaves: { saveA: DeckSave; saveB: DeckSave } | null;
   categories: DeckCategory[];
@@ -13,6 +20,7 @@ type BuildDeckEditorModelOptions = {
 
 export function buildDeckEditorModel({
   baselineDeck,
+  baselineCategories,
   compareMode,
   compareSaves,
   categories,
@@ -20,18 +28,46 @@ export function buildDeckEditorModel({
 }: BuildDeckEditorModelOptions) {
   const compareBaselineCards = compareSaves?.saveA.cards ?? baselineDeck.cards;
   const compareWorkingCards = compareSaves?.saveB.cards ?? workingCards;
+  const compareBaselineCategories = compareSaves
+    ? normalizeDeckCategories(compareSaves.saveA.categories)
+    : baselineCategories;
+  const compareWorkingCategories = compareSaves
+    ? normalizeDeckCategories(compareSaves.saveB.categories)
+    : categories;
   const mergedWorkingCards = mergeValidatedCards(compareWorkingCards);
-  const editorRows = buildEditorRows(compareBaselineCards, compareWorkingCards, categories);
+  const editorRows = buildEditorRows(
+    compareBaselineCards,
+    compareWorkingCards,
+    compareWorkingCategories,
+    compareBaselineCategories,
+  );
+  const categoryDiffs = buildCategoryDiffs(compareBaselineCategories, compareWorkingCategories);
 
   return {
+    categoryDiffs,
     emptyMessage:
       baselineDeck.status === "loading"
         ? "Validating the imported deck with Scryfall."
         : compareMode
           ? `Comparing "${compareSaves?.saveA.label}" → "${compareSaves?.saveB.label}"`
           : "Import a deck or add cards to start building.",
-    groupedRows: groupEditorRows(editorRows, categories),
+    groupedRows: groupEditorRows(editorRows, compareWorkingCategories),
     mergedWorkingCards,
     resultCardTotal: editorRows.reduce((total, row) => total + row.currentQuantity, 0),
   };
+}
+
+function buildCategoryDiffs(baselineCategories: DeckCategory[], workingCategories: DeckCategory[]) {
+  const baselineById = new Map(baselineCategories.map((category) => [category.id, category]));
+  const diffs: Record<CardCategory, CategoryDiff> = {};
+
+  for (const category of workingCategories) {
+    const baselineCategory = baselineById.get(category.id);
+
+    if (baselineCategory && baselineCategory.name !== category.name) {
+      diffs[category.id] = { previousName: baselineCategory.name };
+    }
+  }
+
+  return diffs;
 }

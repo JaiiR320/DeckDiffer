@@ -3,13 +3,15 @@ import { MoreHorizontal } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { CardCategory, DeckCategory } from "../../../lib/decklist";
-import type { EditorRow } from "../types";
+import type { CategoryDiff, EditorRow } from "../types";
 import { StackCard } from "./StackCard";
 import { cardCategoryDropId } from "./stackIds";
 
 type CategoryStackProps = {
   category: CardCategory;
   categoryName: string;
+  categoryDiff?: CategoryDiff;
+  diffCounts: CategoryDiffCounts;
   categories: DeckCategory[];
   cardCount: number;
   rows: EditorRow[];
@@ -30,6 +32,12 @@ type MenuState = {
   renameDraft: string;
 };
 
+type CategoryDiffCounts = {
+  added: number;
+  changed: number;
+  removed: number;
+};
+
 const initialMenuState: MenuState = {
   isMenuOpen: false,
   isMovingCards: false,
@@ -40,6 +48,8 @@ const initialMenuState: MenuState = {
 export function CategoryStack({
   category,
   categoryName,
+  categoryDiff,
+  diffCounts,
   categories,
   cardCount,
   rows,
@@ -124,7 +134,7 @@ export function CategoryStack({
         droppableRef(element);
         onCategoryRef(element);
       }}
-      className={`relative overflow-visible rounded-xl border bg-zinc-950/80 transition ${
+      className={`relative select-none overflow-visible rounded-xl border bg-zinc-950/80 transition ${
         isDragging ? "scale-[1.02] border-cyan-400/70 shadow-2xl shadow-cyan-950/30" : ""
       } ${
         isCardDropTarget
@@ -141,7 +151,17 @@ export function CategoryStack({
             <h3 className="truncate font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-300">
               {categoryName}
             </h3>
-            <p className="mt-1 font-mono text-xs text-zinc-600">Qty: {totalQuantity}</p>
+            <p className="mt-1 truncate font-mono text-xs text-zinc-600">
+              Qty: {totalQuantity}
+              <span className="ml-2 text-emerald-300">+{diffCounts.added}</span>
+              <span className="ml-1 text-amber-300">~{diffCounts.changed}</span>
+              <span className="ml-1 text-rose-300">-{diffCounts.removed}</span>
+              {categoryDiff?.previousName ? (
+                <span className="ml-2 uppercase tracking-[0.08em] text-amber-300/80">
+                  was: {categoryDiff.previousName}
+                </span>
+              ) : null}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <div ref={menuRef} className="relative">
@@ -191,7 +211,7 @@ export function CategoryStack({
                         id={`rename-${category}`}
                         value={renameDraft}
                         onChange={(event) => setMenuState({ renameDraft: event.target.value })}
-                        className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
+                        className="w-full select-text rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
                       />
                       <div className="flex gap-2">
                         <button

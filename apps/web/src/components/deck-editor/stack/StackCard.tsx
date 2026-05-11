@@ -58,8 +58,8 @@ export function StackCard({
     <div
       className={
         layout === "stack"
-          ? `pointer-events-none absolute left-3 right-3 overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_2.25rem)]" : "translate-y-0"}`
-          : "pointer-events-none w-36 shrink-0 overflow-visible"
+          ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_2.25rem)]" : "translate-y-0"}`
+          : "pointer-events-none w-36 shrink-0 select-none overflow-visible"
       }
       style={layout === "stack" ? { top: `${index * 36 + 8}px`, zIndex: index + 1 } : undefined}
       onFocus={onHover}
@@ -73,6 +73,7 @@ export function StackCard({
           <img
             src={imageUrl}
             alt={row.name}
+            draggable={false}
             className="h-full w-full object-cover"
             loading="lazy"
           />

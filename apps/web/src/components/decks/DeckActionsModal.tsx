@@ -2,7 +2,12 @@ import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useReducer } from "react";
 import type { DeckItem } from "../../lib/deck";
-import { createCategoryId, type DeckCategory, type ValidatedDeckCard } from "../../lib/decklist";
+import {
+  createCategoryId,
+  hasCategoryName,
+  type DeckCategory,
+  type ValidatedDeckCard,
+} from "../../lib/decklist";
 
 type DeckActionsModalProps = {
   deck: DeckItem;
@@ -95,7 +100,9 @@ export function DeckActionsModal({
   function handleAddCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = newCategoryName.trim();
-    if (!trimmed || !categories || !onCategoriesChange) return;
+    if (!trimmed || !categories || !onCategoriesChange || hasCategoryName(categories, trimmed)) {
+      return;
+    }
 
     onCategoriesChange([
       ...categories,
@@ -107,7 +114,15 @@ export function DeckActionsModal({
   function handleRenameCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = categoryName.trim();
-    if (!trimmed || !renamingCategoryId || !categories || !onCategoriesChange) return;
+    if (
+      !trimmed ||
+      !renamingCategoryId ||
+      !categories ||
+      !onCategoriesChange ||
+      hasCategoryName(categories, trimmed, renamingCategoryId)
+    ) {
+      return;
+    }
 
     onCategoriesChange(
       categories.map((category) =>

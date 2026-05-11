@@ -23,6 +23,10 @@ export type EditorRow = {
   status: "same" | "added" | "removed" | "changed";
 };
 
+export type CategoryDiff = {
+  previousName?: string;
+};
+
 export type ExportModalState = {
   includeQuantity: boolean;
 };

@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { DeckStackLayout } from "#/lib/deck";
-import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
+import {
+  normalizeCategoryNameForCompare,
+  type DeckCategory,
+  type ValidatedDeckCard,
+} from "#/lib/decklist";
 
 export type CreateDeckInput = { name: string };
 export type RenameDeckInput = { deckId: string; newName: string };
@@ -66,7 +70,26 @@ const deckStackLayoutSchema = z.object({
 export const saveDeckInputSchema = z.object({
   deckId: z.string().trim().min(1, "Deck ID is required."),
   label: z.string(),
-  categories: z.array(deckCategorySchema).optional(),
+  categories: z
+    .array(deckCategorySchema)
+    .superRefine((categories, context) => {
+      const names = new Set<string>();
+
+      for (const [index, category] of categories.entries()) {
+        const name = normalizeCategoryNameForCompare(category.name);
+
+        if (names.has(name)) {
+          context.addIssue({
+            code: "custom",
+            message: "Category names must be unique.",
+            path: [index, "name"],
+          });
+        }
+
+        names.add(name);
+      }
+    })
+    .optional(),
   cards: z.array(validatedDeckCardSchema),
   layout: deckStackLayoutSchema.optional(),
 });

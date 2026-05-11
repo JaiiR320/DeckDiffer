@@ -9,13 +9,15 @@ import { ExportDeckModal } from "../components/deck-editor/modals/ExportDeckModa
 import { ImportDeckModal } from "../components/deck-editor/modals/ImportDeckModal";
 import { SaveDeckModal } from "../components/deck-editor/modals/SaveDeckModal";
 import { SaveHistoryPanel } from "../components/deck-editor/SaveHistoryPanel";
-import type { DeckState, EditorRow } from "../components/deck-editor/types";
+import type { CategoryDiff, DeckState, EditorRow } from "../components/deck-editor/types";
 import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "../lib/deck";
 import { defaultStackLayout, normalizeStackLayout } from "../lib/deckLayout";
 import { normalizeDeckSave } from "../lib/deckSave";
 import {
+  createCategoryName,
   defaultDeckCategories,
   formatDecklist,
+  hasCategoryName,
   type CardCategory,
   type DeckCategory,
   type ValidatedDeckCard,
@@ -30,6 +32,13 @@ import {
 import { buildDeckEditorModel } from "../components/deck-detail/deckEditorModel";
 import { DeckDetailHeader } from "../components/deck-detail/DeckDetailHeader";
 import { ErrorBanner, StatusMessage } from "../components/deck-detail/DeckStatusMessages";
+import {
+  type EditorSnapshot,
+  type EditorUndoState,
+  pushUndoSnapshot,
+  redoEditorSnapshot,
+  undoEditorSnapshot,
+} from "../components/deck-detail/editorUndo";
 import { addEmptyStackLane, removeStackLane } from "../components/deck-detail/stackLayoutLane";
 import { useDeckActions } from "../components/deck-detail/useDeckActions";
 import { useDeckImport } from "../components/deck-detail/useDeckImport";
@@ -77,8 +86,10 @@ type PageState = {
   deck: DeckItem | undefined;
   deckErrorMessage: string | null;
   isHydrated: boolean;
+  redoStack: EditorSnapshot[];
   showDiffOnly: boolean;
   stackLayout: DeckStackLayout;
+  undoStack: EditorSnapshot[];
   categories: DeckCategory[];
   workingCards: ValidatedDeckCard[];
 };
@@ -91,6 +102,26 @@ function pageStateReducer(state: PageState, action: PageStateAction): PageState 
 
 function resolveStateAction<T>(current: T, action: SetStateAction<T>) {
   return typeof action === "function" ? (action as (current: T) => T)(current) : action;
+}
+
+function getEditorSnapshot(state: Pick<PageState, "categories" | "stackLayout" | "workingCards">) {
+  return {
+    categories: state.categories,
+    stackLayout: state.stackLayout,
+    workingCards: state.workingCards,
+  };
+}
+
+function applyEditorSnapshot(snapshot: EditorSnapshot) {
+  return {
+    categories: snapshot.categories,
+    stackLayout: snapshot.stackLayout,
+    workingCards: snapshot.workingCards,
+  };
+}
+
+function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): EditorUndoState {
+  return { redoStack: state.redoStack, undoStack: state.undoStack };
 }
 
 function DeckDetailPage() {
@@ -106,8 +137,10 @@ function DeckDetailPage() {
     deck: loaderData.deck ?? undefined,
     deckErrorMessage: loaderData.errorMessage,
     isHydrated: false,
+    redoStack: [],
     showDiffOnly: false,
     stackLayout: defaultStackLayout(),
+    undoStack: [],
     categories: defaultDeckCategories(),
     workingCards: [],
   });
@@ -121,8 +154,10 @@ function DeckDetailPage() {
     deck,
     deckErrorMessage,
     isHydrated,
+    redoStack,
     showDiffOnly,
     stackLayout,
+    undoStack,
     categories,
     workingCards,
   } = pageState;
@@ -171,11 +206,55 @@ function DeckDetailPage() {
     setPageState((current) => ({
       workingCards: resolveStateAction(current.workingCards, workingCards),
     }));
+  const clearUndoHistory = () => setPageState({ undoStack: [], redoStack: [] });
+  const updateEditorSnapshot = (update: (snapshot: EditorSnapshot) => EditorSnapshot) => {
+    setPageState((current) => {
+      const snapshot = getEditorSnapshot(current);
+      const nextSnapshot = update(snapshot);
+
+      if (JSON.stringify(snapshot) === JSON.stringify(nextSnapshot)) {
+        return {};
+      }
+
+      const nextUndoState = pushUndoSnapshot(getUndoState(current), snapshot);
+      return { ...applyEditorSnapshot(nextSnapshot), ...nextUndoState };
+    });
+  };
+  const undoEditorChange = () => {
+    setPageState((current) => {
+      const result = undoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
+
+      if (!result) {
+        return {};
+      }
+
+      return { ...applyEditorSnapshot(result.snapshot), ...result.undoState };
+    });
+  };
+  const redoEditorChange = () => {
+    setPageState((current) => {
+      const result = redoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
+
+      if (!result) {
+        return {};
+      }
+
+      return { ...applyEditorSnapshot(result.snapshot), ...result.undoState };
+    });
+  };
   const deckName = deck?.name ?? deckId;
   const hasCards = workingCards.length > 0;
   const deckImport = useDeckImport({
     deckState: { baselineDeck, workingCards },
-    editorActions: { setBaselineDeck, setWorkingCards },
+    editorActions: {
+      setBaselineDeck,
+      setWorkingCards,
+      setWorkingCardsWithUndo: (workingCards) =>
+        updateEditorSnapshot((current) => ({
+          ...current,
+          workingCards: resolveStateAction(current.workingCards, workingCards),
+        })),
+    },
   });
   const deckActions = useDeckActions({
     deckState: { deck, setDeck, setDeckErrorMessage },
@@ -187,6 +266,7 @@ function DeckDetailPage() {
       setBaselineCategories,
       setBaselineStackLayout,
       setCategories,
+      clearUndoHistory,
       setStackLayout,
       setWorkingCards,
     },
@@ -206,7 +286,9 @@ function DeckDetailPage() {
         deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
+        redoStack: [],
         stackLayout: emptyLayout,
+        undoStack: [],
         categories: emptyCategories,
         workingCards: [],
       });
@@ -231,15 +313,18 @@ function DeckDetailPage() {
         deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
+        redoStack: [],
         stackLayout: latestLayout,
+        undoStack: [],
         categories: latestCategories,
         workingCards: normalizedSave.cards,
       });
     }
   }, [loaderData.deck, loaderData.errorMessage]);
 
-  const { groupedRows, mergedWorkingCards, resultCardTotal } = buildDeckEditorModel({
+  const { categoryDiffs, groupedRows, mergedWorkingCards, resultCardTotal } = buildDeckEditorModel({
     baselineDeck,
+    baselineCategories,
     categories,
     compareMode,
     compareSaves,
@@ -261,8 +346,45 @@ function DeckDetailPage() {
   const canSave = hasEditorChanges && (hasCards || categories.length > 0);
 
   function addStackLane() {
-    setStackLayout(addEmptyStackLane);
+    updateEditorSnapshot((current) => ({
+      ...current,
+      stackLayout: addEmptyStackLane(current.stackLayout),
+    }));
   }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        compareMode ||
+        target?.closest("input,textarea,select") ||
+        target?.isContentEditable ||
+        !(event.metaKey || event.ctrlKey)
+      ) {
+        return;
+      }
+
+      if (event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoEditorChange();
+        } else {
+          undoEditorChange();
+        }
+      }
+
+      if (event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redoEditorChange();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [compareMode]);
 
   if (loaderData.errorMessage) {
     return <StatusMessage>{loaderData.errorMessage}</StatusMessage>;
@@ -302,6 +424,7 @@ function DeckDetailPage() {
           deck={deck}
           deckActions={deckActions}
           deckImport={deckImport}
+          categoryDiffs={categoryDiffs}
           groupedRows={groupedRows}
           categories={categories}
           isHydrated={isHydrated}
@@ -310,10 +433,12 @@ function DeckDetailPage() {
           resultCardTotal={resultCardTotal}
           setActiveTab={setActiveTab}
           setBaselineDeck={setBaselineDeck}
-          setCategories={setCategories}
+          canRedo={!compareMode && redoStack.length > 0}
+          canUndo={!compareMode && undoStack.length > 0}
+          onRedo={redoEditorChange}
+          onUndo={undoEditorChange}
           setShowDiffOnly={setShowDiffOnly}
-          setStackLayout={setStackLayout}
-          setWorkingCards={setWorkingCards}
+          updateEditorSnapshot={updateEditorSnapshot}
           showDiffOnly={showDiffOnly}
           stackLayout={stackLayout}
         />
@@ -349,7 +474,11 @@ function DeckDetailPage() {
           defaultLabel={defaultSaveLabel}
           isOpen={deckActions.isSaveOpen}
           onClose={() => deckActions.setIsSaveOpen(false)}
-          onSave={(label) => void deckActions.saveDeck(label)}
+          onSave={(label) =>
+            void deckActions.saveDeck(label).then((saved) => {
+              if (saved) clearUndoHistory();
+            })
+          }
         />
       ) : null}
 
@@ -365,8 +494,11 @@ function DeckDetailPage() {
           cards={workingCards}
           onAddLane={compareMode ? undefined : addStackLane}
           onCategoriesChange={(nextCategories) => {
-            setCategories(nextCategories);
-            setStackLayout((current) => normalizeStackLayout(current, nextCategories));
+            updateEditorSnapshot((current) => ({
+              ...current,
+              categories: nextCategories,
+              stackLayout: normalizeStackLayout(current.stackLayout, nextCategories),
+            }));
           }}
         />
       ) : null}
@@ -377,22 +509,25 @@ function DeckDetailPage() {
 type DeckEditorSurfaceProps = {
   activeTab: "editor" | "history";
   baselineDeck: DeckState;
+  canRedo: boolean;
+  canUndo: boolean;
   compareMode: boolean;
   deck: DeckItem;
   deckActions: ReturnType<typeof useDeckActions>;
   deckImport: ReturnType<typeof useDeckImport>;
   categories: DeckCategory[];
+  categoryDiffs: Record<CardCategory, CategoryDiff>;
   groupedRows: Record<CardCategory, EditorRow[]>;
   isHydrated: boolean;
   mergedWorkingCardsLength: number;
   preview: ReturnType<typeof useDeckPreview>;
   resultCardTotal: number;
+  onRedo: () => void;
+  onUndo: () => void;
   setActiveTab: (activeTab: SetStateAction<"editor" | "history">) => void;
   setBaselineDeck: (baselineDeck: SetStateAction<DeckState>) => void;
-  setCategories: (categories: SetStateAction<DeckCategory[]>) => void;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
-  setStackLayout: (stackLayout: SetStateAction<DeckStackLayout>) => void;
-  setWorkingCards: (workingCards: SetStateAction<ValidatedDeckCard[]>) => void;
+  updateEditorSnapshot: (update: (snapshot: EditorSnapshot) => EditorSnapshot) => void;
   showDiffOnly: boolean;
   stackLayout: DeckStackLayout;
 };
@@ -400,22 +535,25 @@ type DeckEditorSurfaceProps = {
 function DeckEditorSurface({
   activeTab,
   baselineDeck,
+  canRedo,
+  canUndo,
   compareMode,
   deck,
   deckActions,
   deckImport,
+  categoryDiffs,
   categories,
   groupedRows,
   isHydrated,
   mergedWorkingCardsLength,
   preview,
   resultCardTotal,
+  onRedo,
+  onUndo,
   setActiveTab,
   setBaselineDeck,
-  setCategories,
   setShowDiffOnly,
-  setStackLayout,
-  setWorkingCards,
+  updateEditorSnapshot,
   showDiffOnly,
   stackLayout,
 }: DeckEditorSurfaceProps) {
@@ -451,18 +589,23 @@ function DeckEditorSurface({
           <StackEditor
             baselineDeck={baselineDeck}
             categories={categories}
+            categoryDiffs={categoryDiffs}
             compareMode={compareMode}
             dismissWarnings={dismissWarnings}
             groupedRows={groupedRows}
             resultCardTotal={resultCardTotal}
             searchToolbar={
               <EditorHeader
+                canRedo={canRedo}
+                canUndo={canUndo}
                 onImport={deckImport.openImportModal}
                 onExport={() => mergedWorkingCardsLength > 0 && deckImport.openExportModal()}
                 exportDisabled={
                   isHydrated &&
                   (mergedWorkingCardsLength === 0 || baselineDeck.status === "loading")
                 }
+                onRedo={onRedo}
+                onUndo={onUndo}
                 onPreviewCard={(card) =>
                   preview.updatePreviewCard({
                     name: card.name,
@@ -473,9 +616,7 @@ function DeckEditorSurface({
               />
             }
             setShowDiffOnly={setShowDiffOnly}
-            setCategories={setCategories}
-            setStackLayout={setStackLayout}
-            setWorkingCards={setWorkingCards}
+            updateEditorSnapshot={updateEditorSnapshot}
             showDiffOnly={showDiffOnly}
             stackLayout={stackLayout}
           />
@@ -495,29 +636,27 @@ function DeckEditorSurface({
 function StackEditor({
   baselineDeck,
   categories,
+  categoryDiffs,
   compareMode,
   dismissWarnings,
   groupedRows,
   resultCardTotal,
   searchToolbar,
   setShowDiffOnly,
-  setCategories,
-  setStackLayout,
-  setWorkingCards,
+  updateEditorSnapshot,
   showDiffOnly,
   stackLayout,
 }: {
   baselineDeck: DeckState;
   categories: DeckCategory[];
+  categoryDiffs: Record<CardCategory, CategoryDiff>;
   compareMode: boolean;
   dismissWarnings: () => void;
   groupedRows: Record<CardCategory, EditorRow[]>;
   resultCardTotal: number;
   searchToolbar: ReactNode;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
-  setCategories: (categories: SetStateAction<DeckCategory[]>) => void;
-  setStackLayout: (stackLayout: SetStateAction<DeckStackLayout>) => void;
-  setWorkingCards: (workingCards: SetStateAction<ValidatedDeckCard[]>) => void;
+  updateEditorSnapshot: (update: (snapshot: EditorSnapshot) => EditorSnapshot) => void;
   showDiffOnly: boolean;
   stackLayout: DeckStackLayout;
 }) {
@@ -526,69 +665,99 @@ function StackEditor({
       <DeckAlerts deck={baselineDeck} onDismissWarnings={dismissWarnings} />
       <EditorDeckStack
         categories={categories}
+        categoryDiffs={categoryDiffs}
         groupedRows={groupedRows}
         resultCardTotal={resultCardTotal}
         showDiffOnly={showDiffOnly}
         layout={stackLayout}
         onToggleShowDiffOnly={() => setShowDiffOnly((current) => !current)}
         onLayoutChange={(layout: DeckStackLayout) =>
-          setStackLayout(normalizeStackLayout(layout, categories))
+          updateEditorSnapshot((current) => ({
+            ...current,
+            stackLayout: normalizeStackLayout(layout, current.categories),
+          }))
         }
         searchToolbar={searchToolbar}
         onAddSearchCard={(card, category) =>
-          setWorkingCards((cards) => appendSearchCard(cards, card, category))
+          updateEditorSnapshot((current) => ({
+            ...current,
+            workingCards: appendSearchCard(current.workingCards, card, category),
+          }))
         }
         onAdjustQuantity={
           compareMode
             ? undefined
             : (row: EditorRow, delta: number) =>
-                setWorkingCards((cards) => adjustCardQuantity(cards, row, delta))
+                updateEditorSnapshot((current) => ({
+                  ...current,
+                  workingCards: adjustCardQuantity(current.workingCards, row, delta),
+                }))
         }
         onMoveCardCategory={
           compareMode
             ? undefined
             : (row: EditorRow, category: CardCategory) =>
-                setWorkingCards((cards) => moveEditorRowCategory(cards, row, category))
+                updateEditorSnapshot((current) => ({
+                  ...current,
+                  workingCards: moveEditorRowCategory(current.workingCards, row, category),
+                }))
         }
         onMoveCategoryCards={
           compareMode
             ? undefined
             : (category: CardCategory, targetCategory: CardCategory) =>
-                setWorkingCards((cards) =>
-                  cards.map((card) =>
+                updateEditorSnapshot((current) => ({
+                  ...current,
+                  workingCards: current.workingCards.map((card) =>
                     card.categoryId === category ? { ...card, categoryId: targetCategory } : card,
                   ),
-                )
+                }))
         }
         onCreateCategoryInLane={(laneIndex, category) => {
           if (compareMode) return;
-          setCategories((current) => [...current, category]);
-          setStackLayout((current) => ({
-            lanes: current.lanes.map((lane, index) =>
-              index === laneIndex ? [...lane, category.id] : lane,
-            ),
-          }));
+          updateEditorSnapshot((current) => {
+            const name = createCategoryName(category.name, current.categories);
+            const nextCategory = { ...category, name };
+
+            return {
+              ...current,
+              categories: [...current.categories, nextCategory],
+              stackLayout: {
+                lanes: current.stackLayout.lanes.map((lane, index) =>
+                  index === laneIndex ? [...lane, nextCategory.id] : lane,
+                ),
+              },
+            };
+          });
         }}
         onRemoveLane={(laneIndex) => {
           if (compareMode) return;
-          setStackLayout((current) => removeStackLane(current, laneIndex));
+          updateEditorSnapshot((current) => ({
+            ...current,
+            stackLayout: removeStackLane(current.stackLayout, laneIndex),
+          }));
         }}
         onRenameCategory={(categoryId, name) => {
           if (compareMode) return;
-          setCategories((current) =>
-            current.map((category) =>
+          if (hasCategoryName(categories, name, categoryId)) return;
+          updateEditorSnapshot((current) => ({
+            ...current,
+            categories: current.categories.map((category) =>
               category.id === categoryId ? { ...category, name } : category,
             ),
-          );
+          }));
         }}
         onRemoveCategory={(categoryId) => {
           if (compareMode || (groupedRows[categoryId] ?? []).length > 0) return;
-          setCategories((current) => current.filter((category) => category.id !== categoryId));
-          setStackLayout((current) => ({
-            lanes: current.lanes.reduce<CardCategory[][]>((lanes, lane) => {
-              const nextLane = lane.filter((category) => category !== categoryId);
-              return nextLane.length > 0 ? [...lanes, nextLane] : lanes;
-            }, []),
+          updateEditorSnapshot((current) => ({
+            ...current,
+            categories: current.categories.filter((category) => category.id !== categoryId),
+            stackLayout: {
+              lanes: current.stackLayout.lanes.reduce<CardCategory[][]>((lanes, lane) => {
+                const nextLane = lane.filter((category) => category !== categoryId);
+                return nextLane.length > 0 ? [...lanes, nextLane] : lanes;
+              }, []),
+            },
           }));
         }}
         readOnly={compareMode}

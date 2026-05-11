@@ -26,6 +26,7 @@ type UseDeckActionsOptions = {
     setBaselineDeck: Dispatch<SetStateAction<DeckState>>;
     setBaselineCategories: Dispatch<SetStateAction<DeckCategory[]>>;
     setBaselineStackLayout: Dispatch<SetStateAction<DeckStackLayout>>;
+    clearUndoHistory: () => void;
     setStackLayout: Dispatch<SetStateAction<DeckStackLayout>>;
     setCategories: Dispatch<SetStateAction<DeckCategory[]>>;
     setWorkingCards: Dispatch<SetStateAction<ValidatedDeckCard[]>>;
@@ -49,6 +50,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     setBaselineDeck,
     setBaselineCategories,
     setBaselineStackLayout,
+    clearUndoHistory,
     setStackLayout,
     setCategories,
     setWorkingCards,
@@ -69,6 +71,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
       errorMessage: null,
     });
     setStackLayout(saveLayout);
+    clearUndoHistory();
     if (updateBaseline) {
       setBaselineCategories(saveCategories);
       setBaselineStackLayout(saveLayout);
@@ -97,10 +100,12 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
       setBaselineCategories(categories);
       setBaselineStackLayout(stackLayout);
       setIsSaveOpen(false);
+      return true;
     } catch (error) {
       setDeckErrorMessage(
         error instanceof Error ? error.message : "Could not save deck right now.",
       );
+      return false;
     }
   }
 
@@ -160,6 +165,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     setStackLayout(normalizeStackLayout(normalizedSave.layout, saveCategories));
     setCompareMode(true);
     setActiveTab("editor");
+    clearUndoHistory();
   }
 
   function exitCompareMode() {
@@ -168,6 +174,8 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     const latestSave = deck ? getLatestSave(deck) : null;
     if (latestSave) {
       loadCardsFromSave(latestSave, true);
+    } else {
+      clearUndoHistory();
     }
   }
 

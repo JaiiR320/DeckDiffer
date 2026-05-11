@@ -12,7 +12,7 @@ import type { CSSProperties, MouseEvent, ReactNode, RefObject } from "react";
 import type { DeckStackLayout } from "../../../lib/deck";
 import { createCategoryId, type CardCategory, type DeckCategory } from "../../../lib/decklist";
 import type { SearchCardResult } from "../../../lib/scryfall";
-import type { EditorRow } from "../types";
+import type { CategoryDiff, EditorRow } from "../types";
 import { CategoryLane } from "./CategoryLane";
 import { CategoryStack } from "./CategoryStack";
 import { DropPlaceholder } from "./DropPlaceholder";
@@ -25,6 +25,7 @@ import {
 
 type EditorDeckStackProps = {
   categories: DeckCategory[];
+  categoryDiffs: Record<CardCategory, CategoryDiff>;
   groupedRows: Record<CardCategory, EditorRow[]>;
   resultCardTotal: number;
   showDiffOnly: boolean;
@@ -45,6 +46,7 @@ type EditorDeckStackProps = {
 
 export function EditorDeckStack({
   categories,
+  categoryDiffs,
   groupedRows,
   resultCardTotal,
   showDiffOnly,
@@ -274,7 +276,11 @@ export function EditorDeckStack({
       >
         {searchToolbar}
         <SearchCardDragOverlayHost />
-        <LaneMenu laneMenu={laneMenu} laneMenuRef={laneMenuRef} onCreateCategory={createCategoryInLane} />
+        <LaneMenu
+          laneMenu={laneMenu}
+          laneMenuRef={laneMenuRef}
+          onCreateCategory={createCategoryInLane}
+        />
         <div className="space-y-4 px-5 pb-5 pt-5">
           <StackSummary
             resultCardTotal={resultCardTotal}
@@ -286,7 +292,7 @@ export function EditorDeckStack({
             onToggleShowDiffOnly={onToggleShowDiffOnly}
           />
           <div
-            className="grid items-start gap-0 pb-2"
+            className="grid select-none items-start gap-0 pb-2"
             onContextMenu={openLaneMenu}
             style={
               {
@@ -321,6 +327,7 @@ export function EditorDeckStack({
                   onRenameCategory={onRenameCategory}
                   readOnly={readOnly}
                   categories={categories}
+                  categoryDiffs={categoryDiffs}
                   groupedRows={groupedRows}
                   renamingCategoryId={renamingCategoryId}
                   visibleGroupedRows={visibleGroupedRows}
@@ -463,6 +470,7 @@ function CategoryStackList({
   onRenameCategory,
   readOnly,
   categories,
+  categoryDiffs,
   groupedRows,
   renamingCategoryId,
   visibleGroupedRows,
@@ -478,6 +486,7 @@ function CategoryStackList({
   onRenameCategory?: (category: CardCategory, name: string) => void;
   readOnly: boolean;
   categories: DeckCategory[];
+  categoryDiffs: Record<CardCategory, CategoryDiff>;
   groupedRows: Record<CardCategory, EditorRow[]>;
   renamingCategoryId: CardCategory | null;
   visibleGroupedRows: Record<CardCategory, EditorRow[]>;
@@ -502,7 +511,9 @@ function CategoryStackList({
           readOnly={readOnly}
           rows={visibleGroupedRows[category] ?? []}
           cardCount={groupedRows[category]?.length ?? 0}
+          diffCounts={getCategoryDiffCounts(groupedRows[category] ?? [])}
           categories={categories}
+          categoryDiff={categoryDiffs[category]}
           shouldStartRenaming={renamingCategoryId === category}
           categoryName={categories.find((item) => item.id === category)?.name ?? category}
         />
@@ -528,7 +539,9 @@ function FragmentWithPlaceholder({
   readOnly,
   rows,
   cardCount,
+  diffCounts,
   categories,
+  categoryDiff,
   categoryName,
   shouldStartRenaming,
 }: {
@@ -545,7 +558,9 @@ function FragmentWithPlaceholder({
   readOnly: boolean;
   rows: EditorRow[];
   cardCount: number;
+  diffCounts: CategoryDiffCounts;
   categories: DeckCategory[];
+  categoryDiff?: CategoryDiff;
   categoryName: string;
   shouldStartRenaming: boolean;
 }) {
@@ -557,8 +572,10 @@ function FragmentWithPlaceholder({
       <CategoryStack
         category={category}
         categoryName={categoryName}
+        categoryDiff={categoryDiff}
         categories={categories}
         cardCount={cardCount}
+        diffCounts={diffCounts}
         shouldStartRenaming={shouldStartRenaming}
         rows={rows}
         onAdjustQuantity={onAdjustQuantity}
@@ -576,5 +593,23 @@ function FragmentWithPlaceholder({
         }}
       />
     </>
+  );
+}
+
+type CategoryDiffCounts = {
+  added: number;
+  changed: number;
+  removed: number;
+};
+
+function getCategoryDiffCounts(rows: EditorRow[]): CategoryDiffCounts {
+  return rows.reduce<CategoryDiffCounts>(
+    (counts, row) => {
+      if (row.status === "added") counts.added += 1;
+      if (row.status === "changed") counts.changed += 1;
+      if (row.status === "removed") counts.removed += 1;
+      return counts;
+    },
+    { added: 0, changed: 0, removed: 0 },
   );
 }

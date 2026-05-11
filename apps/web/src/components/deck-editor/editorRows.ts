@@ -12,27 +12,28 @@ export function buildEditorRows(
   baselineCards: ValidatedDeckCard[],
   workingCards: ValidatedDeckCard[],
   categories: DeckCategory[] = defaultDeckCategories(),
+  baselineCategories: DeckCategory[] = categories,
 ) {
   const baseline = mergeValidatedCards(
-    baselineCards.map((card) => normalizeDeckCard(card, categories)),
+    baselineCards.map((card) => normalizeDeckCard(card, baselineCategories)),
   );
   const working = mergeValidatedCards(
     workingCards.map((card) => normalizeDeckCard(card, categories)),
   );
   const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
-  const baselineById = new Map(baseline.map((card) => [card.oracleId, card]));
-  const workingById = new Map(working.map((card) => [card.oracleId, card]));
+  const baselineById = new Map(baseline.map((card) => [diffCardKey(card), card]));
+  const workingById = new Map(working.map((card) => [diffCardKey(card), card]));
   const allIds = new Set([...baselineById.keys(), ...workingById.keys()]);
   const rows: EditorRow[] = [];
 
-  for (const oracleId of allIds) {
-    const baselineCard = baselineById.get(oracleId);
-    const workingCard = workingById.get(oracleId);
+  for (const diffKey of allIds) {
+    const baselineCard = baselineById.get(diffKey);
+    const workingCard = workingById.get(diffKey);
     const baselineQuantity = baselineCard?.quantity ?? 0;
     const currentQuantity = workingCard?.quantity ?? 0;
 
     rows.push({
-      oracleId,
+      oracleId: workingCard?.oracleId ?? baselineCard?.oracleId ?? "",
       name: workingCard?.name ?? baselineCard?.name ?? "Unknown Card",
       category: workingCard?.categoryId ?? baselineCard?.categoryId ?? "other",
       typeLine: workingCard?.typeLine ?? baselineCard?.typeLine ?? "",
@@ -64,6 +65,10 @@ export function buildEditorRows(
 
     return left.name.localeCompare(right.name);
   });
+}
+
+function diffCardKey(card: ValidatedDeckCard) {
+  return `${card.categoryId ?? ""}\0${card.oracleId}`;
 }
 
 export function groupEditorRows(

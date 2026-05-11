@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { buildDeckEditorModel } from "../deck-detail/deckEditorModel";
+import { hasCategoryName, type DeckCategory } from "../../lib/decklist";
 import { buildEditorRows, groupEditorRows } from "./editorRows";
 
 describe("buildEditorRows", () => {
@@ -93,7 +95,7 @@ describe("buildEditorRows", () => {
     expect(rows.find((row) => row.name === "Counterspell")?.manaValue).toBe(2);
   });
 
-  it("groups rows by the working card category", () => {
+  it("marks category moves as removed from the old category and added to the new category", () => {
     const baselineCards = [
       {
         oracleId: "card-1",
@@ -115,7 +117,88 @@ describe("buildEditorRows", () => {
 
     const groupedRows = groupEditorRows(buildEditorRows(baselineCards, workingCards));
 
-    expect(groupedRows.land).toHaveLength(0);
+    expect(groupedRows.land[0]?.status).toBe("removed");
+    expect(groupedRows.creature[0]?.status).toBe("added");
     expect(groupedRows.creature[0]?.name).toBe("Dryad Arbor");
+  });
+
+  it("keeps category renames as one unchanged card row", () => {
+    const baselineCategories: DeckCategory[] = [{ id: "ramp", name: "Ramp", kind: "custom" }];
+    const workingCategories: DeckCategory[] = [{ id: "ramp", name: "Mana", kind: "custom" }];
+    const cards = [
+      {
+        oracleId: "card-1",
+        name: "Sol Ring",
+        quantity: 1,
+        typeLine: "Artifact",
+        categoryId: "ramp",
+      },
+    ];
+
+    const rows = buildEditorRows(cards, cards, workingCategories, baselineCategories);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.status).toBe("same");
+  });
+
+  it("marks quantity changes within the same category name as changed", () => {
+    const categories: DeckCategory[] = [{ id: "ramp", name: "Ramp", kind: "custom" }];
+    const baselineCards = [
+      {
+        oracleId: "card-1",
+        name: "Sol Ring",
+        quantity: 1,
+        typeLine: "Artifact",
+        categoryId: "ramp",
+      },
+    ];
+    const workingCards = [{ ...baselineCards[0], quantity: 2 }];
+
+    expect(buildEditorRows(baselineCards, workingCards, categories)[0]?.status).toBe("changed");
+  });
+});
+
+describe("buildDeckEditorModel", () => {
+  it("returns category rename metadata", () => {
+    const baselineCategories: DeckCategory[] = [{ id: "ramp", name: "Ramp", kind: "custom" }];
+    const categories: DeckCategory[] = [{ id: "ramp", name: "Mana", kind: "custom" }];
+    const cards = [
+      {
+        oracleId: "card-1",
+        name: "Sol Ring",
+        quantity: 1,
+        typeLine: "Artifact",
+        categoryId: "ramp",
+      },
+    ];
+
+    const model = buildDeckEditorModel({
+      baselineDeck: {
+        rawText: "",
+        cards,
+        invalidCards: [],
+        status: "ready",
+        errorMessage: null,
+      },
+      baselineCategories,
+      categories,
+      compareMode: false,
+      compareSaves: null,
+      workingCards: cards,
+    });
+
+    expect(model.categoryDiffs.ramp?.previousName).toBe("Ramp");
+    expect(model.groupedRows.ramp).toHaveLength(1);
+    expect(model.groupedRows.ramp[0]?.status).toBe("same");
+  });
+});
+
+describe("hasCategoryName", () => {
+  it("compares category names case-insensitively after trimming", () => {
+    const categories: DeckCategory[] = [{ id: "ramp", name: "Ramp", kind: "custom" }];
+
+    expect(hasCategoryName(categories, " ramp ")).toBe(true);
+    expect(hasCategoryName(categories, "RAMP")).toBe(true);
+    expect(hasCategoryName(categories, "Ramp", "ramp")).toBe(false);
   });
 });

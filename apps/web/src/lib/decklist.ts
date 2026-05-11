@@ -59,6 +59,40 @@ export function createCategoryId(name: string, categories: DeckCategory[]) {
   return nextId;
 }
 
+export function normalizeCategoryNameForCompare(name: string) {
+  return name.trim().toLowerCase();
+}
+
+export function hasCategoryName(
+  categories: DeckCategory[],
+  name: string,
+  exceptCategoryId?: string,
+) {
+  const normalizedName = normalizeCategoryNameForCompare(name);
+  return categories.some(
+    (category) =>
+      category.id !== exceptCategoryId &&
+      normalizeCategoryNameForCompare(category.name) === normalizedName,
+  );
+}
+
+export function createCategoryName(name: string, categories: DeckCategory[]) {
+  const baseName = name.trim() || "Category";
+
+  if (!hasCategoryName(categories, baseName)) {
+    return baseName;
+  }
+
+  let suffix = 2;
+  let nextName = `${baseName} ${suffix}`;
+  while (hasCategoryName(categories, nextName)) {
+    suffix += 1;
+    nextName = `${baseName} ${suffix}`;
+  }
+
+  return nextName;
+}
+
 export function defaultCategoryIdForName(name: string) {
   return DEFAULT_CATEGORY_IDS[name as (typeof CARD_CATEGORIES)[number]] ?? "other";
 }

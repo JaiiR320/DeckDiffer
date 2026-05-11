@@ -1,5 +1,5 @@
 import { useDragDropMonitor } from "@dnd-kit/react";
-import { Download, Import } from "lucide-react";
+import { Download, Import, Redo2, Undo2 } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { searchCards, type SearchCardResult } from "../../lib/scryfall";
 import { StackCard } from "./stack/StackCard";
@@ -9,6 +9,10 @@ type EditorHeaderProps = {
   onImport: () => void;
   onExport: () => void;
   exportDisabled: boolean;
+  canRedo: boolean;
+  canUndo: boolean;
+  onRedo: () => void;
+  onUndo: () => void;
   onPreviewCard: (card: SearchCardResult) => void;
 };
 
@@ -46,6 +50,10 @@ export function EditorHeader({
   onImport,
   onExport,
   exportDisabled,
+  canRedo,
+  canUndo,
+  onRedo,
+  onUndo,
   onPreviewCard,
 }: EditorHeaderProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +209,26 @@ export function EditorHeader({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo"
+            aria-label="Undo"
+            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Undo2 className="size-4" strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo"
+            aria-label="Redo"
+            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Redo2 className="size-4" strokeWidth={1.75} />
+          </button>
           <button
             type="button"
             onClick={onExport}

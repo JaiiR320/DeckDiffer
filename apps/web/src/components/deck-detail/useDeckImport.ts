@@ -14,6 +14,7 @@ type UseDeckImportOptions = {
   editorActions: {
     setBaselineDeck: React.Dispatch<React.SetStateAction<DeckState>>;
     setWorkingCards: React.Dispatch<React.SetStateAction<ValidatedDeckCard[]>>;
+    setWorkingCardsWithUndo?: React.Dispatch<React.SetStateAction<ValidatedDeckCard[]>>;
   };
 };
 
@@ -23,7 +24,11 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportModalState>({ includeQuantity: true });
   const { baselineDeck, workingCards } = deckState;
-  const { setBaselineDeck, setWorkingCards } = editorActions;
+  const {
+    setBaselineDeck,
+    setWorkingCards,
+    setWorkingCardsWithUndo = setWorkingCards,
+  } = editorActions;
 
   function openImportModal() {
     setDraftDeck(workingCards.length > 0 ? "" : baselineDeck.rawText);
@@ -70,7 +75,9 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
       const { validCards, warnings } = await validateDraftDeck(rawText);
 
       if (mode === "bulk-add") {
-        setWorkingCards((currentCards) => mergeValidatedCards([...currentCards, ...validCards]));
+        setWorkingCardsWithUndo((currentCards) =>
+          mergeValidatedCards([...currentCards, ...validCards]),
+        );
         setBaselineDeck((currentDeck) => ({
           ...currentDeck,
           invalidCards: warnings,
@@ -88,7 +95,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
           status: "ready",
           errorMessage: null,
         });
-        setWorkingCards(validCards);
+        setWorkingCardsWithUndo(validCards);
         return;
       }
 
@@ -99,7 +106,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
         status: "ready",
         errorMessage: null,
       });
-      setWorkingCards(validCards);
+      setWorkingCardsWithUndo(validCards);
     } catch (error) {
       if (mode === "replace-empty") {
         setBaselineDeck({
