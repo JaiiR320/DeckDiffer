@@ -1,6 +1,6 @@
 import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
-import { useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import type { DeckItem } from "../../lib/deck";
 import { createCategoryId, type DeckCategory, type ValidatedDeckCard } from "../../lib/decklist";
 
@@ -65,6 +65,17 @@ export function DeckActionsModal({
     showDeleteConfirm,
   } = state;
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   function handleRenameSubmit(event: FormEvent<HTMLFormElement>) {
@@ -113,14 +124,14 @@ export function DeckActionsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-6">
       <button
         type="button"
         aria-label="Close deck actions modal"
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
+      <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
         <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
         <div className="mt-5 flex border-b border-zinc-800">
           <SettingsTab
