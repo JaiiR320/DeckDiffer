@@ -9,14 +9,16 @@ type DeckCardProps = {
 
 export function DeckCard({ deck, onEdit }: DeckCardProps) {
   return (
-    <div className="group relative flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left shadow-[0_24px_60px_rgba(0,0,0,0.25)] transition hover:border-zinc-700">
+    <div className="group relative flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700">
       {/* Content - sits below the Link */}
       <div className="pointer-events-none">
         <Layers className="size-8 text-cyan-300" strokeWidth={1.75} />
       </div>
 
       <div className="pointer-events-none mt-8">
-        <span className="text-3xl font-semibold tracking-tight text-zinc-100">{deck.name}</span>
+        <span className="text-3xl font-semibold tracking-tight text-zinc-100">
+          {deck.name}
+        </span>
         <p className="mt-2 text-lg text-zinc-500">
           {deck.saves.length} save{deck.saves.length === 1 ? "" : "s"}
         </p>
