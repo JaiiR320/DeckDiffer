@@ -115,6 +115,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
     }
 
     const imageUris = getCardImageUris(matchedCard);
+    const parsedPrice = matchedCard.prices?.usd ? Number(matchedCard.prices.usd) : undefined;
 
     validCards.push({
       oracleId: matchedCard.oracle_id ?? matchedCard.id,
@@ -128,6 +129,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       collectorNumber: matchedCard.collector_number,
       smallImageUrl: imageUris?.small,
       imageUrl: imageUris?.normal,
+      priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
     });
   }
 

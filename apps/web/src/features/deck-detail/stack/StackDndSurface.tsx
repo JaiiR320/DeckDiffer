@@ -34,6 +34,7 @@ type EditorDeckStackProps = {
   onLayoutChange: (layout: DeckStackLayout) => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
+  onChangePrinting?: (row: EditorRow) => void;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onCreateCategoryInLane?: (laneIndex: number, category: DeckCategory) => void;
   onRemoveLane?: (laneIndex: number) => void;
@@ -55,6 +56,7 @@ export function EditorDeckStack({
   onLayoutChange,
   onAdjustQuantity,
   onMoveCardCategory,
+  onChangePrinting,
   onMoveCategoryCards,
   onCreateCategoryInLane,
   onRemoveLane,
@@ -89,6 +91,10 @@ export function EditorDeckStack({
   const totalAdded = allRows.filter((row) => row.status === "added").length;
   const totalChanged = allRows.filter((row) => row.status === "changed").length;
   const totalRemoved = allRows.filter((row) => row.status === "removed").length;
+  const totalDeckPrice = allRows.reduce(
+    (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
+    0,
+  );
 
   useEffect(() => {
     if (!laneMenu) {
@@ -243,6 +249,7 @@ export function EditorDeckStack({
           <StackSummary
             resultCardTotal={resultCardTotal}
             showDiffOnly={showDiffOnly}
+            totalDeckPrice={totalDeckPrice}
             totalAdded={totalAdded}
             totalChanged={totalChanged}
             totalRemoved={totalRemoved}
@@ -297,6 +304,7 @@ export function EditorDeckStack({
                         rows={visibleGroupedRows[category] ?? []}
                         onAdjustQuantity={onAdjustQuantity}
                         onMoveCardCategory={onMoveCardCategory}
+                        onChangePrinting={onChangePrinting}
                         onMoveCategoryCards={onMoveCategoryCards}
                         onRemoveCategory={onRemoveCategory}
                         onRenameCategory={onRenameCategory}
@@ -357,6 +365,7 @@ function LaneMenu({
 function StackSummary({
   resultCardTotal,
   showDiffOnly,
+  totalDeckPrice,
   totalAdded,
   totalChanged,
   totalRemoved,
@@ -365,6 +374,7 @@ function StackSummary({
 }: {
   resultCardTotal: number;
   showDiffOnly: boolean;
+  totalDeckPrice: number;
   totalAdded: number;
   totalChanged: number;
   totalRemoved: number;
@@ -378,6 +388,8 @@ function StackSummary({
       <p className="font-mono text-sm font-medium uppercase tracking-[0.08em] text-zinc-500">
         {shownCount} {showDiffOnly ? "diff card" : "total card"}
         {shownCount === 1 ? "" : "s"}
+        <span className="mx-2">|</span>
+        <span>{formatPrice(totalDeckPrice)}</span>
       </p>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3 font-mono text-sm font-medium uppercase tracking-[0.08em]">
@@ -403,6 +415,10 @@ function StackSummary({
       </div>
     </div>
   );
+}
+
+function formatPrice(price: number) {
+  return `$${price.toFixed(2)}`;
 }
 
 function SearchCardDragOverlayHost() {

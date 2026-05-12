@@ -1,5 +1,5 @@
 import type { CardCategory, ValidatedDeckCard } from "#/lib/decklist";
-import type { SearchCardResult } from "#/lib/scryfall";
+import type { CardPrintingOption, SearchCardResult } from "#/lib/scryfall";
 import type { EditorRow } from "./types";
 
 export function appendSearchCard(
@@ -30,6 +30,7 @@ export function appendSearchCard(
       collectorNumber: card.collectorNumber,
       smallImageUrl: card.smallImageUrl,
       imageUrl: card.imageUrl,
+      priceUsd: card.priceUsd,
     },
   ];
 }
@@ -53,6 +54,7 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
             collectorNumber: row.collectorNumber,
             smallImageUrl: row.smallImageUrl,
             imageUrl: row.imageUrl,
+            priceUsd: row.priceUsd,
           },
         ];
   }
@@ -84,6 +86,26 @@ export function moveEditorRowCategory(
       ? {
           ...card,
           categoryId: category,
+        }
+      : card,
+  );
+}
+
+export function changeCardPrinting(
+  cards: ValidatedDeckCard[],
+  row: EditorRow,
+  printing: CardPrintingOption,
+) {
+  return cards.map((card) =>
+    card.oracleId === row.oracleId && (!card.categoryId || card.categoryId === row.category)
+      ? {
+          ...card,
+          name: printing.name,
+          setCode: printing.setCode,
+          collectorNumber: printing.collectorNumber,
+          smallImageUrl: printing.smallImageUrl,
+          imageUrl: printing.imageUrl,
+          priceUsd: printing.priceUsd,
         }
       : card,
   );

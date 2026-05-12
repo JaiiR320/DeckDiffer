@@ -1,5 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import type { SetStateAction } from "react";
 import { buildDeckEditorModel } from "./editor/deckEditorModel";
 import {
@@ -22,6 +22,7 @@ import {
   type DeckCategory,
   type ValidatedDeckCard,
 } from "#/lib/decklist";
+import { getCardPreview } from "#/lib/scryfall";
 import type { DeckState } from "./editor/types";
 import {
   type DeckDetailActions,
@@ -66,6 +67,7 @@ function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): Editor
 
 export function useDeckDetailController() {
   const loaderData = routeApi.useLoaderData();
+  const attemptedPriceBackfillsRef = useRef(new Set<string>());
   const [pageState, setPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
     baselineDeck: emptyDeckState,
@@ -233,6 +235,58 @@ export function useDeckDetailController() {
     });
   }, [loaderData.deck, loaderData.errorMessage]);
 
+  useEffect(() => {
+    if (!pageState.isHydrated) return;
+
+    const cardsNeedingPrice = pageState.workingCards.filter((card) => {
+      const key = getCardPriceBackfillKey(card);
+      return card.priceUsd === undefined && key && !attemptedPriceBackfillsRef.current.has(key);
+    });
+
+    if (cardsNeedingPrice.length === 0) return;
+
+    const uniqueCards = [
+      ...new Map(cardsNeedingPrice.map((card) => [getCardPriceBackfillKey(card), card])).values(),
+    ];
+    for (const card of uniqueCards) {
+      const key = getCardPriceBackfillKey(card);
+      if (key) attemptedPriceBackfillsRef.current.add(key);
+    }
+
+    let isCurrent = true;
+    Promise.all(
+      uniqueCards.map(async (card) => {
+        const preview = await getCardPreview({
+          name: card.name,
+          setCode: card.setCode,
+          collectorNumber: card.collectorNumber,
+        }).catch(() => null);
+        return { key: getCardPriceBackfillKey(card), priceUsd: preview?.priceUsd };
+      }),
+    ).then((prices) => {
+      if (!isCurrent) return;
+      const priceByKey = new Map(
+        prices.flatMap(({ key, priceUsd }) =>
+          key && priceUsd !== undefined ? [[key, priceUsd] as const] : [],
+        ),
+      );
+
+      if (priceByKey.size === 0) return;
+
+      setPageState((current) => ({
+        baselineDeck: {
+          ...current.baselineDeck,
+          cards: backfillCardPrices(current.baselineDeck.cards, priceByKey),
+        },
+        workingCards: backfillCardPrices(current.workingCards, priceByKey),
+      }));
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [pageState.isHydrated, pageState.workingCards]);
+
   const editorModel = buildDeckEditorModel({
     baselineDeck,
     baselineCategories,
@@ -293,4 +347,17 @@ export function useDeckDetailController() {
   const services: DeckDetailServices = { deckActions, deckImport, preview };
 
   return { actions, errorMessage: loaderData.errorMessage, model, services, state };
+}
+
+function getCardPriceBackfillKey(card: ValidatedDeckCard) {
+  return [card.oracleId, card.setCode ?? "", card.collectorNumber ?? ""].join("\0");
+}
+
+function backfillCardPrices(cards: ValidatedDeckCard[], priceByKey: Map<string, number>) {
+  return cards.map((card) => {
+    if (card.priceUsd !== undefined) return card;
+
+    const priceUsd = priceByKey.get(getCardPriceBackfillKey(card));
+    return priceUsd === undefined ? card : { ...card, priceUsd };
+  });
 }

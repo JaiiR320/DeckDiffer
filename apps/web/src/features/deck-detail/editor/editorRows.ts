@@ -42,6 +42,7 @@ export function buildEditorRows(
       collectorNumber: workingCard?.collectorNumber ?? baselineCard?.collectorNumber,
       smallImageUrl: workingCard?.smallImageUrl ?? baselineCard?.smallImageUrl,
       imageUrl: workingCard?.imageUrl ?? baselineCard?.imageUrl,
+      priceUsd: workingCard?.priceUsd ?? baselineCard?.priceUsd,
       baselineQuantity,
       currentQuantity,
       status:

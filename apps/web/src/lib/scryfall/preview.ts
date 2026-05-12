@@ -5,6 +5,7 @@ const cardPreviewCache = new Map<string, Promise<CardPreviewResult | null>>();
 
 function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
   const faces: CardPreviewFace[] = [];
+  const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
 
   for (const face of card.card_faces ?? []) {
     const smallImageUrl = face.image_uris?.small;
@@ -47,6 +48,7 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
     collectorNumber: card.collector_number,
     smallImageUrl,
     imageUrl,
+    priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
     faces: previewFaces,
   };
 }

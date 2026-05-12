@@ -1,5 +1,6 @@
 import { useDraggable } from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { CardCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
 import { cardDragId } from "./stackIds";
@@ -13,6 +14,7 @@ type StackCardProps = {
   onHover: () => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
+  onChangePrinting?: (row: EditorRow) => void;
   dragData?: Record<string, unknown>;
   dragId?: string;
   dragType?: "card" | "search-card";
@@ -29,6 +31,7 @@ export function StackCard({
   onHover,
   onAdjustQuantity,
   onMoveCardCategory,
+  onChangePrinting,
   dragData,
   dragId,
   dragType = "card",
@@ -36,6 +39,8 @@ export function StackCard({
   readOnly,
   showControls = true,
 }: StackCardProps) {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMoveDisabled =
     readOnly || (dragType === "card" && (!onMoveCardCategory || row.currentQuantity <= 0));
   const { isDragging, ref } = useDraggable({
@@ -55,6 +60,19 @@ export function StackCard({
           ? "ring-amber-400/40"
           : "ring-zinc-700/80";
 
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isMenuOpen]);
+
   return (
     <div
       className={
@@ -62,7 +80,7 @@ export function StackCard({
           ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_2.25rem)]" : "translate-y-0"}`
           : "pointer-events-none w-36 shrink-0 select-none overflow-visible"
       }
-      style={layout === "stack" ? { top: `${index * 36 + 8}px`, zIndex: index + 1 } : undefined}
+      style={layout === "stack" ? { top: `${index * 44 + 8}px`, zIndex: index + 1 } : undefined}
       onFocus={onHover}
     >
       <div
@@ -88,11 +106,15 @@ export function StackCard({
           {row.currentQuantity}
         </div>
 
+        <div className="absolute bottom-0 left-0 rounded-tr-lg bg-zinc-950/75 px-2 py-1 font-mono text-sm font-semibold text-zinc-100 shadow-lg shadow-black/30">
+          {formatPrice(row.priceUsd)}
+        </div>
+
         <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent opacity-80" />
 
         {showControls ? (
           <div
-            className={`absolute right-2 top-1/2 flex -translate-y-1/2 flex-col overflow-hidden rounded-lg border border-white/20 bg-zinc-950/45 shadow-xl shadow-black/30 backdrop-blur-sm transition duration-200 ${isHovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+            className={`absolute right-2 top-1/2 z-20 flex -translate-y-1/2 flex-col rounded-lg border border-white/20 bg-zinc-950/45 shadow-xl shadow-black/30 backdrop-blur-sm transition duration-200 ${isHovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
           >
             {readOnly ? null : (
               <>
@@ -115,16 +137,42 @@ export function StackCard({
                 </button>
               </>
             )}
-            <button
-              type="button"
-              aria-label={`${row.name} actions`}
-              className="inline-flex size-9 items-center justify-center border-t border-white/20 text-zinc-100 transition hover:bg-white/15"
-            >
-              <MoreHorizontal className="size-4" strokeWidth={2.5} />
-            </button>
+            <div ref={menuRef} className="relative border-t border-white/20">
+              <button
+                type="button"
+                aria-label={`${row.name} actions`}
+                disabled={readOnly || !onChangePrinting}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsMenuOpen((current) => !current);
+                }}
+                className="inline-flex size-9 items-center justify-center text-zinc-100 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <MoreHorizontal className="size-4" strokeWidth={2.5} />
+              </button>
+              {isMenuOpen ? (
+                <div className="absolute right-full top-0 z-50 mr-2 w-40 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/40">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsMenuOpen(false);
+                      onChangePrinting?.(row);
+                    }}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 hover:text-zinc-100"
+                  >
+                    Change printing
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>
     </div>
   );
+}
+
+function formatPrice(price: number | undefined) {
+  return price === undefined ? "--" : `$${price.toFixed(2)}`;
 }

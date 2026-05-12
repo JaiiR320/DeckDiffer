@@ -1,12 +1,14 @@
 import { DeckAlerts } from "./components/DeckAlerts";
 import { EditorDeckStack } from "./stack/EditorDeckStack";
 import type { EditorRow } from "./editor/types";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   adjustCardQuantity,
   appendSearchCard,
+  changeCardPrinting,
   moveEditorRowCategory,
 } from "./editor/deckCardMutations";
+import { PrintingPickerModal } from "./modals/PrintingPickerModal";
 import { removeStackLane } from "./editor/stackLayoutLane";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import { createCategoryName, hasCategoryName, type CardCategory } from "#/lib/decklist";
@@ -16,6 +18,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
   const { baselineDeck, categories, compareMode, showDiffOnly, stackLayout } = useDeckDetailState();
   const { categoryDiffs, groupedRows, resultCardTotal } = useDeckDetailModel();
   const actions = useDeckDetailActions();
+  const [printingRow, setPrintingRow] = useState<EditorRow | null>(null);
 
   return (
     <div className="min-w-0">
@@ -64,6 +67,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
                   workingCards: moveEditorRowCategory(current.workingCards, row, category),
                 }))
         }
+        onChangePrinting={compareMode ? undefined : (row) => setPrintingRow(row)}
         onMoveCategoryCards={
           compareMode
             ? undefined
@@ -124,6 +128,19 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
         }}
         readOnly={compareMode}
       />
+      {printingRow ? (
+        <PrintingPickerModal
+          row={printingRow}
+          onClose={() => setPrintingRow(null)}
+          onSelect={(printing) => {
+            actions.updateEditorSnapshot((current) => ({
+              ...current,
+              workingCards: changeCardPrinting(current.workingCards, printingRow, printing),
+            }));
+            setPrintingRow(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

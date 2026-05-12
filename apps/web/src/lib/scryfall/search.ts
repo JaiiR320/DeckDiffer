@@ -9,6 +9,7 @@ import type {
 
 function toSearchCardResult(card: ScryfallCard): SearchCardResult {
   const imageUris = card.image_uris ?? card.card_faces?.find((face) => face.image_uris)?.image_uris;
+  const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
 
   return {
     oracleId: card.oracle_id ?? card.id,
@@ -21,6 +22,7 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     collectorNumber: card.collector_number,
     smallImageUrl: imageUris?.small,
     imageUrl: imageUris?.normal,
+    priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
   };
 }
 

@@ -7,9 +7,14 @@ export type ScryfallCard = {
   type_line: string;
   cmc?: number;
   set: string;
+  set_name?: string;
   collector_number: string;
+  released_at?: string;
   mana_cost?: string;
   oracle_text?: string;
+  prices?: {
+    usd?: string | null;
+  };
   image_uris?: {
     small?: string;
     normal?: string;
@@ -134,6 +139,7 @@ export type SearchCardResult = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  priceUsd?: number;
 };
 
 export type CardPreviewLookup = {
@@ -160,7 +166,21 @@ export type CardPreviewResult = {
   collectorNumber?: string;
   smallImageUrl: string;
   imageUrl: string;
+  priceUsd?: number;
   faces?: CardPreviewFace[];
+};
+
+export type CardPrintingOption = {
+  scryfallId: string;
+  oracleId: string;
+  name: string;
+  setCode: string;
+  setName: string;
+  collectorNumber: string;
+  releasedAt: string;
+  priceUsd?: number;
+  smallImageUrl?: string;
+  imageUrl?: string;
 };
 
 export type CardSymbol = {

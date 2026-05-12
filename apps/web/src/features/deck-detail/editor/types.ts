@@ -18,6 +18,7 @@ export type EditorRow = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  priceUsd?: number;
   baselineQuantity: number;
   currentQuantity: number;
   status: "same" | "added" | "removed" | "changed";

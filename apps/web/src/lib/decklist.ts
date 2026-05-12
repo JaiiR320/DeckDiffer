@@ -123,6 +123,7 @@ export type ValidatedDeckCard = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  priceUsd?: number;
 };
 
 export type DeckExportOptions = {

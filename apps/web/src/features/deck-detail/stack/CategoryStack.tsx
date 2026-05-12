@@ -17,6 +17,7 @@ type CategoryStackProps = {
   rows: EditorRow[];
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
+  onChangePrinting?: (row: EditorRow) => void;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onRemoveCategory?: (category: CardCategory) => void;
   onRenameCategory?: (category: CardCategory, name: string) => void;
@@ -55,6 +56,7 @@ export function CategoryStack({
   rows,
   onAdjustQuantity,
   onMoveCardCategory,
+  onChangePrinting,
   onMoveCategoryCards,
   onRemoveCategory,
   onRenameCategory,
@@ -74,8 +76,12 @@ export function CategoryStack({
   const sortedRows = rows
     .slice()
     .sort((left, right) => right.manaValue - left.manaValue || left.name.localeCompare(right.name));
-  const lastCardOffset = Math.max(0, sortedRows.length - 1) * 36;
+  const lastCardOffset = Math.max(0, sortedRows.length - 1) * 44;
   const totalQuantity = sortedRows.reduce((sum, row) => sum + row.currentQuantity, 0);
+  const totalPrice = sortedRows.reduce(
+    (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
+    0,
+  );
   const {
     isDragging,
     ref: draggableRef,
@@ -154,27 +160,16 @@ export function CategoryStack({
       }`}
     >
       <div className="overflow-hidden rounded-xl">
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
-          <div
-            ref={handleRef}
-            className={`min-w-0 flex-1 ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`}
-          >
-            <h3 className="truncate font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-300">
-              {categoryName}
-            </h3>
-            <p className="mt-1 truncate font-mono text-xs text-zinc-600">
-              Qty: {totalQuantity}
-              <span className="ml-2 text-emerald-300">+{diffCounts.added}</span>
-              <span className="ml-1 text-amber-300">~{diffCounts.changed}</span>
-              <span className="ml-1 text-rose-300">-{diffCounts.removed}</span>
-              {categoryDiff?.previousName ? (
-                <span className="ml-2 uppercase tracking-[0.08em] text-amber-300/80">
-                  was: {categoryDiff.previousName}
-                </span>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
+          <div className="flex items-start justify-between gap-3">
+            <div
+              ref={handleRef}
+              className={`min-w-0 flex-1 ${readOnly ? "" : "cursor-grab active:cursor-grabbing"}`}
+            >
+              <h3 className="truncate font-mono text-sm font-semibold uppercase tracking-[0.08em] text-zinc-300">
+                {categoryName}
+              </h3>
+            </div>
             <CategoryStackMenu
               menu={{
                 cardCount,
@@ -196,6 +191,20 @@ export function CategoryStack({
                 setMenuState,
               }}
             />
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3 font-mono text-xs text-zinc-600">
+            <p className="min-w-0 truncate">
+              Qty: {totalQuantity}
+              <span className="ml-2 text-emerald-300">+{diffCounts.added}</span>
+              <span className="ml-1 text-amber-300">~{diffCounts.changed}</span>
+              <span className="ml-1 text-rose-300">-{diffCounts.removed}</span>
+              {categoryDiff?.previousName ? (
+                <span className="ml-2 uppercase tracking-[0.08em] text-amber-300/80">
+                  was: {categoryDiff.previousName}
+                </span>
+              ) : null}
+            </p>
+            <span className="shrink-0 text-zinc-400">{formatPrice(totalPrice)}</span>
           </div>
         </div>
 
@@ -226,6 +235,7 @@ export function CategoryStack({
                 onHover={() => setHoveredIndex(index)}
                 onAdjustQuantity={onAdjustQuantity}
                 onMoveCardCategory={onMoveCardCategory}
+                onChangePrinting={onChangePrinting}
                 readOnly={readOnly}
               />
             ))}
@@ -239,6 +249,10 @@ export function CategoryStack({
       </div>
     </section>
   );
+}
+
+function formatPrice(price: number) {
+  return `$${price.toFixed(2)}`;
 }
 
 type CategoryStackMenuModel = {

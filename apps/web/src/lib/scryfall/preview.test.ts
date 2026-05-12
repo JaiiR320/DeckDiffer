@@ -17,6 +17,7 @@ describe("getCardPreview", () => {
         type_line: "Instant",
         set: "lea",
         collector_number: "161",
+        prices: { usd: "2.50" },
         image_uris: {
           small: "https://cards.scryfall.io/small/front/l/b/lightning-bolt.jpg",
           normal: "https://cards.scryfall.io/normal/front/l/b/lightning-bolt.jpg",
@@ -45,6 +46,7 @@ describe("getCardPreview", () => {
     });
     expect(firstPreview).toEqual(secondPreview);
     expect(firstPreview?.imageUrl).toContain("lightning-bolt.jpg");
+    expect(firstPreview?.priceUsd).toBe(2.5);
   });
 
   it("falls back to exact-name lookup when a specific print is unavailable", async () => {
