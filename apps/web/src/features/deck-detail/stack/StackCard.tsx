@@ -7,6 +7,8 @@ import type { EditorRow } from "../editor/types";
 import { cardDragId } from "./stackIds";
 import { useFallbackCardImage } from "./useFallbackCardImage";
 
+export const STACK_CARD_OFFSET = 36;
+
 type StackCardProps = {
   row: EditorRow;
   index: number;
@@ -73,10 +75,12 @@ export function StackCard({
     <div
       className={
         layout === "stack"
-          ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_2.25rem)]" : "translate-y-0"}`
+          ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_2.25rem_+_0.5rem)]" : "translate-y-0"}`
           : "pointer-events-none w-36 shrink-0 select-none overflow-visible"
       }
-      style={layout === "stack" ? { top: `${index * 44 + 8}px`, zIndex: index + 1 } : undefined}
+      style={
+        layout === "stack" ? { top: `${index * STACK_CARD_OFFSET + 8}px`, zIndex: index + 1 } : undefined
+      }
       onFocus={onHover}
     >
       <div

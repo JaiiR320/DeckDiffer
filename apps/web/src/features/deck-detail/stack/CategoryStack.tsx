@@ -6,7 +6,7 @@ import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
-import { StackCard } from "./StackCard";
+import { StackCard, STACK_CARD_OFFSET } from "./StackCard";
 import { cardCategoryDropId } from "./stackIds";
 
 type CategoryStackProps = {
@@ -95,7 +95,7 @@ export function CategoryStack({
       left.name.localeCompare(right.name)
     );
   });
-  const lastCardOffset = Math.max(0, sortedRows.length - 1) * 44;
+  const lastCardOffset = Math.max(0, sortedRows.length - 1) * STACK_CARD_OFFSET;
   const totalQuantity = sortedRows.reduce((sum, row) => sum + row.currentQuantity, 0);
   const totalPrice = sortedRows.reduce(
     (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
