@@ -33,21 +33,19 @@ export async function searchCards(query: string) {
   const normalizedQuery = normalizeCardQuery(query);
   const headers = { Accept: "application/json" };
 
-  if (normalizedQuery.includes("//")) {
-    const namedResponse = await fetch(
-      `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(normalizedQuery)}`,
-      { headers },
-    );
+  const namedResponse = await fetch(
+    `https://api.scryfall.com/cards/named?exact=${encodeURIComponent(normalizedQuery)}`,
+    { headers },
+  );
 
-    if (namedResponse.ok) {
-      const card = (await namedResponse.json()) as ScryfallCard;
-      return [toSearchCardResult(card)];
-    }
+  if (namedResponse.ok) {
+    const card = (await namedResponse.json()) as ScryfallCard;
+    return [toSearchCardResult(card)];
+  }
 
-    const namedError = (await namedResponse.json()) as ScryfallErrorResponse;
-    if (namedError.object !== "error") {
-      return [] as SearchCardResult[];
-    }
+  const namedError = (await namedResponse.json()) as ScryfallErrorResponse;
+  if (namedError.object !== "error") {
+    return [] as SearchCardResult[];
   }
 
   const response = await fetch(
