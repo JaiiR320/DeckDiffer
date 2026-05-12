@@ -1,6 +1,7 @@
 import { useDraggable } from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
 import type { CardCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
 import { cardDragId } from "./stackIds";
@@ -39,7 +40,7 @@ export function StackCard({
   readOnly,
   showControls = true,
 }: StackCardProps) {
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMoveDisabled =
     readOnly || (dragType === "card" && (!onMoveCardCategory || row.currentQuantity <= 0));
@@ -59,19 +60,6 @@ export function StackCard({
         : row.status === "changed"
           ? "ring-amber-400/40"
           : "ring-zinc-700/80";
-
-  useEffect(() => {
-    if (!isMenuOpen) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [isMenuOpen]);
 
   return (
     <div
@@ -137,8 +125,9 @@ export function StackCard({
                 </button>
               </>
             )}
-            <div ref={menuRef} className="relative border-t border-white/20">
+            <div className="border-t border-white/20">
               <button
+                ref={menuButtonRef}
                 type="button"
                 aria-label={`${row.name} actions`}
                 disabled={readOnly || !onChangePrinting}
@@ -151,19 +140,22 @@ export function StackCard({
                 <MoreHorizontal className="size-4" strokeWidth={2.5} />
               </button>
               {isMenuOpen ? (
-                <div className="absolute right-full top-0 z-50 mr-2 w-40 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/40">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
+                <ContextMenu
+                  open={isMenuOpen}
+                  onOpenChange={setIsMenuOpen}
+                  anchorRef={menuButtonRef}
+                  placement="left-start"
+                  widthClassName="w-40"
+                >
+                  <ContextMenuItem
+                    onSelect={() => {
                       setIsMenuOpen(false);
                       onChangePrinting?.(row);
                     }}
-                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 hover:text-zinc-100"
                   >
                     Change printing
-                  </button>
-                </div>
+                  </ContextMenuItem>
+                </ContextMenu>
               ) : null}
             </div>
           </div>

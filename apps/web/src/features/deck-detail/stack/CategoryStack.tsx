@@ -2,6 +2,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/react";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
@@ -71,7 +72,7 @@ export function CategoryStack({
   readOnly,
   onCategoryRef,
 }: CategoryStackProps) {
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const handledStartRenameRef = useRef(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -119,28 +120,6 @@ export function CategoryStack({
     onRenameCategory?.(category, nextName);
     setMenuState({ isRenaming: false, isMenuOpen: false });
   }
-
-  useEffect(() => {
-    if (!isMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setMenuState({
-          isMenuOpen: false,
-          isMovingCards: false,
-          isRenaming: false,
-        });
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, [isMenuOpen]);
 
   useEffect(() => {
     if (!shouldStartRenaming) {
@@ -197,7 +176,7 @@ export function CategoryStack({
                 isMenuOpen,
                 isMovingCards,
                 isRenaming,
-                menuRef,
+                menuButtonRef,
                 onMoveCategoryCards,
                 onRemoveCategory,
                 onCategoryChange,
@@ -286,7 +265,7 @@ type CategoryStackMenuModel = {
   isMenuOpen: boolean;
   isMovingCards: boolean;
   isRenaming: boolean;
-  menuRef: RefObject<HTMLDivElement | null>;
+  menuButtonRef: RefObject<HTMLButtonElement | null>;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onRemoveCategory?: (category: CardCategory) => void;
   onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
@@ -308,7 +287,7 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
     isMenuOpen,
     isMovingCards,
     isRenaming,
-    menuRef,
+    menuButtonRef,
     onMoveCategoryCards,
     onRemoveCategory,
     onCategoryChange,
@@ -322,8 +301,9 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
   } = menu;
 
   return (
-    <div ref={menuRef} className="relative">
+    <div>
       <button
+        ref={menuButtonRef}
         type="button"
         aria-label={`${categoryName} actions`}
         title={`${categoryName} actions`}
@@ -333,7 +313,18 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
         <MoreHorizontal className="size-4" />
       </button>
       {isMenuOpen ? (
-        <div className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/40">
+        <ContextMenu
+          open={isMenuOpen}
+          onOpenChange={(open) =>
+            setMenuState({
+              isMenuOpen: open,
+              isMovingCards: open ? isMovingCards : false,
+              isRenaming: open ? isRenaming : false,
+            })
+          }
+          anchorRef={menuButtonRef}
+          placement="bottom-end"
+        >
           {isRenaming ? (
             <div
               role="group"
@@ -392,7 +383,7 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
                       onMoveCategoryCards?.(category, targetCategory.id);
                       setMenuState({ isMovingCards: false, isMenuOpen: false });
                     }}
-                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900"
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 hover:text-zinc-100"
                   >
                     {targetCategory.name}
                   </button>
@@ -408,48 +399,43 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
             </div>
           ) : (
             <>
-              <button
-                type="button"
+              <ContextMenuItem
                 disabled={readOnly || cardCount === 0 || !onMoveCategoryCards}
-                onClick={() => setMenuState({ isMovingCards: true })}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                closeOnSelect={false}
+                onSelect={() => setMenuState({ isMovingCards: true, isMenuOpen: true })}
               >
                 Move all cards
-              </button>
-              <button
-                type="button"
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={readOnly || !onRenameCategory}
-                onClick={() => setMenuState({ renameDraft: categoryName, isRenaming: true })}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+                closeOnSelect={false}
+                onSelect={() =>
+                  setMenuState({ renameDraft: categoryName, isRenaming: true, isMenuOpen: true })
+                }
               >
                 Rename
-              </button>
-              <button
-                type="button"
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={readOnly || !onCategoryChange}
-                onClick={() => {
+                onSelect={() => {
                   onCategoryChange?.(category, { hidden: true });
-                  setMenuState({ isMenuOpen: false });
                 }}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Hide category
-              </button>
-              <button
-                type="button"
+              </ContextMenuItem>
+              <ContextMenuItem
                 disabled={readOnly || rowCount > 0 || !onRemoveCategory}
                 title={rowCount > 0 ? "Move cards out before removing." : "Remove category"}
-                onClick={() => {
+                tone="danger"
+                onSelect={() => {
                   onRemoveCategory?.(category);
-                  setMenuState({ isMenuOpen: false });
                 }}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-rose-400 transition hover:bg-rose-950/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Remove
-              </button>
+              </ContextMenuItem>
             </>
           )}
-        </div>
+        </ContextMenu>
       ) : null}
     </div>
   );

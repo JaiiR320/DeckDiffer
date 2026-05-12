@@ -7,8 +7,9 @@ import {
   useDragOperation,
 } from "@dnd-kit/react";
 import { Minus, Plus } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent, ReactNode, RefObject } from "react";
+import { Fragment, useRef, useState } from "react";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
+import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
 import type { DeckStackLayout } from "#/lib/deck";
 import { createCategoryId, type CardCategory, type DeckCategory } from "#/lib/decklist";
 import type { SearchCardResult } from "#/lib/scryfall";
@@ -69,7 +70,6 @@ export function EditorDeckStack({
   readOnly = false,
 }: EditorDeckStackProps) {
   const previousLayout = useRef(layout);
-  const laneMenuRef = useRef<HTMLDivElement | null>(null);
   const laneElements = useRef(new Map<number, HTMLDivElement>());
   const categoryElements = useRef(new Map<CardCategory, HTMLElement>());
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
@@ -120,24 +120,6 @@ export function EditorDeckStack({
     (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
     0,
   );
-
-  useEffect(() => {
-    if (!laneMenu) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!laneMenuRef.current?.contains(event.target as Node)) {
-        setLaneMenu(null);
-      }
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, [laneMenu]);
 
   function handleDragStart() {
     previousLayout.current = layout;
@@ -267,7 +249,9 @@ export function EditorDeckStack({
         <SearchCardDragOverlayHost />
         <LaneMenu
           laneMenu={laneMenu}
-          laneMenuRef={laneMenuRef}
+          onOpenChange={(open) => {
+            if (!open) setLaneMenu(null);
+          }}
           onCreateCategory={createCategoryInLane}
         />
         <div className="space-y-4 px-5 pb-5 pt-5">
@@ -367,31 +351,24 @@ export function EditorDeckStack({
 
 function LaneMenu({
   laneMenu,
-  laneMenuRef,
+  onOpenChange,
   onCreateCategory,
 }: {
   laneMenu: { x: number; y: number; laneIndex: number } | null;
-  laneMenuRef: RefObject<HTMLDivElement | null>;
+  onOpenChange: (open: boolean) => void;
   onCreateCategory: (laneIndex: number) => void;
 }) {
-  if (!laneMenu) {
-    return null;
-  }
-
   return (
-    <div
-      ref={laneMenuRef}
-      className="fixed z-50 w-44 rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/40"
-      style={{ left: laneMenu.x, top: laneMenu.y }}
+    <ContextMenu
+      open={Boolean(laneMenu)}
+      onOpenChange={onOpenChange}
+      position={laneMenu}
+      widthClassName="w-44"
     >
-      <button
-        type="button"
-        onClick={() => onCreateCategory(laneMenu.laneIndex)}
-        className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900"
-      >
+      <ContextMenuItem onSelect={() => laneMenu && onCreateCategory(laneMenu.laneIndex)}>
         New category
-      </button>
-    </div>
+      </ContextMenuItem>
+    </ContextMenu>
   );
 }
 
