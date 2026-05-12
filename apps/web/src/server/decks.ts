@@ -11,11 +11,13 @@ import {
   deckIdSchema,
   renameDeckInputSchema,
   saveDeckInputSchema,
+  updateDeckCurrentInputSchema,
   type CreateDeckInput,
   type DeleteDeckInput,
   type GetDeckInput,
   type RenameDeckInput,
   type SaveDeckInput,
+  type UpdateDeckCurrentInput,
 } from "./deckSchemas";
 
 async function requireUserId() {
@@ -235,6 +237,32 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
       .update(decks)
       .set({
         updatedAt: now,
+      })
+      .where(eq(decks.id, existingDeck.id));
+
+    return getDeckWithSavesBySlug(userId, existingDeck.slug);
+  });
+
+export const updateDeckCurrentForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: UpdateDeckCurrentInput) => updateDeckCurrentInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+
+    const existingDeck = await db.query.decks.findFirst({
+      where: and(eq(decks.userId, userId), eq(decks.slug, data.deckId)),
+    });
+
+    if (!existingDeck) {
+      throw new Error("Deck not found.");
+    }
+
+    await db
+      .update(decks)
+      .set({
+        categories: data.categories,
+        cards: data.cards,
+        layout: data.layout,
+        updatedAt: new Date(),
       })
       .where(eq(decks.id, existingDeck.id));
 

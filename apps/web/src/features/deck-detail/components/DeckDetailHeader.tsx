@@ -29,7 +29,7 @@ export function DeckDetailHeader({
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">{deckName}</h1>
         {deck.saves.length > 0 && (
           <span className="rounded-lg bg-zinc-900 px-2 py-1 text-sm text-zinc-500">
-            {deck.saves.length} save{deck.saves.length === 1 ? "" : "s"}
+            {deck.saves.length} snapshot{deck.saves.length === 1 ? "" : "s"}
           </span>
         )}
       </div>

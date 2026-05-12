@@ -91,7 +91,7 @@ export function EditorDeckStack({
   const visibleLanes: Array<{ lane: CardCategory[]; laneIndex: number }> = [];
   for (const [laneIndex, lane] of layout.lanes.entries()) {
     const visibleLane = lane.filter((category) => visibleCategoryIds.has(category));
-    if (visibleLane.length > 0) {
+    if (visibleLane.length > 0 || lane.length === 0) {
       visibleLanes.push({ lane: visibleLane, laneIndex });
     }
   }

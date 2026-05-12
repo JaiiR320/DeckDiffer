@@ -13,7 +13,7 @@ import { addEmptyStackLane } from "./editor/stackLayoutLane";
 import { useDeckActions } from "./editor/useDeckActions";
 import { useDeckImport } from "./editor/useDeckImport";
 import { useDeckPreview } from "./editor/useDeckPreview";
-import { getLatestSave, type DeckItem, type DeckStackLayout } from "#/lib/deck";
+import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "#/lib/deck";
 import { defaultStackLayout, normalizeStackLayout } from "#/lib/deckLayout";
 import { normalizeDeckSave } from "#/lib/deckSave";
 import {
@@ -24,6 +24,7 @@ import {
   type ValidatedDeckCard,
 } from "#/lib/decklist";
 import { getCardPreview } from "#/lib/scryfall";
+import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
 import type { DeckState } from "./editor/types";
 import {
   type DeckDetailActions,
@@ -66,10 +67,60 @@ function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): Editor
   return { redoStack: state.redoStack, undoStack: state.undoStack };
 }
 
+function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partial<PageState> {
+  const latestSave = getLatestSave(deck);
+  const normalizedBaselineSave = latestSave ? normalizeDeckSave(latestSave) : null;
+  const baselineCategories = normalizedBaselineSave?.categories ?? defaultDeckCategories();
+  const baselineLayout = normalizeStackLayout(normalizedBaselineSave?.layout, baselineCategories);
+  const liveCategories = deck.categories
+    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).categories
+    : baselineCategories;
+  const liveLayout = normalizeStackLayout(
+    deck.layout ?? normalizedBaselineSave?.layout,
+    liveCategories,
+  );
+  const liveCards = deck.cards
+    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).cards
+    : (normalizedBaselineSave?.cards ?? []);
+
+  return {
+    baselineDeck: {
+      rawText: "",
+      cards: normalizedBaselineSave?.cards ?? [],
+      invalidCards: [],
+      status: normalizedBaselineSave || liveCards.length > 0 ? "ready" : "idle",
+      errorMessage: null,
+    },
+    baselineCategories,
+    baselineStackLayout: baselineLayout,
+    deck,
+    deckErrorMessage: errorMessage,
+    isHydrated: true,
+    redoStack: [],
+    stackLayout: liveLayout,
+    undoStack: [],
+    categories: liveCategories,
+    workingCards: liveCards,
+  };
+}
+
+function getDeckSaveFromCurrent(deck: DeckItem): DeckSave {
+  return {
+    id: "current",
+    label: "Current",
+    savedAt: deck.updatedAt,
+    categories: deck.categories,
+    cards: deck.cards ?? [],
+    layout: deck.layout,
+  };
+}
+
 export function useDeckDetailController() {
   const loaderData = routeApi.useLoaderData();
   const attemptedCardDataBackfillsRef = useRef(new Set<string>());
-  const [pageState, setPageState] = useReducer(pageStateReducer, {
+  const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const persistVersionRef = useRef(0);
+  const [pageState, dispatchPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
     baselineDeck: emptyDeckState,
     baselineCategories: defaultDeckCategories(),
@@ -86,6 +137,16 @@ export function useDeckDetailController() {
     categories: defaultDeckCategories(),
     workingCards: [],
   });
+  const pageStateRef = useRef(pageState);
+  useEffect(() => {
+    pageStateRef.current = pageState;
+  }, [pageState]);
+
+  const setPageState = (action: Parameters<typeof pageStateReducer>[1]) => {
+    const patch = typeof action === "function" ? action(pageStateRef.current) : action;
+    pageStateRef.current = { ...pageStateRef.current, ...patch };
+    dispatchPageState(patch);
+  };
   const { baselineDeck, baselineCategories, baselineStackLayout, compareMode } = pageState;
   const { compareSaves, deck, stackLayout, categories, workingCards } = pageState;
   const preview = useDeckPreview();
@@ -132,7 +193,55 @@ export function useDeckDetailController() {
       workingCards: resolveStateAction(current.workingCards, workingCards),
     }));
   const clearUndoHistory = () => setPageState({ undoStack: [], redoStack: [] });
+  const persistEditorSnapshot = async (snapshot: EditorSnapshot) => {
+    const currentDeck = pageStateRef.current.deck;
+    if (!currentDeck) return false;
+
+    const version = ++persistVersionRef.current;
+    const data = {
+      deckId: currentDeck.id,
+      categories: snapshot.categories,
+      cards: snapshot.workingCards,
+      layout: snapshot.stackLayout,
+    };
+
+    const persist = async () => {
+      try {
+        const updatedDeck = await updateDeckCurrentForUser({ data }).catch(() =>
+          updateDeckCurrentForUser({ data }),
+        );
+        if (updatedDeck && version === persistVersionRef.current) {
+          setDeck(updatedDeck);
+          setDeckErrorMessage(null);
+        }
+        return true;
+      } catch (error) {
+        if (version !== persistVersionRef.current) return false;
+
+        const reloadedDeck = await getDeck({ data: { deckId: currentDeck.id } }).catch(() => null);
+        if (reloadedDeck && version === persistVersionRef.current) {
+          setPageState({
+            ...getDeckEditorState(
+              reloadedDeck,
+              "Could not save live changes. Reloaded latest live version.",
+            ),
+          });
+        } else {
+          setDeckErrorMessage(
+            error instanceof Error ? error.message : "Could not save live changes right now.",
+          );
+        }
+        return false;
+      }
+    };
+
+    const queuedPersist = persistQueueRef.current.then(persist, persist);
+    persistQueueRef.current = queuedPersist.catch(() => null);
+    return queuedPersist;
+  };
   const updateEditorSnapshot = (update: (snapshot: EditorSnapshot) => EditorSnapshot) => {
+    let snapshotToPersist: EditorSnapshot | null = null;
+
     setPageState((current) => {
       const snapshot = getEditorSnapshot(current);
       const nextSnapshot = update(snapshot);
@@ -142,20 +251,39 @@ export function useDeckDetailController() {
       }
 
       const nextUndoState = pushUndoSnapshot(getUndoState(current), snapshot);
+      snapshotToPersist = nextSnapshot;
       return { ...applyEditorSnapshot(nextSnapshot), ...nextUndoState };
     });
+
+    if (snapshotToPersist) {
+      void persistEditorSnapshot(snapshotToPersist);
+    }
   };
   const undoEditorChange = () => {
+    let snapshotToPersist: EditorSnapshot | null = null;
+
     setPageState((current) => {
       const result = undoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
+      snapshotToPersist = result?.snapshot ?? null;
       return result ? { ...applyEditorSnapshot(result.snapshot), ...result.undoState } : {};
     });
+
+    if (snapshotToPersist) {
+      void persistEditorSnapshot(snapshotToPersist);
+    }
   };
   const redoEditorChange = () => {
+    let snapshotToPersist: EditorSnapshot | null = null;
+
     setPageState((current) => {
       const result = redoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
+      snapshotToPersist = result?.snapshot ?? null;
       return result ? { ...applyEditorSnapshot(result.snapshot), ...result.undoState } : {};
     });
+
+    if (snapshotToPersist) {
+      void persistEditorSnapshot(snapshotToPersist);
+    }
   };
   const deckImport = useDeckImport({
     deckState: { baselineDeck, workingCards },
@@ -180,6 +308,7 @@ export function useDeckDetailController() {
       setBaselineStackLayout,
       setCategories,
       clearUndoHistory,
+      persistEditorSnapshot,
       setStackLayout,
       setWorkingCards,
     },
@@ -189,50 +318,16 @@ export function useDeckDetailController() {
   useEffect(() => {
     const nextDeck = loaderData.deck ?? undefined;
 
-    if (!nextDeck || nextDeck.saves.length === 0) {
-      const emptyLayout = defaultStackLayout();
-      const emptyCategories = defaultDeckCategories();
+    if (!nextDeck) {
       setPageState({
-        baselineDeck: emptyDeckState,
-        baselineCategories: emptyCategories,
-        baselineStackLayout: emptyLayout,
         deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
-        redoStack: [],
-        stackLayout: emptyLayout,
-        undoStack: [],
-        categories: emptyCategories,
-        workingCards: [],
       });
       return;
     }
 
-    const latestSave = getLatestSave(nextDeck);
-    if (!latestSave) return;
-
-    const normalizedSave = normalizeDeckSave(latestSave);
-    const latestCategories = normalizedSave.categories ?? defaultDeckCategories();
-    const latestLayout = normalizeStackLayout(normalizedSave.layout, latestCategories);
-    setPageState({
-      baselineDeck: {
-        rawText: "",
-        cards: normalizedSave.cards,
-        invalidCards: [],
-        status: "ready",
-        errorMessage: null,
-      },
-      baselineCategories: latestCategories,
-      baselineStackLayout: latestLayout,
-      deck: nextDeck,
-      deckErrorMessage: loaderData.errorMessage,
-      isHydrated: true,
-      redoStack: [],
-      stackLayout: latestLayout,
-      undoStack: [],
-      categories: latestCategories,
-      workingCards: normalizedSave.cards,
-    });
+    setPageState(getDeckEditorState(nextDeck, loaderData.errorMessage));
   }, [loaderData.deck, loaderData.errorMessage]);
 
   useEffect(() => {

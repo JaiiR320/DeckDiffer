@@ -19,7 +19,11 @@ export function useDeckEditorShortcuts(
 
       if (event.key.toLowerCase() === "z") {
         event.preventDefault();
-        event.shiftKey ? redoEditorChange() : undoEditorChange();
+        if (event.shiftKey) {
+          redoEditorChange();
+        } else {
+          undoEditorChange();
+        }
       }
 
       if (event.key.toLowerCase() === "y") {

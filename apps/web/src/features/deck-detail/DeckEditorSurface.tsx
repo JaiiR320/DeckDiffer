@@ -65,7 +65,7 @@ export function DeckEditorSurface() {
         </TabButton>
         {compareMode ? (
           <div className="ml-auto flex items-center gap-2 px-4">
-            <span className="text-sm text-cyan-400">Comparing saves</span>
+            <span className="text-sm text-cyan-400">Comparing snapshots</span>
             <button
               type="button"
               onClick={deckActions.exitCompareMode}
@@ -107,7 +107,8 @@ export function DeckEditorSurface() {
       ) : (
         <SaveHistoryPanel
           deck={deck}
-          onLoadSave={deckActions.loadSave}
+          onLoadSave={(save) => void deckActions.loadSave(save)}
+          onSaveSnapshotBeforeLoad={deckActions.saveSnapshotBeforeLoad}
           onCompareSaves={deckActions.compareSaves}
           onBackToEditor={() => actions.setActiveTab("editor")}
         />

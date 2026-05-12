@@ -47,7 +47,7 @@ export function DeckDetailModals() {
         <SaveDeckModal
           defaultLabel={defaultSaveLabel}
           isOpen={deckActions.isSaveOpen}
-          onClose={() => deckActions.setIsSaveOpen(false)}
+          onClose={deckActions.closeSaveModal}
           onSave={(label) =>
             void deckActions.saveDeck(label).then((saved) => {
               if (saved) actions.clearUndoHistory();

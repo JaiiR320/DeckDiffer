@@ -267,7 +267,7 @@ function GeneralSettingsTab({
       {showDeleteConfirm ? (
         <div className="space-y-3 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4">
           <p className="text-sm text-rose-300">
-            Are you sure? This will delete the deck and all {deck.saves.length} save
+            Are you sure? This will delete the deck and all {deck.saves.length} snapshot
             {deck.saves.length === 1 ? "" : "s"}.
           </p>
           <div className="flex gap-2">

@@ -5,6 +5,7 @@ import type { DeckItem, DeckSave } from "#/lib/deck";
 type SaveHistoryPanelProps = {
   deck: DeckItem;
   onLoadSave: (save: DeckSave) => void;
+  onSaveSnapshotBeforeLoad: (save: DeckSave) => void;
   onCompareSaves: (saveA: DeckSave, saveB: DeckSave) => void;
   onBackToEditor: () => void;
 };
@@ -12,10 +13,12 @@ type SaveHistoryPanelProps = {
 export function SaveHistoryPanel({
   deck,
   onLoadSave,
+  onSaveSnapshotBeforeLoad,
   onCompareSaves,
   onBackToEditor,
 }: SaveHistoryPanelProps) {
   const [compareMode, setCompareMode] = useState(false);
+  const [pendingLoadSaveId, setPendingLoadSaveId] = useState<string | null>(null);
   const [selectedSaves, setSelectedSaves] = useState<string[]>([]);
 
   // Newest first
@@ -80,7 +83,7 @@ export function SaveHistoryPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-100">Save History</h2>
+          <h2 className="text-lg font-semibold text-zinc-100">Snapshot History</h2>
           <p className="mt-1 text-sm text-zinc-500">
             {saves.length} snapshot{saves.length === 1 ? "" : "s"}
           </p>
@@ -114,7 +117,7 @@ export function SaveHistoryPanel({
       {compareMode && (
         <div className="rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-4">
           <p className="text-sm text-cyan-300">
-            Select 2 saves to compare. Shows diff between older (left) and newer (right).
+            Select 2 snapshots to compare. Shows diff between older (left) and newer (right).
           </p>
           {selectedSaves.length === 2 && (
             <button
@@ -132,6 +135,7 @@ export function SaveHistoryPanel({
       <div className="space-y-2">
         {saves.map((save) => {
           const isSelected = selectedSaves.includes(save.id);
+          const isPendingLoad = pendingLoadSaveId === save.id;
           const selectionOrder = selectedSaves.indexOf(save.id) + 1;
           const saveContent = (
             <>
@@ -154,7 +158,7 @@ export function SaveHistoryPanel({
               {!compareMode && (
                 <button
                   type="button"
-                  onClick={() => onLoadSave(save)}
+                  onClick={() => setPendingLoadSaveId(save.id)}
                   className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
                 >
                   Load
@@ -183,9 +187,45 @@ export function SaveHistoryPanel({
           return (
             <div
               key={save.id}
-              className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 p-4 transition"
+              className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4 transition"
             >
-              {saveContent}
+              <div className="flex items-center justify-between">{saveContent}</div>
+              {isPendingLoad ? (
+                <div className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4">
+                  <p className="text-sm text-amber-200">
+                    Loading this snapshot will overwrite your current live deck.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPendingLoadSaveId(null)}
+                      className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingLoadSaveId(null);
+                        onSaveSnapshotBeforeLoad(save);
+                      }}
+                      className="rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
+                    >
+                      Save Snapshot
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingLoadSaveId(null);
+                        onLoadSave(save);
+                      }}
+                      className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 transition hover:bg-amber-400"
+                    >
+                      Load Anyways
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           );
         })}

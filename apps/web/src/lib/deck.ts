@@ -24,6 +24,9 @@ export type DeckItem = {
   name: string;
   createdAt: string; // ISO-8601
   updatedAt: string; // ISO-8601
+  categories?: DeckCategory[];
+  cards?: ValidatedDeckCard[];
+  layout?: DeckStackLayout;
   saves: DeckSave[]; // oldest-first
 };
 

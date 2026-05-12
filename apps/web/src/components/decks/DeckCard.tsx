@@ -16,11 +16,9 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
       </div>
 
       <div className="pointer-events-none mt-8">
-        <span className="text-3xl font-semibold tracking-tight text-zinc-100">
-          {deck.name}
-        </span>
+        <span className="text-3xl font-semibold tracking-tight text-zinc-100">{deck.name}</span>
         <p className="mt-2 text-lg text-zinc-500">
-          {deck.saves.length} save{deck.saves.length === 1 ? "" : "s"}
+          {deck.saves.length} snapshot{deck.saves.length === 1 ? "" : "s"}
         </p>
       </div>
 

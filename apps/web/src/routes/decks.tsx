@@ -123,13 +123,13 @@ function DecksPage() {
   }
 
   function handleExportDeck(deck: DeckItem) {
-    const latestSave = deck.saves[deck.saves.length - 1];
-    if (!latestSave) {
+    const cards = deck.cards ?? deck.saves[deck.saves.length - 1]?.cards;
+    if (!cards || cards.length === 0) {
       alert("No cards to export. Import or add cards first.");
       return;
     }
 
-    const exportText = formatDeckExport(latestSave.cards);
+    const exportText = formatDeckExport(cards);
     const blob = new Blob([exportText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

@@ -17,6 +17,12 @@ export type SaveDeckInput = {
   cards: ValidatedDeckCard[];
   layout?: DeckStackLayout;
 };
+export type UpdateDeckCurrentInput = {
+  deckId: string;
+  categories: DeckCategory[];
+  cards: ValidatedDeckCard[];
+  layout: DeckStackLayout;
+};
 
 export const deckIdSchema = z.object({
   deckId: z.string().trim().min(1, "Deck ID is required."),
@@ -97,4 +103,11 @@ export const saveDeckInputSchema = z.object({
     .optional(),
   cards: z.array(validatedDeckCardSchema),
   layout: deckStackLayoutSchema.optional(),
+});
+
+export const updateDeckCurrentInputSchema = z.object({
+  deckId: z.string().trim().min(1, "Deck ID is required."),
+  categories: z.array(deckCategorySchema),
+  cards: z.array(validatedDeckCardSchema),
+  layout: deckStackLayoutSchema,
 });
