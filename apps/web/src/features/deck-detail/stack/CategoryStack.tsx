@@ -89,6 +89,11 @@ export function CategoryStack({
       );
     }
 
+    if (cardSort === "price") {
+      const priceComparison = comparePrices(left.priceUsd, right.priceUsd, cardSortDirection);
+      return priceComparison || left.name.localeCompare(right.name);
+    }
+
     const manaValueComparison = left.manaValue - right.manaValue;
     return (
       applySortDirection(manaValueComparison, cardSortDirection) ||
@@ -255,6 +260,17 @@ function formatPrice(price: number) {
 
 function applySortDirection(value: number, direction: DeckCardSortDirection) {
   return direction === "asc" ? value : -value;
+}
+
+function comparePrices(
+  leftPrice: number | undefined,
+  rightPrice: number | undefined,
+  direction: DeckCardSortDirection,
+) {
+  if (leftPrice === undefined && rightPrice === undefined) return 0;
+  if (leftPrice === undefined) return 1;
+  if (rightPrice === undefined) return -1;
+  return applySortDirection(leftPrice - rightPrice, direction);
 }
 
 type CategoryStackMenuModel = {

@@ -74,7 +74,7 @@ const validatedDeckCardSchema = z.object({
 const deckStackLayoutSchema = z.object({
   lanes: z.array(z.array(z.string().trim().min(1))),
   showRemovedCardGhosts: z.boolean().optional(),
-  cardSort: z.enum(["manaValue", "alphabetical"]).optional(),
+  cardSort: z.enum(["manaValue", "alphabetical", "price"]).optional(),
   cardSortDirection: z.enum(["asc", "desc"]).optional(),
 });
 

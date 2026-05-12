@@ -1,6 +1,6 @@
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
 
-export type DeckCardSort = "manaValue" | "alphabetical";
+export type DeckCardSort = "manaValue" | "alphabetical" | "price";
 export type DeckCardSortDirection = "asc" | "desc";
 
 export type DeckStackLayout = {

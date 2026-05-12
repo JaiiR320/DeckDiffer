@@ -26,6 +26,7 @@ const SEARCH_RESULTS_IDLE_CLOSE_MS = 10000;
 const CARD_SORT_OPTIONS = [
   { value: "manaValue", label: "Mana value" },
   { value: "alphabetical", label: "Alphabetical" },
+  { value: "price", label: "Price" },
 ] satisfies Array<{ value: DeckCardSort; label: string }>;
 
 type SearchState = {
