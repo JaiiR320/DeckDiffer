@@ -89,6 +89,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
               ...current,
               categories: [...current.categories, nextCategory],
               stackLayout: {
+                ...current.stackLayout,
                 lanes: current.stackLayout.lanes.map((lane, index) =>
                   index === laneIndex ? [...lane, nextCategory.id] : lane,
                 ),
@@ -119,6 +120,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
             ...current,
             categories: current.categories.filter((category) => category.id !== categoryId),
             stackLayout: {
+              ...current.stackLayout,
               lanes: current.stackLayout.lanes.reduce<CardCategory[][]>((lanes, lane) => {
                 const nextLane = lane.filter((category) => category !== categoryId);
                 return nextLane.length > 0 ? [...lanes, nextLane] : lanes;

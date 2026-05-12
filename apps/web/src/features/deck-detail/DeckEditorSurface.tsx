@@ -1,5 +1,7 @@
 import { EditorHeader } from "./components/EditorHeader";
 import { SaveHistoryPanel } from "./components/SaveHistoryPanel";
+import type { DeckCardSort } from "#/lib/deck";
+import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
   useDeckDetailActions,
   useDeckDetailModel,
@@ -10,13 +12,47 @@ import { StackEditor } from "./StackEditor";
 import { TabButton } from "./TabButton";
 
 export function DeckEditorSurface() {
-  const { activeTab, baselineDeck, compareMode, deck, isHydrated, redoStack, undoStack } =
-    useDeckDetailState();
+  const {
+    activeTab,
+    baselineDeck,
+    compareMode,
+    deck,
+    isHydrated,
+    redoStack,
+    stackLayout,
+    undoStack,
+  } = useDeckDetailState();
   const { mergedWorkingCardsLength } = useDeckDetailModel();
   const actions = useDeckDetailActions();
   const { deckActions, deckImport, preview } = useDeckDetailServices();
   const canRedo = !compareMode && redoStack.length > 0;
   const canUndo = !compareMode && undoStack.length > 0;
+  const cardSort = stackLayout.cardSort ?? "manaValue";
+  const cardSortDirection = stackLayout.cardSortDirection ?? "desc";
+
+  function updateCardSort(nextSort: DeckCardSort) {
+    actions.updateEditorSnapshot((current) => ({
+      ...current,
+      stackLayout: normalizeStackLayout(
+        { ...current.stackLayout, cardSort: nextSort },
+        current.categories,
+      ),
+    }));
+  }
+
+  function reverseCardSortDirection() {
+    actions.updateEditorSnapshot((current) => ({
+      ...current,
+      stackLayout: normalizeStackLayout(
+        {
+          ...current.stackLayout,
+          cardSortDirection:
+            (current.stackLayout.cardSortDirection ?? "desc") === "asc" ? "desc" : "asc",
+        },
+        current.categories,
+      ),
+    }));
+  }
 
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
@@ -54,6 +90,10 @@ export function DeckEditorSurface() {
               }
               onRedo={actions.onRedo}
               onUndo={actions.onUndo}
+              cardSort={cardSort}
+              cardSortDirection={cardSortDirection}
+              onCardSortChange={updateCardSort}
+              onReverseCardSortDirection={reverseCardSortDirection}
               onPreviewCard={(card) =>
                 preview.updatePreviewCard({
                   name: card.name,

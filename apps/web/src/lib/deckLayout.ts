@@ -5,7 +5,10 @@ import {
   type CardCategory,
   type DeckCategory,
 } from "./decklist";
-import type { DeckStackLayout } from "./deck";
+import type { DeckCardSort, DeckCardSortDirection, DeckStackLayout } from "./deck";
+
+const DEFAULT_CARD_SORT: DeckCardSort = "manaValue";
+const DEFAULT_CARD_SORT_DIRECTION: DeckCardSortDirection = "desc";
 
 export function defaultStackLayout(): DeckStackLayout {
   return {
@@ -17,6 +20,8 @@ export function defaultStackLayout(): DeckStackLayout {
       ["planeswalker", "battle", "other"],
     ],
     showRemovedCardGhosts: true,
+    cardSort: DEFAULT_CARD_SORT,
+    cardSortDirection: DEFAULT_CARD_SORT_DIRECTION,
   };
 }
 
@@ -52,13 +57,23 @@ export function normalizeStackLayout(
   }
 
   return lanes.length > 0
-    ? { lanes, showRemovedCardGhosts: layout.showRemovedCardGhosts !== false }
+    ? {
+        lanes,
+        showRemovedCardGhosts: layout.showRemovedCardGhosts !== false,
+        cardSort: isCardSort(layout.cardSort) ? layout.cardSort : DEFAULT_CARD_SORT,
+        cardSortDirection: isCardSortDirection(layout.cardSortDirection)
+          ? layout.cardSortDirection
+          : DEFAULT_CARD_SORT_DIRECTION,
+      }
     : defaultStackLayout();
 }
 
-function isStackLayoutLike(
-  layout: unknown,
-): layout is { lanes: string[][]; showRemovedCardGhosts?: boolean } {
+function isStackLayoutLike(layout: unknown): layout is {
+  lanes: string[][];
+  showRemovedCardGhosts?: boolean;
+  cardSort?: unknown;
+  cardSortDirection?: unknown;
+} {
   return (
     !!layout &&
     typeof layout === "object" &&
@@ -67,4 +82,12 @@ function isStackLayoutLike(
       (lane) => Array.isArray(lane) && lane.every((category) => typeof category === "string"),
     )
   );
+}
+
+function isCardSort(value: unknown): value is DeckCardSort {
+  return value === "manaValue" || value === "alphabetical";
+}
+
+function isCardSortDirection(value: unknown): value is DeckCardSortDirection {
+  return value === "asc" || value === "desc";
 }

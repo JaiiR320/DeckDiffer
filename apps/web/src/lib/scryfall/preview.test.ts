@@ -15,6 +15,7 @@ describe("getCardPreview", () => {
         oracle_id: "oracle-1",
         id: "card-1",
         type_line: "Instant",
+        cmc: 1,
         set: "lea",
         collector_number: "161",
         prices: { usd: "2.50" },
@@ -46,6 +47,7 @@ describe("getCardPreview", () => {
     });
     expect(firstPreview).toEqual(secondPreview);
     expect(firstPreview?.imageUrl).toContain("lightning-bolt.jpg");
+    expect(firstPreview?.manaValue).toBe(1);
     expect(firstPreview?.priceUsd).toBe(2.5);
   });
 

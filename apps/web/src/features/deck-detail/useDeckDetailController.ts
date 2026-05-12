@@ -67,7 +67,7 @@ function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): Editor
 
 export function useDeckDetailController() {
   const loaderData = routeApi.useLoaderData();
-  const attemptedPriceBackfillsRef = useRef(new Set<string>());
+  const attemptedCardDataBackfillsRef = useRef(new Set<string>());
   const [pageState, setPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
     baselineDeck: emptyDeckState,
@@ -85,8 +85,7 @@ export function useDeckDetailController() {
     categories: defaultDeckCategories(),
     workingCards: [],
   });
-  const { activeTab, baselineDeck, baselineCategories, baselineStackLayout, compareMode } =
-    pageState;
+  const { baselineDeck, baselineCategories, baselineStackLayout, compareMode } = pageState;
   const { compareSaves, deck, stackLayout, categories, workingCards } = pageState;
   const preview = useDeckPreview();
   const setActiveTab = (activeTab: SetStateAction<"editor" | "history">) =>
@@ -238,19 +237,25 @@ export function useDeckDetailController() {
   useEffect(() => {
     if (!pageState.isHydrated) return;
 
-    const cardsNeedingPrice = pageState.workingCards.filter((card) => {
+    const cardsNeedingBackfill = pageState.workingCards.filter((card) => {
       const key = getCardPriceBackfillKey(card);
-      return card.priceUsd === undefined && key && !attemptedPriceBackfillsRef.current.has(key);
+      return (
+        (card.priceUsd === undefined || card.manaValue === undefined) &&
+        key &&
+        !attemptedCardDataBackfillsRef.current.has(key)
+      );
     });
 
-    if (cardsNeedingPrice.length === 0) return;
+    if (cardsNeedingBackfill.length === 0) return;
 
     const uniqueCards = [
-      ...new Map(cardsNeedingPrice.map((card) => [getCardPriceBackfillKey(card), card])).values(),
+      ...new Map(
+        cardsNeedingBackfill.map((card) => [getCardPriceBackfillKey(card), card]),
+      ).values(),
     ];
     for (const card of uniqueCards) {
       const key = getCardPriceBackfillKey(card);
-      if (key) attemptedPriceBackfillsRef.current.add(key);
+      if (key) attemptedCardDataBackfillsRef.current.add(key);
     }
 
     let isCurrent = true;
@@ -261,24 +266,30 @@ export function useDeckDetailController() {
           setCode: card.setCode,
           collectorNumber: card.collectorNumber,
         }).catch(() => null);
-        return { key: getCardPriceBackfillKey(card), priceUsd: preview?.priceUsd };
+        return {
+          key: getCardPriceBackfillKey(card),
+          manaValue: preview?.manaValue,
+          priceUsd: preview?.priceUsd,
+        };
       }),
-    ).then((prices) => {
+    ).then((cardData) => {
       if (!isCurrent) return;
-      const priceByKey = new Map(
-        prices.flatMap(({ key, priceUsd }) =>
-          key && priceUsd !== undefined ? [[key, priceUsd] as const] : [],
+      const cardDataByKey = new Map(
+        cardData.flatMap(({ key, manaValue, priceUsd }) =>
+          key && (manaValue !== undefined || priceUsd !== undefined)
+            ? [[key, { manaValue, priceUsd }] as const]
+            : [],
         ),
       );
 
-      if (priceByKey.size === 0) return;
+      if (cardDataByKey.size === 0) return;
 
       setPageState((current) => ({
         baselineDeck: {
           ...current.baselineDeck,
-          cards: backfillCardPrices(current.baselineDeck.cards, priceByKey),
+          cards: backfillCardData(current.baselineDeck.cards, cardDataByKey),
         },
-        workingCards: backfillCardPrices(current.workingCards, priceByKey),
+        workingCards: backfillCardData(current.workingCards, cardDataByKey),
       }));
     });
 
@@ -353,11 +364,23 @@ function getCardPriceBackfillKey(card: ValidatedDeckCard) {
   return [card.oracleId, card.setCode ?? "", card.collectorNumber ?? ""].join("\0");
 }
 
-function backfillCardPrices(cards: ValidatedDeckCard[], priceByKey: Map<string, number>) {
-  return cards.map((card) => {
-    if (card.priceUsd !== undefined) return card;
+type CardBackfillData = {
+  manaValue?: number;
+  priceUsd?: number;
+};
 
-    const priceUsd = priceByKey.get(getCardPriceBackfillKey(card));
-    return priceUsd === undefined ? card : { ...card, priceUsd };
+function backfillCardData(
+  cards: ValidatedDeckCard[],
+  cardDataByKey: Map<string, CardBackfillData>,
+) {
+  return cards.map((card) => {
+    const cardData = cardDataByKey.get(getCardPriceBackfillKey(card));
+    if (!cardData) return card;
+
+    return {
+      ...card,
+      manaValue: card.manaValue ?? cardData.manaValue,
+      priceUsd: card.priceUsd ?? cardData.priceUsd,
+    };
   });
 }

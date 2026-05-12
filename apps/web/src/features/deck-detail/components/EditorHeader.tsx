@@ -1,6 +1,8 @@
 import { useDragDropMonitor } from "@dnd-kit/react";
-import { Download, Import, Redo2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Download, Import, Redo2, Undo2 } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
+import { DropdownSelect } from "#/components/DropdownSelect";
+import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import { searchCards, type SearchCardResult } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
 import { StackCard } from "../stack/StackCard";
@@ -13,10 +15,18 @@ type EditorHeaderProps = {
   canUndo: boolean;
   onRedo: () => void;
   onUndo: () => void;
+  cardSort: DeckCardSort;
+  cardSortDirection: DeckCardSortDirection;
+  onCardSortChange: (sort: DeckCardSort) => void;
+  onReverseCardSortDirection: () => void;
   onPreviewCard: (card: SearchCardResult) => void;
 };
 
 const SEARCH_RESULTS_IDLE_CLOSE_MS = 10000;
+const CARD_SORT_OPTIONS = [
+  { value: "manaValue", label: "Mana value" },
+  { value: "alphabetical", label: "Alphabetical" },
+] satisfies Array<{ value: DeckCardSort; label: string }>;
 
 type SearchState = {
   results: SearchCardResult[];
@@ -54,6 +64,10 @@ export function EditorHeader({
   canUndo,
   onRedo,
   onUndo,
+  cardSort,
+  cardSortDirection,
+  onCardSortChange,
+  onReverseCardSortDirection,
   onPreviewCard,
 }: EditorHeaderProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -208,7 +222,29 @@ export function EditorHeader({
           ) : null}
         </div>
 
+        <ToolbarDivider />
         <div className="flex shrink-0 items-center gap-2">
+          <DropdownSelect
+            value={cardSort}
+            options={CARD_SORT_OPTIONS}
+            onChange={onCardSortChange}
+            aria-label="Sort cards"
+            className="w-44"
+          />
+          <button
+            type="button"
+            onClick={onReverseCardSortDirection}
+            title={`Reverse to ${cardSortDirection === "asc" ? "descending" : "ascending"}`}
+            aria-label="Reverse card sort direction"
+            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+          >
+            {cardSortDirection === "asc" ? (
+              <ArrowUp className="size-4" strokeWidth={1.75} />
+            ) : (
+              <ArrowDown className="size-4" strokeWidth={1.75} />
+            )}
+          </button>
+          <ToolbarDivider />
           <button
             type="button"
             onClick={onUndo}
@@ -229,6 +265,7 @@ export function EditorHeader({
           >
             <Redo2 className="size-4" strokeWidth={1.75} />
           </button>
+          <ToolbarDivider />
           <button
             type="button"
             onClick={onExport}
@@ -250,6 +287,10 @@ export function EditorHeader({
       </div>
     </div>
   );
+}
+
+function ToolbarDivider() {
+  return <div aria-hidden="true" className="mx-1 h-10 border-l border-zinc-800" />;
 }
 
 function SearchResultCard({

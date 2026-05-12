@@ -299,6 +299,8 @@ export function EditorDeckStack({
                           (groupedRows[category] ?? []).filter((row) => row.currentQuantity > 0)
                             .length
                         }
+                        cardSort={layout.cardSort ?? "manaValue"}
+                        cardSortDirection={layout.cardSortDirection ?? "desc"}
                         diffCounts={getCategoryDiffCounts(groupedRows[category] ?? [])}
                         shouldStartRenaming={renamingCategoryId === category}
                         rows={visibleGroupedRows[category] ?? []}

@@ -2,6 +2,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/react";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { RefObject } from "react";
+import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
 import { StackCard } from "./StackCard";
@@ -15,6 +16,8 @@ type CategoryStackProps = {
   categories: DeckCategory[];
   cardCount: number;
   rows: EditorRow[];
+  cardSort: DeckCardSort;
+  cardSortDirection: DeckCardSortDirection;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   onChangePrinting?: (row: EditorRow) => void;
@@ -54,6 +57,8 @@ export function CategoryStack({
   categories,
   cardCount,
   rows,
+  cardSort,
+  cardSortDirection,
   onAdjustQuantity,
   onMoveCardCategory,
   onChangePrinting,
@@ -73,9 +78,20 @@ export function CategoryStack({
     initialMenuState,
   );
   const { isMenuOpen, isMovingCards, isRenaming, renameDraft } = menuState;
-  const sortedRows = rows
-    .slice()
-    .sort((left, right) => right.manaValue - left.manaValue || left.name.localeCompare(right.name));
+  const sortedRows = rows.slice().sort((left, right) => {
+    if (cardSort === "alphabetical") {
+      const nameComparison = left.name.localeCompare(right.name);
+      return (
+        applySortDirection(nameComparison, cardSortDirection) || right.manaValue - left.manaValue
+      );
+    }
+
+    const manaValueComparison = left.manaValue - right.manaValue;
+    return (
+      applySortDirection(manaValueComparison, cardSortDirection) ||
+      left.name.localeCompare(right.name)
+    );
+  });
   const lastCardOffset = Math.max(0, sortedRows.length - 1) * 44;
   const totalQuantity = sortedRows.reduce((sum, row) => sum + row.currentQuantity, 0);
   const totalPrice = sortedRows.reduce(
@@ -253,6 +269,10 @@ export function CategoryStack({
 
 function formatPrice(price: number) {
   return `$${price.toFixed(2)}`;
+}
+
+function applySortDirection(value: number, direction: DeckCardSortDirection) {
+  return direction === "asc" ? value : -value;
 }
 
 type CategoryStackMenuModel = {

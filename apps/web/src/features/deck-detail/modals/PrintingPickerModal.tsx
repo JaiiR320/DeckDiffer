@@ -1,9 +1,16 @@
 import { X } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
+import { DropdownSelect } from "#/components/DropdownSelect";
 import { getCardPrintings, type CardPrintingOption } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
 
 type PrintingSort = "date" | "set" | "price";
+
+const PRINTING_SORT_OPTIONS = [
+  { value: "date", label: "Edition date" },
+  { value: "set", label: "Set Name" },
+  { value: "price", label: "Price" },
+] satisfies Array<{ value: PrintingSort; label: string }>;
 
 type PrintingPickerModalProps = {
   row: EditorRow;
@@ -80,18 +87,16 @@ export function PrintingPickerModal({ row, onClose, onSelect }: PrintingPickerMo
                   className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-500"
                 />
               </label>
-              <label className="block">
+              <div>
                 <span className="text-sm font-semibold text-zinc-200">Order by</span>
-                <select
+                <DropdownSelect
                   value={sort}
-                  onChange={(event) => setSort(event.target.value as PrintingSort)}
-                  className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
-                >
-                  <option value="date">Edition date</option>
-                  <option value="set">Set Name</option>
-                  <option value="price">Price</option>
-                </select>
-              </label>
+                  options={PRINTING_SORT_OPTIONS}
+                  onChange={setSort}
+                  aria-label="Order printings by"
+                  className="mt-1 w-full"
+                />
+              </div>
             </div>
           </div>
           <button

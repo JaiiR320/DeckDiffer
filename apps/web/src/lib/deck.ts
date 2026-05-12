@@ -1,8 +1,13 @@
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
 
+export type DeckCardSort = "manaValue" | "alphabetical";
+export type DeckCardSortDirection = "asc" | "desc";
+
 export type DeckStackLayout = {
   lanes: CardCategory[][];
   showRemovedCardGhosts?: boolean;
+  cardSort?: DeckCardSort;
+  cardSortDirection?: DeckCardSortDirection;
 };
 
 export type DeckSave = {

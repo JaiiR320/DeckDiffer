@@ -16,6 +16,8 @@ describe("normalizeStackLayout", () => {
       ["planeswalker", "battle", "other"],
     ]);
     expect(defaultStackLayout().showRemovedCardGhosts).toBe(true);
+    expect(defaultStackLayout().cardSort).toBe("manaValue");
+    expect(defaultStackLayout().cardSortDirection).toBe("desc");
   });
 
   it("preserves the removed-card ghost display setting", () => {
@@ -24,6 +26,32 @@ describe("normalizeStackLayout", () => {
         showRemovedCardGhosts: false,
       },
     );
+  });
+
+  it("preserves valid card sort settings", () => {
+    expect(
+      normalizeStackLayout({
+        lanes: [["Land"]],
+        cardSort: "alphabetical",
+        cardSortDirection: "asc",
+      }),
+    ).toMatchObject({
+      cardSort: "alphabetical",
+      cardSortDirection: "asc",
+    });
+  });
+
+  it("falls back to default card sort settings", () => {
+    expect(
+      normalizeStackLayout({
+        lanes: [["Land"]],
+        cardSort: "bad",
+        cardSortDirection: "sideways",
+      }),
+    ).toMatchObject({
+      cardSort: "manaValue",
+      cardSortDirection: "desc",
+    });
   });
 
   it("preserves empty lanes", () => {

@@ -164,6 +164,7 @@ export type CardPreviewResult = {
   oracleText?: string;
   setCode?: string;
   collectorNumber?: string;
+  manaValue?: number;
   smallImageUrl: string;
   imageUrl: string;
   priceUsd?: number;
