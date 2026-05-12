@@ -34,17 +34,20 @@ async function fetchPrintingsPage(url: string) {
   return (await response.json()) as ScryfallListResponse<ScryfallCard>;
 }
 
-async function fetchCardPrintings(oracleId: string) {
-  let url = `https://api.scryfall.com/cards/search?unique=prints&order=released&q=${encodeURIComponent(`oracleid:${oracleId}`)}`;
-  const printings: CardPrintingOption[] = [];
+async function fetchPrintingsFrom(url: string): Promise<CardPrintingOption[]> {
+  const payload = await fetchPrintingsPage(url);
+  const printings = payload.data.map(toCardPrintingOption);
 
-  while (url) {
-    const payload = await fetchPrintingsPage(url);
-    printings.push(...payload.data.map(toCardPrintingOption));
-    url = payload.next_page ?? "";
+  if (!payload.next_page) {
+    return printings;
   }
 
-  return printings;
+  return [...printings, ...(await fetchPrintingsFrom(payload.next_page))];
+}
+
+function fetchCardPrintings(oracleId: string) {
+  const url = `https://api.scryfall.com/cards/search?unique=prints&order=released&q=${encodeURIComponent(`oracleid:${oracleId}`)}`;
+  return fetchPrintingsFrom(url);
 }
 
 export function getCardPrintings(oracleId: string) {

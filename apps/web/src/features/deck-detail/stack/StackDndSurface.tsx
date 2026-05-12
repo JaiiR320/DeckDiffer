@@ -47,6 +47,36 @@ type EditorDeckStackProps = {
   readOnly?: boolean;
 };
 
+type StackLaneGridData = {
+  categories: DeckCategory[];
+  categoryDiffs: Record<CardCategory, CategoryDiff>;
+  dropPreview: DropPreview | null;
+  groupedRows: Record<CardCategory, EditorRow[]>;
+  layout: DeckStackLayout;
+  renamingCategoryId: CardCategory | null;
+  visibleGroupedRows: Record<CardCategory, EditorRow[]>;
+  visibleLanes: Array<{ lane: CardCategory[]; laneIndex: number }>;
+};
+
+type StackLaneGridRefs = {
+  categoryElements: { current: Map<CardCategory, HTMLElement> };
+  laneElements: { current: Map<number, HTMLDivElement> };
+};
+
+type StackLaneGridActions = Pick<
+  EditorDeckStackProps,
+  | "onAdjustQuantity"
+  | "onMoveCardCategory"
+  | "onChangePrinting"
+  | "onMoveCategoryCards"
+  | "onRemoveLane"
+  | "onRemoveCategory"
+  | "onCategoryChange"
+  | "onRenameCategory"
+> & {
+  openLaneMenu: (event: MouseEvent<HTMLDivElement>) => void;
+};
+
 export function EditorDeckStack({
   categories,
   categoryDiffs,
@@ -120,6 +150,28 @@ export function EditorDeckStack({
     (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
     0,
   );
+  const laneGridData: StackLaneGridData = {
+    categories,
+    categoryDiffs,
+    dropPreview,
+    groupedRows,
+    layout,
+    renamingCategoryId,
+    visibleGroupedRows,
+    visibleLanes,
+  };
+  const laneGridRefs: StackLaneGridRefs = { categoryElements, laneElements };
+  const laneGridActions: StackLaneGridActions = {
+    onAdjustQuantity,
+    onMoveCardCategory,
+    onChangePrinting,
+    onMoveCategoryCards,
+    onRemoveLane,
+    onRemoveCategory,
+    onCategoryChange,
+    onRenameCategory,
+    openLaneMenu,
+  };
 
   function handleDragStart() {
     previousLayout.current = layout;
@@ -265,86 +317,116 @@ export function EditorDeckStack({
             visibleRowsCount={visibleRows.length}
             onToggleShowDiffOnly={onToggleShowDiffOnly}
           />
-          <div
-            className="grid select-none items-start gap-0 pb-2"
-            onContextMenu={openLaneMenu}
-            style={
-              {
-                gridTemplateColumns: `repeat(${Math.max(visibleLanes.length, 1)}, minmax(0, 1fr))`,
-              } as CSSProperties
-            }
-          >
-            {visibleLanes.length === 0 ? (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-5 py-12 text-center text-sm font-semibold text-zinc-500">
-                All categories are hidden. Re-enable one from Settings.
-              </div>
-            ) : null}
-            {visibleLanes.map(({ lane, laneIndex }) => (
-              <CategoryLane
-                key={laneIndex}
-                laneIndex={laneIndex}
-                categories={lane}
-                hasPreview={dropPreview?.laneIndex === laneIndex}
-                onLaneRef={(element) => {
-                  if (element) {
-                    laneElements.current.set(laneIndex, element);
-                  } else {
-                    laneElements.current.delete(laneIndex);
-                  }
-                }}
-                onRemoveLane={readOnly ? undefined : onRemoveLane}
-              >
-                {lane.map((category, categoryIndex) => {
-                  const placeholderIndex = getPlaceholderRenderIndex(lane, laneIndex, dropPreview);
-
-                  return (
-                    <Fragment key={category}>
-                      {placeholderIndex === categoryIndex ? (
-                        <DropPlaceholder height={dropPreview?.height ?? 96} />
-                      ) : null}
-                      <CategoryStack
-                        category={category}
-                        categoryName={
-                          categories.find((item) => item.id === category)?.name ?? category
-                        }
-                        categoryDiff={categoryDiffs[category]}
-                        categories={categories}
-                        cardCount={
-                          (groupedRows[category] ?? []).filter((row) => row.currentQuantity > 0)
-                            .length
-                        }
-                        cardSort={layout.cardSort ?? "manaValue"}
-                        cardSortDirection={layout.cardSortDirection ?? "desc"}
-                        diffCounts={getCategoryDiffCounts(groupedRows[category] ?? [])}
-                        shouldStartRenaming={renamingCategoryId === category}
-                        rows={visibleGroupedRows[category] ?? []}
-                        onAdjustQuantity={onAdjustQuantity}
-                        onMoveCardCategory={onMoveCardCategory}
-                        onChangePrinting={onChangePrinting}
-                        onMoveCategoryCards={onMoveCategoryCards}
-                        onRemoveCategory={onRemoveCategory}
-                        onCategoryChange={onCategoryChange}
-                        onRenameCategory={onRenameCategory}
-                        readOnly={readOnly}
-                        onCategoryRef={(element) => {
-                          if (element) {
-                            categoryElements.current.set(category, element);
-                          } else {
-                            categoryElements.current.delete(category);
-                          }
-                        }}
-                      />
-                    </Fragment>
-                  );
-                })}
-                {getPlaceholderRenderIndex(lane, laneIndex, dropPreview) === lane.length ? (
-                  <DropPlaceholder height={dropPreview?.height ?? 96} />
-                ) : null}
-              </CategoryLane>
-            ))}
-          </div>
+          <StackLaneGrid
+            data={laneGridData}
+            refs={laneGridRefs}
+            actions={laneGridActions}
+            readOnly={readOnly}
+          />
         </div>
       </DragDropProvider>
+    </div>
+  );
+}
+
+function StackLaneGrid({
+  data,
+  refs,
+  actions,
+  readOnly,
+}: {
+  data: StackLaneGridData;
+  refs: StackLaneGridRefs;
+  actions: StackLaneGridActions;
+  readOnly: boolean;
+}) {
+  const {
+    categories,
+    categoryDiffs,
+    dropPreview,
+    groupedRows,
+    layout,
+    renamingCategoryId,
+    visibleGroupedRows,
+    visibleLanes,
+  } = data;
+  const { categoryElements, laneElements } = refs;
+
+  return (
+    <div
+      className="grid select-none items-start gap-0 pb-2"
+      onContextMenu={actions.openLaneMenu}
+      style={
+        {
+          gridTemplateColumns: `repeat(${Math.max(visibleLanes.length, 1)}, minmax(0, 1fr))`,
+        } as CSSProperties
+      }
+    >
+      {visibleLanes.length === 0 ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-5 py-12 text-center text-sm font-semibold text-zinc-500">
+          All categories are hidden. Re-enable one from Settings.
+        </div>
+      ) : null}
+      {visibleLanes.map(({ lane, laneIndex }) => (
+        <CategoryLane
+          key={laneIndex}
+          laneIndex={laneIndex}
+          categories={lane}
+          hasPreview={dropPreview?.laneIndex === laneIndex}
+          onLaneRef={(element) => {
+            if (element) {
+              laneElements.current.set(laneIndex, element);
+            } else {
+              laneElements.current.delete(laneIndex);
+            }
+          }}
+          onRemoveLane={readOnly ? undefined : actions.onRemoveLane}
+        >
+          {lane.map((category, categoryIndex) => {
+            const placeholderIndex = getPlaceholderRenderIndex(lane, laneIndex, dropPreview);
+
+            return (
+              <Fragment key={category}>
+                {placeholderIndex === categoryIndex ? (
+                  <DropPlaceholder height={dropPreview?.height ?? 96} />
+                ) : null}
+                <CategoryStack
+                  category={category}
+                  categoryName={categories.find((item) => item.id === category)?.name ?? category}
+                  categoryDiff={categoryDiffs[category]}
+                  categories={categories}
+                  cardCount={
+                    (groupedRows[category] ?? []).filter((row) => row.currentQuantity > 0).length
+                  }
+                  cardSort={layout.cardSort ?? "manaValue"}
+                  cardSortDirection={layout.cardSortDirection ?? "desc"}
+                  diffCounts={getCategoryDiffCounts(groupedRows[category] ?? [])}
+                  shouldStartRenaming={renamingCategoryId === category}
+                  rows={visibleGroupedRows[category] ?? []}
+                  onAdjustQuantity={actions.onAdjustQuantity}
+                  onMoveCardCategory={actions.onMoveCardCategory}
+                  onChangePrinting={actions.onChangePrinting}
+                  onMoveCategoryCards={actions.onMoveCategoryCards}
+                  onRemoveCategory={actions.onRemoveCategory}
+                  onCategoryChange={actions.onCategoryChange}
+                  onRenameCategory={actions.onRenameCategory}
+                  readOnly={readOnly}
+                  onCategoryRef={(element) => {
+                    if (element) {
+                      categoryElements.current.set(category, element);
+                    } else {
+                      categoryElements.current.delete(category);
+                    }
+                  }}
+                />
+              </Fragment>
+            );
+          })}
+          {getPlaceholderRenderIndex(lane, laneIndex, dropPreview) === lane.length ? (
+            <DropPlaceholder height={dropPreview?.height ?? 96} />
+          ) : null}
+        </CategoryLane>
+      ))}
     </div>
   );
 }
