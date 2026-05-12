@@ -59,6 +59,15 @@ const deckCategorySchema = z.object({
   includeInDeck: z.boolean().optional(),
 });
 
+const cardPreviewFaceSchema = z.object({
+  name: z.string().trim().min(1, "Card face name is required."),
+  typeLine: z.string().trim().min(1, "Card face type line is required."),
+  manaCost: z.string().optional(),
+  oracleText: z.string().optional(),
+  smallImageUrl: z.string().min(1, "Card face small image URL is required."),
+  imageUrl: z.string().min(1, "Card face image URL is required."),
+});
+
 const validatedDeckCardSchema = z.object({
   oracleId: z.string().trim().min(1, "Card oracle ID is required."),
   name: z.string().trim().min(1, "Card name is required."),
@@ -69,6 +78,10 @@ const validatedDeckCardSchema = z.object({
   manaValue: z.number().nonnegative().optional(),
   setCode: z.string().trim().min(1, "Card set code is required."),
   collectorNumber: z.string().trim().min(1, "Card collector number is required."),
+  smallImageUrl: z.string().optional(),
+  imageUrl: z.string().optional(),
+  faces: z.array(cardPreviewFaceSchema).optional(),
+  priceUsd: z.number().nonnegative().optional(),
 });
 
 const deckStackLayoutSchema = z.object({

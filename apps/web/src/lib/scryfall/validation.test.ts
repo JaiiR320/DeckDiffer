@@ -20,6 +20,7 @@ describe("validateDeckEntries", () => {
             cmc: 0,
             set: "und",
             collector_number: "90",
+            prices: { usd: "0.18" },
             image_uris: {
               small: "https://cards.scryfall.io/small/front/i/s/island.jpg",
               normal: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
@@ -42,6 +43,7 @@ describe("validateDeckEntries", () => {
     expect(validCards[0]).toMatchObject({
       name: "Island",
       manaValue: 0,
+      priceUsd: 0.18,
       smallImageUrl: "https://cards.scryfall.io/small/front/i/s/island.jpg",
       imageUrl: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
     });
