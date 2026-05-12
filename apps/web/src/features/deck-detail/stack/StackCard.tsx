@@ -79,7 +79,9 @@ export function StackCard({
           : "pointer-events-none w-36 shrink-0 select-none overflow-visible"
       }
       style={
-        layout === "stack" ? { top: `${index * STACK_CARD_OFFSET + 8}px`, zIndex: index + 1 } : undefined
+        layout === "stack"
+          ? { top: `${index * STACK_CARD_OFFSET + 8}px`, zIndex: index + 1 }
+          : undefined
       }
       onFocus={onHover}
     >
