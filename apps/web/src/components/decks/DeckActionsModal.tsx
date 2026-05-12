@@ -131,7 +131,7 @@ export function DeckActionsModal({
         className="absolute inset-0"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-2xl rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
+      <div className="relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
         <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
         <div className="mt-5 flex border-b border-zinc-800">
           <SettingsTab
@@ -150,34 +150,36 @@ export function DeckActionsModal({
           ) : null}
         </div>
 
-        {activeTab === "general" ? (
-          <GeneralSettingsTab
-            deck={deck}
-            isEditing={isEditing}
-            newName={newName}
-            showDeleteConfirm={showDeleteConfirm}
-            onClose={onClose}
-            onDelete={onDelete}
-            onExport={onExport}
-            onRenameSubmit={handleRenameSubmit}
-            setState={setState}
-          />
-        ) : categories && onCategoriesChange ? (
-          <CategoriesSettingsTab
-            cards={cards}
-            categories={categories}
-            categoryName={categoryName}
-            newCategoryName={newCategoryName}
-            renamingCategoryId={renamingCategoryId}
-            showRemovedCardGhosts={showRemovedCardGhosts}
-            onAddCategory={handleAddCategory}
-            onAddLane={onAddLane}
-            onCategoriesChange={onCategoriesChange}
-            onRenameCategory={handleRenameCategory}
-            onShowRemovedCardGhostsChange={onShowRemovedCardGhostsChange}
-            setState={setState}
-          />
-        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+          {activeTab === "general" ? (
+            <GeneralSettingsTab
+              deck={deck}
+              isEditing={isEditing}
+              newName={newName}
+              showDeleteConfirm={showDeleteConfirm}
+              onClose={onClose}
+              onDelete={onDelete}
+              onExport={onExport}
+              onRenameSubmit={handleRenameSubmit}
+              setState={setState}
+            />
+          ) : categories && onCategoriesChange ? (
+            <CategoriesSettingsTab
+              cards={cards}
+              categories={categories}
+              categoryName={categoryName}
+              newCategoryName={newCategoryName}
+              renamingCategoryId={renamingCategoryId}
+              showRemovedCardGhosts={showRemovedCardGhosts}
+              onAddCategory={handleAddCategory}
+              onAddLane={onAddLane}
+              onCategoriesChange={onCategoriesChange}
+              onRenameCategory={handleRenameCategory}
+              onShowRemovedCardGhostsChange={onShowRemovedCardGhostsChange}
+              setState={setState}
+            />
+          ) : null}
+        </div>
 
         <button
           type="button"
@@ -404,7 +406,25 @@ function CategoriesSettingsTab({
                       {cardCount} card{cardCount === 1 ? "" : "s"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <ToggleChip
+                      label="Hide"
+                      checked={category.hidden === true}
+                      onToggle={() =>
+                        updateCategory(category.id, categories, onCategoriesChange, {
+                          hidden: !category.hidden,
+                        })
+                      }
+                    />
+                    <ToggleChip
+                      label="In Deck"
+                      checked={category.includeInDeck !== false}
+                      onToggle={() =>
+                        updateCategory(category.id, categories, onCategoriesChange, {
+                          includeInDeck: category.includeInDeck === false,
+                        })
+                      }
+                    />
                     <button
                       type="button"
                       onClick={() =>
@@ -433,6 +453,19 @@ function CategoriesSettingsTab({
         })}
       </div>
     </div>
+  );
+}
+
+function updateCategory(
+  categoryId: string,
+  categories: DeckCategory[],
+  onCategoriesChange: (categories: DeckCategory[]) => void,
+  patch: Partial<DeckCategory>,
+) {
+  onCategoriesChange(
+    categories.map((category) =>
+      category.id === categoryId ? { ...category, ...patch } : category,
+    ),
   );
 }
 

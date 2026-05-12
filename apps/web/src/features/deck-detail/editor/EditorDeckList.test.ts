@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCategoryName, type DeckCategory } from "#/lib/decklist";
+import { hasCategoryName, normalizeDeckCategories, type DeckCategory } from "#/lib/decklist";
 import { buildDeckEditorModel } from "./deckEditorModel";
 import { buildEditorRows, groupEditorRows } from "./editorRows";
 
@@ -190,6 +190,55 @@ describe("buildDeckEditorModel", () => {
     expect(model.categoryDiffs.ramp?.previousName).toBe("Ramp");
     expect(model.groupedRows.ramp).toHaveLength(1);
     expect(model.groupedRows.ramp[0]?.status).toBe("same");
+  });
+
+  it("excludes non-deck categories from the result total without dropping rows", () => {
+    const categories: DeckCategory[] = [
+      { id: "main", name: "Main", kind: "custom" },
+      { id: "maybe", name: "Maybeboard", kind: "custom", includeInDeck: false },
+    ];
+    const cards = [
+      { oracleId: "card-1", name: "Island", quantity: 2, typeLine: "Land", categoryId: "main" },
+      {
+        oracleId: "card-2",
+        name: "Counterspell",
+        quantity: 1,
+        typeLine: "Instant",
+        categoryId: "maybe",
+      },
+    ];
+
+    const model = buildDeckEditorModel({
+      baselineDeck: {
+        rawText: "",
+        cards,
+        invalidCards: [],
+        status: "ready",
+        errorMessage: null,
+      },
+      baselineCategories: categories,
+      categories,
+      compareMode: false,
+      compareSaves: null,
+      workingCards: cards,
+    });
+
+    expect(model.resultCardTotal).toBe(2);
+    expect(model.groupedRows.maybe).toHaveLength(1);
+  });
+});
+
+describe("normalizeDeckCategories", () => {
+  it("defaults old categories to visible and included", () => {
+    expect(normalizeDeckCategories([{ id: "maybe", name: "Maybeboard" }])).toEqual([
+      {
+        id: "maybe",
+        name: "Maybeboard",
+        hidden: false,
+        includeInDeck: true,
+        kind: undefined,
+      },
+    ]);
   });
 });
 

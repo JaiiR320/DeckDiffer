@@ -19,6 +19,7 @@ import { normalizeDeckSave } from "#/lib/deckSave";
 import {
   defaultDeckCategories,
   formatDecklist,
+  type CardCategory,
   type DeckCategory,
   type ValidatedDeckCard,
 } from "#/lib/decklist";
@@ -306,12 +307,21 @@ export function useDeckDetailController() {
     compareSaves,
     workingCards,
   });
-  const exportPreview = formatDecklist(editorModel.mergedWorkingCards, {
-    includeQuantity: deckImport.exportOptions.includeQuantity,
-    includeSet: false,
-    includeCollectorNumber: false,
-    setStyle: "brackets",
-  });
+  const includedCategoryIds = new Set<CardCategory>();
+  for (const category of categories) {
+    if (category.includeInDeck !== false) {
+      includedCategoryIds.add(category.id);
+    }
+  }
+  const exportPreview = formatDecklist(
+    editorModel.mergedWorkingCards.filter((card) => includedCategoryIds.has(card.categoryId ?? "")),
+    {
+      includeQuantity: deckImport.exportOptions.includeQuantity,
+      includeSet: false,
+      includeCollectorNumber: false,
+      setStyle: "brackets",
+    },
+  );
   const hasCards = workingCards.length > 0;
   const hasEditorChanges =
     JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||

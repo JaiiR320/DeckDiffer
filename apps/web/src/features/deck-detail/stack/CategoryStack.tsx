@@ -23,6 +23,7 @@ type CategoryStackProps = {
   onChangePrinting?: (row: EditorRow) => void;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onRemoveCategory?: (category: CardCategory) => void;
+  onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
   onRenameCategory?: (category: CardCategory, name: string) => void;
   shouldStartRenaming?: boolean;
   readOnly: boolean;
@@ -64,6 +65,7 @@ export function CategoryStack({
   onChangePrinting,
   onMoveCategoryCards,
   onRemoveCategory,
+  onCategoryChange,
   onRenameCategory,
   shouldStartRenaming = false,
   readOnly,
@@ -198,6 +200,7 @@ export function CategoryStack({
                 menuRef,
                 onMoveCategoryCards,
                 onRemoveCategory,
+                onCategoryChange,
                 onRenameCategory,
                 readOnly,
                 renameDraft,
@@ -286,6 +289,7 @@ type CategoryStackMenuModel = {
   menuRef: RefObject<HTMLDivElement | null>;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onRemoveCategory?: (category: CardCategory) => void;
+  onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
   onRenameCategory?: (category: CardCategory, name: string) => void;
   readOnly: boolean;
   renameDraft: string;
@@ -307,6 +311,7 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
     menuRef,
     onMoveCategoryCards,
     onRemoveCategory,
+    onCategoryChange,
     onRenameCategory,
     readOnly,
     renameDraft,
@@ -418,6 +423,17 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
                 className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Rename
+              </button>
+              <button
+                type="button"
+                disabled={readOnly || !onCategoryChange}
+                onClick={() => {
+                  onCategoryChange?.(category, { hidden: true });
+                  setMenuState({ isMenuOpen: false });
+                }}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-zinc-300 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Hide category
               </button>
               <button
                 type="button"

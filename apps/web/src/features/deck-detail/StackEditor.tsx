@@ -114,6 +114,15 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
             ),
           }));
         }}
+        onCategoryChange={(categoryId, patch) => {
+          if (compareMode) return;
+          actions.updateEditorSnapshot((current) => ({
+            ...current,
+            categories: current.categories.map((category) =>
+              category.id === categoryId ? { ...category, ...patch } : category,
+            ),
+          }));
+        }}
         onRemoveCategory={(categoryId) => {
           if (compareMode || (groupedRows[categoryId] ?? []).length > 0) return;
           actions.updateEditorSnapshot((current) => ({

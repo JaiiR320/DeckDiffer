@@ -39,6 +39,7 @@ type EditorDeckStackProps = {
   onCreateCategoryInLane?: (laneIndex: number, category: DeckCategory) => void;
   onRemoveLane?: (laneIndex: number) => void;
   onRemoveCategory?: (category: CardCategory) => void;
+  onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
   onRenameCategory?: (category: CardCategory, name: string) => void;
   onAddSearchCard?: (card: SearchCardResult, category: CardCategory) => void;
   searchToolbar: ReactNode;
@@ -61,6 +62,7 @@ export function EditorDeckStack({
   onCreateCategoryInLane,
   onRemoveLane,
   onRemoveCategory,
+  onCategoryChange,
   onRenameCategory,
   onAddSearchCard,
   searchToolbar,
@@ -76,7 +78,25 @@ export function EditorDeckStack({
     null,
   );
   const [renamingCategoryId, setRenamingCategoryId] = useState<CardCategory | null>(null);
+  const visibleCategoryIds = new Set<CardCategory>();
+  const includedCategoryIds = new Set<CardCategory>();
+  for (const category of categories) {
+    if (!category.hidden) {
+      visibleCategoryIds.add(category.id);
+    }
+    if (category.includeInDeck !== false) {
+      includedCategoryIds.add(category.id);
+    }
+  }
+  const visibleLanes: Array<{ lane: CardCategory[]; laneIndex: number }> = [];
+  for (const [laneIndex, lane] of layout.lanes.entries()) {
+    const visibleLane = lane.filter((category) => visibleCategoryIds.has(category));
+    if (visibleLane.length > 0) {
+      visibleLanes.push({ lane: visibleLane, laneIndex });
+    }
+  }
   const allRows = Object.values(groupedRows).flat();
+  const includedRows = allRows.filter((row) => includedCategoryIds.has(row.category));
   const visibleGroupedRows = Object.fromEntries(
     categories.map((category) => [
       category.id,
@@ -87,11 +107,16 @@ export function EditorDeckStack({
       ),
     ]),
   ) as Record<CardCategory, EditorRow[]>;
-  const visibleRows = Object.values(visibleGroupedRows).flat();
+  const visibleRows: EditorRow[] = [];
+  for (const category of categories) {
+    if (!category.hidden) {
+      visibleRows.push(...(visibleGroupedRows[category.id] ?? []));
+    }
+  }
   const totalAdded = allRows.filter((row) => row.status === "added").length;
   const totalChanged = allRows.filter((row) => row.status === "changed").length;
   const totalRemoved = allRows.filter((row) => row.status === "removed").length;
-  const totalDeckPrice = allRows.reduce(
+  const totalDeckPrice = includedRows.reduce(
     (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
     0,
   );
@@ -261,11 +286,16 @@ export function EditorDeckStack({
             onContextMenu={openLaneMenu}
             style={
               {
-                gridTemplateColumns: `repeat(${layout.lanes.length}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${Math.max(visibleLanes.length, 1)}, minmax(0, 1fr))`,
               } as CSSProperties
             }
           >
-            {layout.lanes.map((lane, laneIndex) => (
+            {visibleLanes.length === 0 ? (
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 px-5 py-12 text-center text-sm font-semibold text-zinc-500">
+                All categories are hidden. Re-enable one from Settings.
+              </div>
+            ) : null}
+            {visibleLanes.map(({ lane, laneIndex }) => (
               <CategoryLane
                 key={laneIndex}
                 laneIndex={laneIndex}
@@ -309,6 +339,7 @@ export function EditorDeckStack({
                         onChangePrinting={onChangePrinting}
                         onMoveCategoryCards={onMoveCategoryCards}
                         onRemoveCategory={onRemoveCategory}
+                        onCategoryChange={onCategoryChange}
                         onRenameCategory={onRenameCategory}
                         readOnly={readOnly}
                         onCategoryRef={(element) => {

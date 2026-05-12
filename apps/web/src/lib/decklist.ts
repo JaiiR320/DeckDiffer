@@ -16,6 +16,8 @@ export type DeckCategory = {
   id: CardCategory;
   name: string;
   kind?: "default" | "custom";
+  hidden?: boolean;
+  includeInDeck?: boolean;
 };
 
 const DEFAULT_CATEGORY_IDS: Record<(typeof CARD_CATEGORIES)[number], CardCategory> = {
@@ -238,7 +240,13 @@ export function normalizeDeckCategories(categories: unknown): DeckCategory[] {
     }
 
     seen.add(id);
-    normalized.push({ id, name, kind: (category as DeckCategory).kind });
+    normalized.push({
+      id,
+      name,
+      kind: (category as DeckCategory).kind,
+      hidden: (category as DeckCategory).hidden === true,
+      includeInDeck: (category as DeckCategory).includeInDeck !== false,
+    });
   }
 
   return normalized.length > 0 ? normalized : defaultDeckCategories();

@@ -49,6 +49,8 @@ const deckCategorySchema = z.object({
   id: z.string().trim().min(1, "Category ID is required."),
   name: z.string().trim().min(1, "Category name is required."),
   kind: z.enum(["default", "custom"]).optional(),
+  hidden: z.boolean().optional(),
+  includeInDeck: z.boolean().optional(),
 });
 
 const validatedDeckCardSchema = z.object({

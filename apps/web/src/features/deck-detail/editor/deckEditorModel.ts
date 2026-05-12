@@ -35,6 +35,12 @@ export function buildDeckEditorModel({
     ? normalizeDeckCategories(compareSaves.saveB.categories)
     : categories;
   const mergedWorkingCards = mergeValidatedCards(compareWorkingCards);
+  const includedCategoryIds = new Set<CardCategory>();
+  for (const category of compareWorkingCategories) {
+    if (category.includeInDeck !== false) {
+      includedCategoryIds.add(category.id);
+    }
+  }
   const editorRows = buildEditorRows(
     compareBaselineCards,
     compareWorkingCards,
@@ -53,7 +59,10 @@ export function buildDeckEditorModel({
           : "Import a deck or add cards to start building.",
     groupedRows: groupEditorRows(editorRows, compareWorkingCategories),
     mergedWorkingCards,
-    resultCardTotal: editorRows.reduce((total, row) => total + row.currentQuantity, 0),
+    resultCardTotal: editorRows.reduce(
+      (total, row) => total + (includedCategoryIds.has(row.category) ? row.currentQuantity : 0),
+      0,
+    ),
   };
 }
 
