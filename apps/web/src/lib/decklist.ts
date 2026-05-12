@@ -125,6 +125,14 @@ export type ValidatedDeckCard = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  faces?: Array<{
+    name: string;
+    typeLine: string;
+    manaCost?: string;
+    oracleText?: string;
+    smallImageUrl: string;
+    imageUrl: string;
+  }>;
   priceUsd?: number;
 };
 

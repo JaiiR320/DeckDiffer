@@ -1,4 +1,5 @@
 import { getCardCategory, getDefaultCategoryId } from "../decklist";
+import { getCardPreviewFaces } from "./preview";
 import { normalizeCardQuery } from "./query";
 import type {
   ScryfallCard,
@@ -9,6 +10,7 @@ import type {
 
 function toSearchCardResult(card: ScryfallCard): SearchCardResult {
   const imageUris = card.image_uris ?? card.card_faces?.find((face) => face.image_uris)?.image_uris;
+  const faces = getCardPreviewFaces(card);
   const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
 
   return {
@@ -22,6 +24,7 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     collectorNumber: card.collector_number,
     smallImageUrl: imageUris?.small,
     imageUrl: imageUris?.normal,
+    ...(faces ? { faces } : {}),
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
   };
 }

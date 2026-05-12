@@ -3,9 +3,8 @@ import type { CardPreviewFace, CardPreviewLookup, CardPreviewResult, ScryfallCar
 
 const cardPreviewCache = new Map<string, Promise<CardPreviewResult | null>>();
 
-function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
+function getImageBearingCardFaces(card: ScryfallCard) {
   const faces: CardPreviewFace[] = [];
-  const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
 
   for (const face of card.card_faces ?? []) {
     const smallImageUrl = face.image_uris?.small;
@@ -25,8 +24,20 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
     });
   }
 
-  const previewFaces = faces.length > 1 ? faces : undefined;
-  const frontFace = previewFaces?.[0];
+  return faces;
+}
+
+export function getCardPreviewFaces(card: ScryfallCard) {
+  const faces = getImageBearingCardFaces(card);
+
+  return faces.length > 1 ? faces : undefined;
+}
+
+function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
+  const faces = getImageBearingCardFaces(card);
+  const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
+
+  const frontFace = faces[0];
   const faceWithImage = faces?.[0];
   const smallImageUrl =
     frontFace?.smallImageUrl ?? card.image_uris?.small ?? faceWithImage?.smallImageUrl;
@@ -50,7 +61,7 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
     smallImageUrl,
     imageUrl,
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
-    faces: previewFaces,
+    faces: faces.length > 1 ? faces : undefined,
   };
 }
 

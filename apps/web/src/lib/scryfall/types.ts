@@ -139,6 +139,7 @@ export type SearchCardResult = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  faces?: CardPreviewFace[];
   priceUsd?: number;
 };
 
@@ -182,6 +183,7 @@ export type CardPrintingOption = {
   priceUsd?: number;
   smallImageUrl?: string;
   imageUrl?: string;
+  faces?: CardPreviewFace[];
 };
 
 export type CardSymbol = {

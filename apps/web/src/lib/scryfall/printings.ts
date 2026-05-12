@@ -1,4 +1,5 @@
 import type { CardPrintingOption, ScryfallCard, ScryfallListResponse } from "./types";
+import { getCardPreviewFaces } from "./preview";
 
 const cardPrintingsCache = new Map<string, Promise<CardPrintingOption[]>>();
 
@@ -8,6 +9,7 @@ function getCardImageUris(card: ScryfallCard) {
 
 function toCardPrintingOption(card: ScryfallCard): CardPrintingOption {
   const imageUris = getCardImageUris(card);
+  const faces = getCardPreviewFaces(card);
   const parsedPrice = card.prices?.usd ? Number(card.prices.usd) : undefined;
 
   return {
@@ -21,6 +23,7 @@ function toCardPrintingOption(card: ScryfallCard): CardPrintingOption {
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
     smallImageUrl: imageUris?.small,
     imageUrl: imageUris?.normal,
+    ...(faces ? { faces } : {}),
   };
 }
 

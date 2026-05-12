@@ -1,6 +1,6 @@
 import { useDraggable } from "@dnd-kit/react";
-import { Minus, MoreHorizontal, Plus } from "lucide-react";
-import { useRef, useState } from "react";
+import { Minus, MoreHorizontal, Plus, RotateCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
 import type { CardCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
@@ -42,6 +42,7 @@ export function StackCard({
 }: StackCardProps) {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [faceIndex, setFaceIndex] = useState(0);
   const isMoveDisabled =
     readOnly || (dragType === "card" && (!onMoveCardCategory || row.currentQuantity <= 0));
   const { isDragging, ref } = useDraggable({
@@ -50,7 +51,10 @@ export function StackCard({
     disabled: isMoveDisabled,
     data: dragData ?? { row },
   });
-  const imageUrl = useFallbackCardImage(row);
+  const { imageUrl: fallbackImageUrl, faces } = useFallbackCardImage(row);
+  const hasMultipleFaces = !!faces && faces.length > 1;
+  const displayFaceIndex = hasMultipleFaces ? faceIndex % faces.length : 0;
+  const imageUrl = hasMultipleFaces ? faces[displayFaceIndex]?.imageUrl : fallbackImageUrl;
   const isChanged = row.status !== "same";
   const toneClass =
     row.status === "added"
@@ -60,6 +64,10 @@ export function StackCard({
         : row.status === "changed"
           ? "ring-amber-400/40"
           : "ring-zinc-700/80";
+
+  useEffect(() => {
+    setFaceIndex(0);
+  }, [row.collectorNumber, row.name, row.oracleId, row.setCode]);
 
   return (
     <div
@@ -125,6 +133,21 @@ export function StackCard({
                 </button>
               </>
             )}
+            {hasMultipleFaces ? (
+              <button
+                type="button"
+                aria-label={`Flip ${row.name}`}
+                title="Flip card"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setFaceIndex((current) => (current + 1) % faces.length);
+                }}
+                className="inline-flex size-9 items-center justify-center border-t border-white/20 text-zinc-100 transition hover:bg-white/15"
+              >
+                <RotateCw className="size-4" strokeWidth={2.5} />
+              </button>
+            ) : null}
             <div className="border-t border-white/20">
               <button
                 ref={menuButtonRef}

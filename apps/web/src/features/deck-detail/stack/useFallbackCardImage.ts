@@ -1,12 +1,17 @@
 import { useEffect, useState } from "react";
-import { getCardPreview } from "#/lib/scryfall";
+import { getCardPreview, type CardPreviewFace } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
 
 export function useFallbackCardImage(row: EditorRow) {
-  const [fallbackImageUrl, setFallbackImageUrl] = useState<string | null>(null);
+  const fallbackKey = [row.name, row.setCode ?? "", row.collectorNumber ?? ""].join("\0");
+  const [fallback, setFallback] = useState<{
+    key: string;
+    imageUrl: string | null;
+    faces?: CardPreviewFace[];
+  } | null>(null);
 
   useEffect(() => {
-    if (row.imageUrl) {
+    if (row.imageUrl && row.faces) {
       return;
     }
 
@@ -17,14 +22,23 @@ export function useFallbackCardImage(row: EditorRow) {
       collectorNumber: row.collectorNumber,
     }).then((preview) => {
       if (!isCancelled) {
-        setFallbackImageUrl(preview?.imageUrl ?? null);
+        setFallback({
+          key: fallbackKey,
+          imageUrl: preview?.imageUrl ?? null,
+          faces: preview?.faces,
+        });
       }
     });
 
     return () => {
       isCancelled = true;
     };
-  }, [row.collectorNumber, row.imageUrl, row.name, row.setCode]);
+  }, [fallbackKey, row.collectorNumber, row.faces, row.imageUrl, row.name, row.setCode]);
 
-  return row.imageUrl ?? fallbackImageUrl;
+  const currentFallback = fallback?.key === fallbackKey ? fallback : null;
+
+  return {
+    imageUrl: row.imageUrl ?? currentFallback?.imageUrl ?? null,
+    faces: row.faces ?? currentFallback?.faces,
+  };
 }

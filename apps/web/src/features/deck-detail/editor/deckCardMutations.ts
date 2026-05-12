@@ -30,6 +30,7 @@ export function appendSearchCard(
       collectorNumber: card.collectorNumber,
       smallImageUrl: card.smallImageUrl,
       imageUrl: card.imageUrl,
+      faces: card.faces,
       priceUsd: card.priceUsd,
     },
   ];
@@ -54,6 +55,7 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
             collectorNumber: row.collectorNumber,
             smallImageUrl: row.smallImageUrl,
             imageUrl: row.imageUrl,
+            faces: row.faces,
             priceUsd: row.priceUsd,
           },
         ];
@@ -105,6 +107,7 @@ export function changeCardPrinting(
           collectorNumber: printing.collectorNumber,
           smallImageUrl: printing.smallImageUrl,
           imageUrl: printing.imageUrl,
+          faces: printing.faces,
           priceUsd: printing.priceUsd,
         }
       : card,

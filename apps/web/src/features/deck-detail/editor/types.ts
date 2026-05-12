@@ -18,6 +18,14 @@ export type EditorRow = {
   collectorNumber?: string;
   smallImageUrl?: string;
   imageUrl?: string;
+  faces?: Array<{
+    name: string;
+    typeLine: string;
+    manaCost?: string;
+    oracleText?: string;
+    smallImageUrl: string;
+    imageUrl: string;
+  }>;
   priceUsd?: number;
   baselineQuantity: number;
   currentQuantity: number;

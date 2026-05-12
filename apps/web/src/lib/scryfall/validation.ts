@@ -5,6 +5,7 @@ import {
   type ParsedDeckEntry,
   type ValidatedDeckCard,
 } from "../decklist";
+import { getCardPreviewFaces } from "./preview";
 import { getCollectionLookupName, normalizeCardQuery } from "./query";
 import type { ScryfallCard, ScryfallCollectionResponse } from "./types";
 
@@ -115,6 +116,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
     }
 
     const imageUris = getCardImageUris(matchedCard);
+    const faces = getCardPreviewFaces(matchedCard);
     const parsedPrice = matchedCard.prices?.usd ? Number(matchedCard.prices.usd) : undefined;
 
     validCards.push({
@@ -129,6 +131,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       collectorNumber: matchedCard.collector_number,
       smallImageUrl: imageUris?.small,
       imageUrl: imageUris?.normal,
+      ...(faces ? { faces } : {}),
       priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
     });
   }

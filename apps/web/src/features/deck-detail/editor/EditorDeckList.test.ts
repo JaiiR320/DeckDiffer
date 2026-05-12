@@ -81,6 +81,20 @@ describe("buildEditorRows", () => {
         manaValue: 1,
         smallImageUrl: "https://cards.example/opt-small.jpg",
         imageUrl: "https://cards.example/opt.jpg",
+        faces: [
+          {
+            name: "Opt",
+            typeLine: "Instant",
+            smallImageUrl: "https://cards.example/opt-small.jpg",
+            imageUrl: "https://cards.example/opt.jpg",
+          },
+          {
+            name: "Opt Back",
+            typeLine: "Instant",
+            smallImageUrl: "https://cards.example/opt-back-small.jpg",
+            imageUrl: "https://cards.example/opt-back.jpg",
+          },
+        ],
       },
     ];
 
@@ -93,6 +107,9 @@ describe("buildEditorRows", () => {
       "https://cards.example/opt-small.jpg",
     );
     expect(rows.find((row) => row.name === "Counterspell")?.manaValue).toBe(2);
+    expect(rows.find((row) => row.name === "Opt")?.faces?.[1]?.imageUrl).toBe(
+      "https://cards.example/opt-back.jpg",
+    );
   });
 
   it("marks category moves as removed from the old category and added to the new category", () => {

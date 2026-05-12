@@ -40,4 +40,42 @@ describe("searchCards", () => {
       imageUrl: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
     });
   });
+
+  it("includes two-sided card faces in search results", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            name: "Arlinn Kord // Arlinn, Embraced by the Moon",
+            oracle_id: "oracle-5",
+            id: "card-5",
+            type_line: "Legendary Planeswalker - Arlinn",
+            cmc: 4,
+            set: "soi",
+            collector_number: "243",
+            card_faces: [
+              {
+                name: "Arlinn Kord",
+                type_line: "Legendary Planeswalker - Arlinn",
+                image_uris: { small: "front-small.jpg", normal: "front.jpg" },
+              },
+              {
+                name: "Arlinn, Embraced by the Moon",
+                type_line: "Legendary Planeswalker - Arlinn",
+                image_uris: { small: "back-small.jpg", normal: "back.jpg" },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const results = await searchCards("arlinn");
+
+    expect(results[0]?.imageUrl).toBe("front.jpg");
+    expect(results[0]?.faces?.[1]?.imageUrl).toBe("back.jpg");
+  });
 });

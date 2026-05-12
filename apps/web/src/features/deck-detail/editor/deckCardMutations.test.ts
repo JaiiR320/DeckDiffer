@@ -50,6 +50,20 @@ describe("changeCardPrinting", () => {
         priceUsd: 0.99,
         smallImageUrl: "new-small.jpg",
         imageUrl: "new.jpg",
+        faces: [
+          {
+            name: "Bedevil",
+            typeLine: "Instant",
+            smallImageUrl: "new-small.jpg",
+            imageUrl: "new.jpg",
+          },
+          {
+            name: "Bedevil Back",
+            typeLine: "Instant",
+            smallImageUrl: "new-back-small.jpg",
+            imageUrl: "new-back.jpg",
+          },
+        ],
       },
     );
 
@@ -60,6 +74,7 @@ describe("changeCardPrinting", () => {
       collectorNumber: "144",
       smallImageUrl: "new-small.jpg",
       imageUrl: "new.jpg",
+      faces: expect.arrayContaining([expect.objectContaining({ imageUrl: "new-back.jpg" })]),
     });
     expect(nextCards[1]).toBe(cards[1]);
   });
