@@ -4,6 +4,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Analytics } from "@vercel/analytics/react";
 import { useEffect } from "react";
+import { Button } from "#/components/ui/Button";
 import { authClient } from "#/lib/auth-client";
 import appCss from "../styles.css?url";
 import { FeedbackButton } from "../components/FeedbackButton";
@@ -134,14 +135,10 @@ function AppHeader() {
         {!isAuthPage && session ? (
           <div className="flex items-center gap-3">
             <span className="text-sm text-zinc-400">{username}</span>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-            >
+            <Button onClick={handleSignOut}>
               <LogOut className="size-4" />
               Sign out
-            </button>
+            </Button>
           </div>
         ) : isPending ? (
           <div className="h-10 w-24" />

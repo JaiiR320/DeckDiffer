@@ -1,6 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Alert } from "#/components/ui/Alert";
+import { Button } from "#/components/ui/Button";
+import { Textarea } from "#/components/ui/Textarea";
 import { getCurrentSession } from "#/server/session";
 import {
   type JudgeAssistantResponse,
@@ -200,28 +203,20 @@ function JudgeChat({ getResponse }: JudgeChatProps) {
         )}
       </div>
 
-      {errorMessage ? (
-        <p className="rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
-          {errorMessage}
-        </p>
-      ) : null}
+      {errorMessage ? <Alert className="border-rose-900/40">{errorMessage}</Alert> : null}
 
       <form className="space-y-3" onSubmit={handleSubmit}>
-        <textarea
+        <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Type your message"
           rows={4}
-          className="w-full resize-y rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+          className="w-full resize-y"
         />
         <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={isSendDisabled}
-            className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <Button type="submit" variant="primary" disabled={isSendDisabled}>
             {isSubmitting ? "Sending…" : "Send"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

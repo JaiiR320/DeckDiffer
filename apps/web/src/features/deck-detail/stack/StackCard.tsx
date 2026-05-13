@@ -1,7 +1,7 @@
 import { useDraggable } from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
+import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
 import type { CardCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
 import { cardDragId } from "./stackIds";

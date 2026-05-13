@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useReducer, useState } from "react";
-import { DropdownSelect } from "#/components/DropdownSelect";
+import { DropdownSelect } from "#/components/ui/DropdownSelect";
 import { getCardPrintings, type CardPrintingOption } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
 

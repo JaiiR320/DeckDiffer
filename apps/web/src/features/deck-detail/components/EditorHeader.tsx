@@ -1,7 +1,10 @@
 import { useDragDropMonitor } from "@dnd-kit/react";
 import { ArrowDown, ArrowUp, Download, Import, Redo2, Undo2 } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
-import { DropdownSelect } from "#/components/DropdownSelect";
+import { Button } from "#/components/ui/Button";
+import { DropdownSelect } from "#/components/ui/DropdownSelect";
+import { IconButton } from "#/components/ui/IconButton";
+import { Input } from "#/components/ui/Input";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import { searchCards, type SearchCardResult } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
@@ -177,7 +180,7 @@ export function EditorHeader({
           onMouseEnter={resetInactivityTimer}
           onMouseMove={resetInactivityTimer}
         >
-          <input
+          <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -193,7 +196,8 @@ export function EditorHeader({
               }
             }}
             placeholder="Add card"
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+            inputSize="sm"
+            className="w-full py-2.5"
           />
 
           {query.trim().length >= 3 && isResultsOpen ? (
@@ -232,58 +236,33 @@ export function EditorHeader({
             aria-label="Sort cards"
             className="w-44"
           />
-          <button
-            type="button"
+          <IconButton
             onClick={onReverseCardSortDirection}
             title={`Reverse to ${cardSortDirection === "asc" ? "descending" : "ascending"}`}
             aria-label="Reverse card sort direction"
-            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
           >
             {cardSortDirection === "asc" ? (
               <ArrowUp className="size-4" strokeWidth={1.75} />
             ) : (
               <ArrowDown className="size-4" strokeWidth={1.75} />
             )}
-          </button>
+          </IconButton>
           <ToolbarDivider />
-          <button
-            type="button"
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Undo"
-            aria-label="Undo"
-            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <IconButton onClick={onUndo} disabled={!canUndo} title="Undo" aria-label="Undo">
             <Undo2 className="size-4" strokeWidth={1.75} />
-          </button>
-          <button
-            type="button"
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Redo"
-            aria-label="Redo"
-            className="inline-flex items-center justify-center rounded-xl border border-zinc-800 p-2.5 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          </IconButton>
+          <IconButton onClick={onRedo} disabled={!canRedo} title="Redo" aria-label="Redo">
             <Redo2 className="size-4" strokeWidth={1.75} />
-          </button>
+          </IconButton>
           <ToolbarDivider />
-          <button
-            type="button"
-            onClick={onExport}
-            disabled={exportDisabled}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button onClick={onExport} disabled={exportDisabled} size="sm">
             <Download className="size-4" strokeWidth={1.75} />
             Export
-          </button>
-          <button
-            type="button"
-            onClick={onImport}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-          >
+          </Button>
+          <Button onClick={onImport} size="sm">
             <Import className="size-4" strokeWidth={1.75} />
             Import
-          </button>
+          </Button>
         </div>
       </div>
     </div>

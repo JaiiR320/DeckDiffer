@@ -9,7 +9,8 @@ import {
 import { Minus, Plus } from "lucide-react";
 import { Fragment, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
-import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
+import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
+import { IconButton } from "#/components/ui/IconButton";
 import type { DeckStackLayout } from "#/lib/deck";
 import { createCategoryId, type CardCategory, type DeckCategory } from "#/lib/decklist";
 import type { SearchCardResult } from "#/lib/scryfall";
@@ -489,21 +490,18 @@ function StackSummary({
           <span className="text-amber-300">~{totalChanged}</span>
           <span className="text-rose-300">-{totalRemoved}</span>
         </div>
-        <button
-          type="button"
+        <IconButton
           onClick={onToggleShowDiffOnly}
           aria-pressed={showDiffOnly}
           aria-label={showDiffOnly ? "Show all cards" : "Show differences only"}
           title={showDiffOnly ? "Show all cards" : "Show differences only"}
-          className={`relative inline-flex size-7 items-center justify-center rounded-md border transition ${
-            showDiffOnly
-              ? "border-cyan-500/70 bg-cyan-500/15 text-cyan-300"
-              : "border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800"
-          }`}
+          variant={showDiffOnly ? "active" : "secondary"}
+          size="sm"
+          className="relative rounded-md bg-zinc-900 hover:bg-zinc-800"
         >
           <Minus className="size-3.5 translate-y-[2px]" strokeWidth={2} />
           <Plus className="absolute size-3.5 -translate-y-[2px]" strokeWidth={2} />
-        </button>
+        </IconButton>
       </div>
     </div>
   );

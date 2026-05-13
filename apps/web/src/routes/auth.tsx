@@ -2,6 +2,9 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
 import { useReducer } from "react";
 import type { FormEvent } from "react";
+import { Alert } from "#/components/ui/Alert";
+import { Button } from "#/components/ui/Button";
+import { Input } from "#/components/ui/Input";
 import { authClient } from "#/lib/auth-client";
 import { getCurrentSession } from "#/server/session";
 
@@ -128,13 +131,13 @@ function AuthPage() {
             <label className="block text-sm font-medium text-zinc-400" htmlFor="auth-email">
               Email
             </label>
-            <input
+            <Input
               id="auth-email"
               type="email"
               autoComplete="email"
               value={email}
               onChange={(event) => setState({ email: event.target.value })}
-              className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+              className="mt-2 w-full"
               placeholder="you@example.com"
               required
             />
@@ -144,33 +147,25 @@ function AuthPage() {
             <label className="block text-sm font-medium text-zinc-400" htmlFor="auth-password">
               Password
             </label>
-            <input
+            <Input
               id="auth-password"
               type="password"
               autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
               value={password}
               onChange={(event) => setState({ password: event.target.value })}
-              className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+              className="mt-2 w-full"
               placeholder="At least 8 characters"
               required
               minLength={8}
             />
           </div>
 
-          {errorMessage ? (
-            <p className="rounded-xl border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-300">
-              {errorMessage}
-            </p>
-          ) : null}
+          {errorMessage ? <Alert className="border-rose-900/40">{errorMessage}</Alert> : null}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full py-3">
             {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {mode === "sign-in" ? "Sign in" : "Create account"}
-          </button>
+          </Button>
         </form>
       </div>
     </main>
