@@ -130,9 +130,9 @@ export function DeckActionsModal({
     <Modal
       ariaLabel="Close deck actions modal"
       className="items-center justify-center overflow-y-auto overscroll-contain p-6"
-      maxWidth="3xl"
+      maxWidth="4xl"
       onClose={onClose}
-      panelClassName="flex max-h-[85vh] flex-col p-6"
+      panelClassName="flex h-[640px] !max-w-[800px] max-h-[85vh] flex-col p-6"
     >
       <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
       <div className="mt-5 flex border-b border-zinc-800">
