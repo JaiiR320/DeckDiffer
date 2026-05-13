@@ -1,10 +1,22 @@
-import type { ValidatedDeckCard } from "./decklist";
+import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
+
+export type DeckCardSort = "manaValue" | "alphabetical" | "price";
+export type DeckCardSortDirection = "asc" | "desc";
+
+export type DeckStackLayout = {
+  lanes: CardCategory[][];
+  showRemovedCardGhosts?: boolean;
+  cardSort?: DeckCardSort;
+  cardSortDirection?: DeckCardSortDirection;
+};
 
 export type DeckSave = {
   id: string; // crypto.randomUUID()
   savedAt: string; // ISO-8601
   label: string; // "Save #N" or user-provided
+  categories?: DeckCategory[];
   cards: ValidatedDeckCard[];
+  layout?: DeckStackLayout;
 };
 
 export type DeckItem = {
@@ -12,6 +24,9 @@ export type DeckItem = {
   name: string;
   createdAt: string; // ISO-8601
   updatedAt: string; // ISO-8601
+  categories?: DeckCategory[];
+  cards?: ValidatedDeckCard[];
+  layout?: DeckStackLayout;
   saves: DeckSave[]; // oldest-first
 };
 

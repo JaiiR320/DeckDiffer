@@ -29,7 +29,6 @@ export function CreateDeckModal({
           </label>
           <input
             id="deck-name"
-            autoFocus
             value={deckName}
             onChange={(event) => onDeckNameChange(event.target.value)}
             placeholder="Enter a deck name"
@@ -45,7 +44,7 @@ export function CreateDeckModal({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
             >
               Create
             </button>

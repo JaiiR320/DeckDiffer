@@ -1,18 +1,14 @@
 import { LogOut } from "lucide-react";
-import {
-  HeadContent,
-  Link,
-  Scripts,
-  createRootRoute,
-  useLocation,
-  useNavigate,
-} from "@tanstack/react-router";
+import { HeadContent, Link, Scripts, createRootRoute, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { Analytics } from "@vercel/analytics/react";
+import { useEffect } from "react";
 import { authClient } from "#/lib/auth-client";
 import appCss from "../styles.css?url";
 import { FeedbackButton } from "../components/FeedbackButton";
+
+let isReactScanStarted = false;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -48,6 +44,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <AppHeader />
         <div className="flex-1">{children}</div>
         <FeedbackGate />
+        <ReactScan />
         <TanStackDevtools
           config={{
             position: "bottom-right",
@@ -66,14 +63,33 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ReactScan() {
+  useEffect(() => {
+    if (!import.meta.env.DEV || isReactScanStarted) {
+      return;
+    }
+
+    isReactScanStarted = true;
+    void import("react-scan").then(({ scan }) => {
+      scan({
+        enabled: true,
+        showToolbar: true,
+        showFPS: true,
+        animationSpeed: "fast",
+      });
+    });
+  }, []);
+
+  return null;
+}
+
 function AppHeader() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { data: session, isPending } = authClient.useSession();
 
   async function handleSignOut() {
     await authClient.signOut();
-    await navigate({ to: "/auth" });
+    window.location.assign("/auth");
   }
 
   const isAuthPage = location.pathname === "/auth";
@@ -85,7 +101,7 @@ function AppHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-8">
+      <div className="mx-auto flex w-full items-center justify-between px-6 py-4 sm:px-8">
         <div className="flex items-center gap-6">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">DeckDiff</p>
 
@@ -123,7 +139,7 @@ function AppHeader() {
               onClick={handleSignOut}
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="size-4" />
               Sign out
             </button>
           </div>

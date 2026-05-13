@@ -10,7 +10,94 @@ export const CARD_CATEGORIES = [
   "Other",
 ] as const;
 
-export type CardCategory = (typeof CARD_CATEGORIES)[number];
+export type CardCategory = string;
+
+export type DeckCategory = {
+  id: CardCategory;
+  name: string;
+  kind?: "default" | "custom";
+  hidden?: boolean;
+  includeInDeck?: boolean;
+};
+
+const DEFAULT_CATEGORY_IDS: Record<(typeof CARD_CATEGORIES)[number], CardCategory> = {
+  Land: "land",
+  Creature: "creature",
+  Artifact: "artifact",
+  Enchantment: "enchantment",
+  Instant: "instant",
+  Sorcery: "sorcery",
+  Planeswalker: "planeswalker",
+  Battle: "battle",
+  Other: "other",
+};
+
+export function defaultDeckCategories(): DeckCategory[] {
+  return CARD_CATEGORIES.map((name) => ({ id: DEFAULT_CATEGORY_IDS[name], name, kind: "default" }));
+}
+
+export function createCategoryId(name: string, categories: DeckCategory[]) {
+  const baseId =
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "category";
+  const ids = new Set(categories.map((category) => category.id));
+
+  if (!ids.has(baseId)) {
+    return baseId;
+  }
+
+  let suffix = 2;
+  let nextId = `${baseId}-${suffix}`;
+  while (ids.has(nextId)) {
+    suffix += 1;
+    nextId = `${baseId}-${suffix}`;
+  }
+
+  return nextId;
+}
+
+export function normalizeCategoryNameForCompare(name: string) {
+  return name.trim().toLowerCase();
+}
+
+export function hasCategoryName(
+  categories: DeckCategory[],
+  name: string,
+  exceptCategoryId?: string,
+) {
+  const normalizedName = normalizeCategoryNameForCompare(name);
+  return categories.some(
+    (category) =>
+      category.id !== exceptCategoryId &&
+      normalizeCategoryNameForCompare(category.name) === normalizedName,
+  );
+}
+
+export function createCategoryName(name: string, categories: DeckCategory[]) {
+  const baseName = name.trim() || "Category";
+
+  if (!hasCategoryName(categories, baseName)) {
+    return baseName;
+  }
+
+  let suffix = 2;
+  let nextName = `${baseName} ${suffix}`;
+  while (hasCategoryName(categories, nextName)) {
+    suffix += 1;
+    nextName = `${baseName} ${suffix}`;
+  }
+
+  return nextName;
+}
+
+export function defaultCategoryIdForName(name: string) {
+  return DEFAULT_CATEGORY_IDS[name as (typeof CARD_CATEGORIES)[number]] ?? "other";
+}
 
 export type ParsedDeckEntry = {
   lineNumber: number;
@@ -31,9 +118,22 @@ export type ValidatedDeckCard = {
   name: string;
   quantity: number;
   typeLine: string;
-  category: CardCategory;
+  categoryId?: CardCategory;
+  category?: CardCategory;
+  manaValue?: number;
   setCode?: string;
   collectorNumber?: string;
+  smallImageUrl?: string;
+  imageUrl?: string;
+  faces?: Array<{
+    name: string;
+    typeLine: string;
+    manaCost?: string;
+    oracleText?: string;
+    smallImageUrl: string;
+    imageUrl: string;
+  }>;
+  priceUsd?: number;
 };
 
 export type DeckExportOptions = {
@@ -49,22 +149,6 @@ export type InvalidDeckCard = {
   name: string;
   reason: string;
 };
-
-export type GroupedDeckCards = Record<CardCategory, ValidatedDeckCard[]>;
-
-export function createEmptyGroupedDeck(): GroupedDeckCards {
-  return {
-    Land: [],
-    Creature: [],
-    Artifact: [],
-    Enchantment: [],
-    Instant: [],
-    Sorcery: [],
-    Planeswalker: [],
-    Battle: [],
-    Other: [],
-  };
-}
 
 export function parseDecklist(rawText: string) {
   const entries: ParsedDeckEntry[] = [];
@@ -141,19 +225,51 @@ export function getCardCategory(typeLine: string): CardCategory {
   return "Other";
 }
 
-export function groupValidatedCards(cards: ValidatedDeckCard[]) {
-  const groupedDeck = createEmptyGroupedDeck();
-  const mergedCards = mergeValidatedCards(cards);
+export function getDefaultCategoryId(typeLine: string) {
+  return defaultCategoryIdForName(getCardCategory(typeLine));
+}
 
-  for (const card of mergedCards) {
-    groupedDeck[card.category].push(card);
+export function normalizeDeckCategories(categories: unknown): DeckCategory[] {
+  if (!Array.isArray(categories)) {
+    return defaultDeckCategories();
   }
 
-  for (const category of CARD_CATEGORIES) {
-    groupedDeck[category].sort((left, right) => left.name.localeCompare(right.name));
+  const normalized: DeckCategory[] = [];
+  const seen = new Set<string>();
+  for (const category of categories) {
+    if (!category || typeof category !== "object") {
+      continue;
+    }
+
+    const id = String((category as { id?: unknown }).id ?? "").trim();
+    const name = String((category as { name?: unknown }).name ?? "").trim();
+    if (!id || !name || seen.has(id)) {
+      continue;
+    }
+
+    seen.add(id);
+    normalized.push({
+      id,
+      name,
+      kind: (category as DeckCategory).kind,
+      hidden: (category as DeckCategory).hidden === true,
+      includeInDeck: (category as DeckCategory).includeInDeck !== false,
+    });
   }
 
-  return groupedDeck;
+  return normalized.length > 0 ? normalized : defaultDeckCategories();
+}
+
+export function normalizeDeckCard(card: ValidatedDeckCard, categories = defaultDeckCategories()) {
+  const categoryIds = new Set(categories.map((category) => category.id));
+  const legacyId = card.category ? defaultCategoryIdForName(card.category) : undefined;
+  const categoryId = card.categoryId ?? legacyId ?? getDefaultCategoryId(card.typeLine);
+  const fallbackCategoryId = categoryIds.has("other") ? "other" : categories[0]?.id;
+
+  return {
+    ...card,
+    categoryId: categoryIds.has(categoryId) ? categoryId : fallbackCategoryId,
+  };
 }
 
 export function mergeValidatedCards(cards: ValidatedDeckCard[]) {

@@ -1,0 +1,1 @@
+ALTER TABLE "deck_saves" ADD COLUMN "categories" jsonb;

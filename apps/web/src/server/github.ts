@@ -8,7 +8,7 @@ export type CreateIssuePayload = {
   body: string;
 };
 
-export type CreateIssueResult = {
+type CreateIssueResult = {
   number: number;
   html_url: string;
 };

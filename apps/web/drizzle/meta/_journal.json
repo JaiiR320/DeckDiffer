@@ -8,6 +8,27 @@
       "when": 1776228268168,
       "tag": "0000_friendly_wither",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778466257235,
+      "tag": "0001_flippant_toad",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778526108049,
+      "tag": "0002_robust_sauron",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778601328699,
+      "tag": "0003_natural_terrax",
+      "breakpoints": true
     }
   ]
 }

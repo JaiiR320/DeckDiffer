@@ -1,81 +1,24 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
-import { z } from "zod";
 import { db } from "#/db";
 import { deckSaves, decks } from "#/db/schema";
 import { auth } from "#/lib/auth";
-import { slugifyName, type DeckItem, type DeckSave } from "#/lib/deck";
-import type { ValidatedDeckCard } from "#/lib/decklist";
-
-type CreateDeckInput = {
-  name: string;
-};
-
-type RenameDeckInput = {
-  deckId: string;
-  newName: string;
-};
-
-type DeleteDeckInput = {
-  deckId: string;
-};
-
-type SaveDeckInput = {
-  deckId: string;
-  label: string;
-  cards: ValidatedDeckCard[];
-};
-
-type GetDeckInput = {
-  deckId: string;
-};
-
-type DeckRow = typeof decks.$inferSelect;
-type DeckSaveRow = typeof deckSaves.$inferSelect;
-
-const deckIdSchema = z.object({
-  deckId: z.string().trim().min(1, "Deck ID is required."),
-});
-
-const deckNameSchema = z.string().trim().min(1, "Deck name is required.");
-
-const createDeckInputSchema = z.object({
-  name: deckNameSchema,
-});
-
-const renameDeckInputSchema = z.object({
-  deckId: z.string().trim().min(1, "Deck ID is required."),
-  newName: deckNameSchema,
-});
-
-const cardCategorySchema = z.enum([
-  "Land",
-  "Creature",
-  "Artifact",
-  "Enchantment",
-  "Instant",
-  "Sorcery",
-  "Planeswalker",
-  "Battle",
-  "Other",
-]);
-
-const validatedDeckCardSchema = z.object({
-  oracleId: z.string().trim().min(1, "Card oracle ID is required."),
-  name: z.string().trim().min(1, "Card name is required."),
-  quantity: z.number().int().positive("Card quantity must be greater than zero."),
-  typeLine: z.string().trim().min(1, "Card type line is required."),
-  category: cardCategorySchema,
-  setCode: z.string().trim().min(1, "Card set code is required."),
-  collectorNumber: z.string().trim().min(1, "Card collector number is required."),
-});
-
-const saveDeckInputSchema = z.object({
-  deckId: z.string().trim().min(1, "Deck ID is required."),
-  label: z.string(),
-  cards: z.array(validatedDeckCardSchema),
-});
+import { slugifyName } from "#/lib/deck";
+import { mapDeck, type DeckSaveRow } from "./deckMappers";
+import {
+  createDeckInputSchema,
+  deckIdSchema,
+  renameDeckInputSchema,
+  saveDeckInputSchema,
+  updateDeckCurrentInputSchema,
+  type CreateDeckInput,
+  type DeleteDeckInput,
+  type GetDeckInput,
+  type RenameDeckInput,
+  type SaveDeckInput,
+  type UpdateDeckCurrentInput,
+} from "./deckSchemas";
 
 async function requireUserId() {
   const session = await auth.api.getSession({
@@ -88,25 +31,6 @@ async function requireUserId() {
   }
 
   return userId;
-}
-
-function mapDeckSave(save: DeckSaveRow): DeckSave {
-  return {
-    id: save.id,
-    label: save.label,
-    savedAt: save.savedAt.toISOString(),
-    cards: save.cards,
-  };
-}
-
-function mapDeck(deck: DeckRow, saves: DeckSaveRow[]): DeckItem {
-  return {
-    id: deck.slug,
-    name: deck.name,
-    createdAt: deck.createdAt.toISOString(),
-    updatedAt: deck.updatedAt.toISOString(),
-    saves: saves.map(mapDeckSave),
-  };
 }
 
 async function getDeckRowsWithSaves(userId: string) {
@@ -304,13 +228,41 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
       deckId: existingDeck.id,
       label: saveLabel,
       savedAt: now,
+      categories: data.categories ?? null,
       cards: data.cards,
+      layout: data.layout ?? null,
     });
 
     await db
       .update(decks)
       .set({
         updatedAt: now,
+      })
+      .where(eq(decks.id, existingDeck.id));
+
+    return getDeckWithSavesBySlug(userId, existingDeck.slug);
+  });
+
+export const updateDeckCurrentForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: UpdateDeckCurrentInput) => updateDeckCurrentInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+
+    const existingDeck = await db.query.decks.findFirst({
+      where: and(eq(decks.userId, userId), eq(decks.slug, data.deckId)),
+    });
+
+    if (!existingDeck) {
+      throw new Error("Deck not found.");
+    }
+
+    await db
+      .update(decks)
+      .set({
+        categories: data.categories,
+        cards: data.cards,
+        layout: data.layout,
+        updatedAt: new Date(),
       })
       .where(eq(decks.id, existingDeck.id));
 
