@@ -143,6 +143,7 @@ export function FeedbackButton() {
                       key={type}
                       type="button"
                       onClick={() => setState({ issueType: type })}
+                      aria-pressed={isActive}
                       className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${
                         isActive
                           ? "border-cyan-800 bg-cyan-950/40 text-cyan-200"
