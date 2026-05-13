@@ -289,15 +289,6 @@ export function mergeValidatedCards(cards: ValidatedDeckCard[]) {
   return [...mergedCards.values()];
 }
 
-export function formatDeckExport(cards: ValidatedDeckCard[]) {
-  return formatDecklist(cards, {
-    includeQuantity: true,
-    includeSet: false,
-    includeCollectorNumber: false,
-    setStyle: "brackets",
-  });
-}
-
 export function formatDecklist(cards: ValidatedDeckCard[], options: DeckExportOptions) {
   const mergedCards = mergeValidatedCards(cards).sort((left, right) =>
     left.name.localeCompare(right.name),

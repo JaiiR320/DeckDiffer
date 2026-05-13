@@ -6,7 +6,7 @@ import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
-import { formatDeckExport } from "../lib/decklist";
+import { createDeckExport } from "../lib/deckExport";
 import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 
@@ -123,18 +123,17 @@ function DecksPage() {
   }
 
   function handleExportDeck(deck: DeckItem) {
-    const cards = deck.cards ?? deck.saves[deck.saves.length - 1]?.cards;
-    if (!cards || cards.length === 0) {
-      alert("No cards to export. Import or add cards first.");
+    const deckExport = createDeckExport(deck);
+    if (!deckExport.ok) {
+      alert(deckExport.reason);
       return;
     }
 
-    const exportText = formatDeckExport(cards);
-    const blob = new Blob([exportText], { type: "text/plain" });
+    const blob = new Blob([deckExport.text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${deck.name.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    link.download = deckExport.filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
