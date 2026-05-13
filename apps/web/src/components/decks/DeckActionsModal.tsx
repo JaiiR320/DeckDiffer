@@ -1,7 +1,12 @@
 import { Download, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Dispatch, FormEvent } from "react";
-import { useEffect, useReducer } from "react";
-import { ToggleChip } from "#/components/ToggleChip";
+import { useReducer } from "react";
+import { Alert } from "#/components/ui/Alert";
+import { Button } from "#/components/ui/Button";
+import { Input } from "#/components/ui/Input";
+import { Modal } from "#/components/ui/Modal";
+import { TabButton } from "#/components/ui/TabButton";
+import { ToggleChip } from "#/components/ui/ToggleChip";
 import type { DeckItem } from "../../lib/deck";
 import {
   createCategoryId,
@@ -75,8 +80,6 @@ export function DeckActionsModal({
     showDeleteConfirm,
   } = state;
 
-  useLockBodyScroll(isOpen);
-
   if (!isOpen) return null;
 
   function handleRenameSubmit(event: FormEvent<HTMLFormElement>) {
@@ -124,72 +127,68 @@ export function DeckActionsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain bg-black/70 p-6">
-      <button
-        type="button"
-        aria-label="Close deck actions modal"
-        className="absolute inset-0"
-        onClick={onClose}
-      />
-      <div className="relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl shadow-black/40">
-        <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
-        <div className="mt-5 flex border-b border-zinc-800">
-          <SettingsTab
-            active={activeTab === "general"}
-            onClick={() => setState({ activeTab: "general" })}
-          >
-            General
-          </SettingsTab>
-          {categories && onCategoriesChange ? (
-            <SettingsTab
-              active={activeTab === "categories"}
-              onClick={() => setState({ activeTab: "categories" })}
-            >
-              Categories
-            </SettingsTab>
-          ) : null}
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-          {activeTab === "general" ? (
-            <GeneralSettingsTab
-              deck={deck}
-              isEditing={isEditing}
-              newName={newName}
-              showDeleteConfirm={showDeleteConfirm}
-              onClose={onClose}
-              onDelete={onDelete}
-              onExport={onExport}
-              onRenameSubmit={handleRenameSubmit}
-              setState={setState}
-            />
-          ) : categories && onCategoriesChange ? (
-            <CategoriesSettingsTab
-              cards={cards}
-              categories={categories}
-              categoryName={categoryName}
-              newCategoryName={newCategoryName}
-              renamingCategoryId={renamingCategoryId}
-              showRemovedCardGhosts={showRemovedCardGhosts}
-              onAddCategory={handleAddCategory}
-              onAddLane={onAddLane}
-              onCategoriesChange={onCategoriesChange}
-              onRenameCategory={handleRenameCategory}
-              onShowRemovedCardGhostsChange={onShowRemovedCardGhostsChange}
-              setState={setState}
-            />
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+    <Modal
+      ariaLabel="Close deck actions modal"
+      className="items-center justify-center overflow-y-auto overscroll-contain p-6"
+      maxWidth="3xl"
+      onClose={onClose}
+      panelClassName="flex max-h-[85vh] flex-col p-6"
+    >
+      <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
+      <div className="mt-5 flex border-b border-zinc-800">
+        <TabButton
+          active={activeTab === "general"}
+          onClick={() => setState({ activeTab: "general" })}
+          className="px-4 py-2"
         >
-          Close
-        </button>
+          General
+        </TabButton>
+        {categories && onCategoriesChange ? (
+          <TabButton
+            active={activeTab === "categories"}
+            onClick={() => setState({ activeTab: "categories" })}
+            className="px-4 py-2"
+          >
+            Categories
+          </TabButton>
+        ) : null}
       </div>
-    </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+        {activeTab === "general" ? (
+          <GeneralSettingsTab
+            deck={deck}
+            isEditing={isEditing}
+            newName={newName}
+            showDeleteConfirm={showDeleteConfirm}
+            onClose={onClose}
+            onDelete={onDelete}
+            onExport={onExport}
+            onRenameSubmit={handleRenameSubmit}
+            setState={setState}
+          />
+        ) : categories && onCategoriesChange ? (
+          <CategoriesSettingsTab
+            cards={cards}
+            categories={categories}
+            categoryName={categoryName}
+            newCategoryName={newCategoryName}
+            renamingCategoryId={renamingCategoryId}
+            showRemovedCardGhosts={showRemovedCardGhosts}
+            onAddCategory={handleAddCategory}
+            onAddLane={onAddLane}
+            onCategoriesChange={onCategoriesChange}
+            onRenameCategory={handleRenameCategory}
+            onShowRemovedCardGhostsChange={onShowRemovedCardGhostsChange}
+            setState={setState}
+          />
+        ) : null}
+      </div>
+
+      <Button onClick={onClose} className="mt-5 w-full">
+        Close
+      </Button>
+    </Modal>
   );
 }
 
@@ -221,84 +220,68 @@ function GeneralSettingsTab({
           <label className="block text-sm font-medium text-zinc-400" htmlFor="deck-rename">
             New name
           </label>
-          <input
+          <Input
             id="deck-rename"
             value={newName}
             onChange={(event) => setState({ newName: event.target.value })}
             placeholder="Enter a new name"
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-base text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+            className="w-full"
           />
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setState({ isEditing: false })}
-              className="flex-1 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-            >
+            <Button onClick={() => setState({ isEditing: false })} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
-            >
+            </Button>
+            <Button type="submit" variant="primary" className="flex-1">
               Save
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
-        <button
+        <Button
           type="button"
           onClick={() => setState({ newName: deck.name, isEditing: true })}
-          className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+          className="w-full justify-start px-4 py-3 text-left"
         >
           <Pencil className="size-5 text-zinc-500" strokeWidth={1.75} />
           <span>Rename deck</span>
-        </button>
+        </Button>
       )}
 
-      <button
-        type="button"
-        onClick={() => onExport(deck)}
-        className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-      >
+      <Button onClick={() => onExport(deck)} className="w-full justify-start px-4 py-3 text-left">
         <Download className="size-5 text-zinc-500" strokeWidth={1.75} />
         <span>Export deck list</span>
-      </button>
+      </Button>
 
       {showDeleteConfirm ? (
-        <div className="space-y-3 rounded-xl border border-rose-900/50 bg-rose-950/20 p-4">
-          <p className="text-sm text-rose-300">
+        <Alert tone="danger" className="space-y-3 bg-rose-950/20 p-4">
+          <p>
             Are you sure? This will delete the deck and all {deck.saves.length} snapshot
             {deck.saves.length === 1 ? "" : "s"}.
           </p>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setState({ showDeleteConfirm: false })}
-              className="flex-1 rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-            >
+            <Button onClick={() => setState({ showDeleteConfirm: false })} className="flex-1">
               Cancel
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="danger"
               onClick={() => {
                 onDelete(deck.id);
                 onClose();
               }}
-              className="flex-1 rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400"
+              className="flex-1"
             >
               Delete
-            </button>
+            </Button>
           </div>
-        </div>
+        </Alert>
       ) : (
-        <button
-          type="button"
+        <Button
           onClick={() => setState({ showDeleteConfirm: true })}
-          className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 px-4 py-3 text-left text-rose-400 transition hover:border-rose-900/50 hover:bg-rose-950/20"
+          className="w-full justify-start px-4 py-3 text-left text-rose-400 hover:border-rose-900/50 hover:bg-rose-950/20"
         >
           <Trash2 className="size-5" strokeWidth={1.75} />
           <span>Delete deck</span>
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -334,29 +317,23 @@ function CategoriesSettingsTab({
   return (
     <div className="mt-5 space-y-3">
       <form onSubmit={onAddCategory} className="flex gap-2">
-        <input
+        <Input
           value={newCategoryName}
           onChange={(event) => setState({ newCategoryName: event.target.value })}
           placeholder="New category"
-          className="min-w-0 flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-cyan-500"
+          inputSize="sm"
+          className="min-w-0 flex-1"
         />
-        <button
-          type="submit"
-          className="inline-flex items-center gap-2 rounded-xl bg-cyan-400 px-3 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
-        >
+        <Button type="submit" variant="primary" size="sm">
           <Plus className="size-4" />
           Add
-        </button>
+        </Button>
       </form>
 
       {onAddLane ? (
-        <button
-          type="button"
-          onClick={onAddLane}
-          className="w-full rounded-xl border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-        >
+        <Button onClick={onAddLane} className="w-full">
           Add lane
-        </button>
+        </Button>
       ) : null}
 
       {onShowRemovedCardGhostsChange ? (
@@ -386,17 +363,15 @@ function CategoriesSettingsTab({
             <div key={category.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
               {renamingCategoryId === category.id ? (
                 <form onSubmit={onRenameCategory} className="flex gap-2">
-                  <input
+                  <Input
                     value={categoryName}
                     onChange={(event) => setState({ categoryName: event.target.value })}
-                    className="min-w-0 flex-1 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-cyan-500"
+                    inputSize="sm"
+                    className="min-w-0 flex-1 rounded-lg bg-zinc-950 px-3"
                   />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-cyan-400 px-3 py-2 text-sm font-semibold text-cyan-950"
-                  >
+                  <Button type="submit" variant="primary" size="sm" className="rounded-lg px-3">
                     Save
-                  </button>
+                  </Button>
                 </form>
               ) : (
                 <div className="flex items-center justify-between gap-3">
@@ -425,26 +400,26 @@ function CategoriesSettingsTab({
                         })
                       }
                     />
-                    <button
-                      type="button"
+                    <Button
                       onClick={() =>
                         setState({ renamingCategoryId: category.id, categoryName: category.name })
                       }
-                      className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 hover:border-zinc-700"
+                      size="sm"
+                      className="rounded-lg py-1.5"
                     >
                       Rename
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
                       onClick={() =>
                         removeCategory(category.id, categories, cards, onCategoriesChange)
                       }
                       disabled={isBlocked}
                       title={isBlocked ? "Move cards out before removing." : "Remove category"}
-                      className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-rose-400 hover:border-rose-900/50 disabled:cursor-not-allowed disabled:opacity-40"
+                      size="sm"
+                      className="rounded-lg py-1.5 text-rose-400 hover:border-rose-900/50"
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -479,39 +454,4 @@ function removeCategory(
     return;
   }
   onCategoriesChange(categories.filter((category) => category.id !== categoryId));
-}
-
-function useLockBodyScroll(isOpen: boolean) {
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
-}
-
-function SettingsTab({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium transition ${
-        active ? "border-b-2 border-cyan-400 text-cyan-400" : "text-zinc-500 hover:text-zinc-300"
-      }`}
-    >
-      {children}
-    </button>
-  );
 }

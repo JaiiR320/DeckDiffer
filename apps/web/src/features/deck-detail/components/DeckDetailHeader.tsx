@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Save, Settings } from "lucide-react";
+import { Button } from "#/components/ui/Button";
 import type { DeckItem } from "#/lib/deck";
 
 type DeckDetailHeaderProps = {
@@ -35,23 +36,19 @@ export function DeckDetailHeader({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onOpenActions}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-        >
+        <Button onClick={onOpenActions}>
           <Settings className="size-4" strokeWidth={1.75} />
           Settings
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
           onClick={onOpenSave}
           disabled={!canSave}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          variant="primary"
+          className="disabled:opacity-50"
         >
           <Save className="size-4" strokeWidth={1.75} />
           Save
-        </button>
+        </Button>
       </div>
     </div>
   );

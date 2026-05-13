@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Layers, MoreVertical } from "lucide-react";
+import { IconButton } from "#/components/ui/IconButton";
 import type { DeckItem } from "../../lib/deck";
 
 type DeckCardProps = {
@@ -31,18 +32,18 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
       />
 
       {/* Edit button - positioned outside content, after Link in DOM so it's on top */}
-      <button
-        type="button"
+      <IconButton
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onEdit(deck);
         }}
         aria-label={`Edit ${deck.name}`}
-        className="absolute right-6 top-6 cursor-pointer rounded-lg p-2 text-zinc-500 opacity-0 transition hover:bg-zinc-800 hover:text-zinc-300 group-hover:opacity-100"
+        variant="ghost"
+        className="absolute right-6 top-6 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
       >
         <MoreVertical className="size-5" strokeWidth={1.75} />
-      </button>
+      </IconButton>
     </div>
   );
 }

@@ -2,7 +2,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/react";
 import { MoreHorizontal } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { ContextMenu, ContextMenuItem } from "#/components/ContextMenu";
+import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
+import { IconButton } from "#/components/ui/IconButton";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
@@ -318,16 +319,17 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
 
   return (
     <div>
-      <button
+      <IconButton
         ref={menuButtonRef}
-        type="button"
         aria-label={`${categoryName} actions`}
         title={`${categoryName} actions`}
         onClick={() => setMenuState({ isMenuOpen: !isMenuOpen })}
-        className="inline-flex size-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+        variant="ghost"
+        size="sm"
+        className="rounded-md text-zinc-400 hover:text-zinc-100"
       >
         <MoreHorizontal className="size-4" />
-      </button>
+      </IconButton>
       {isMenuOpen ? (
         <ContextMenu
           open={isMenuOpen}

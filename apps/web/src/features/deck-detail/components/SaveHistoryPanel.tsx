@@ -1,5 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
+import { Alert } from "#/components/ui/Alert";
+import { Button } from "#/components/ui/Button";
 import type { DeckItem, DeckSave } from "#/lib/deck";
 
 type SaveHistoryPanelProps = {
@@ -66,14 +68,10 @@ export function SaveHistoryPanel({
     return (
       <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
         <p className="text-zinc-500">No saves yet. Save your deck to create a snapshot.</p>
-        <button
-          type="button"
-          onClick={onBackToEditor}
-          className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-        >
+        <Button onClick={onBackToEditor}>
           <ArrowLeft className="size-4" />
           Back to Editor
-        </button>
+        </Button>
       </div>
     );
   }
@@ -90,45 +88,36 @@ export function SaveHistoryPanel({
         </div>
         <div className="flex items-center gap-2">
           {saves.length >= 2 && (
-            <button
-              type="button"
+            <Button
               onClick={toggleCompareMode}
-              className={`rounded-xl px-3 py-2 text-sm transition ${
-                compareMode
-                  ? "bg-cyan-400 text-cyan-950"
-                  : "border border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
-              }`}
+              size="sm"
+              variant={compareMode ? "primary" : "secondary"}
             >
               {compareMode ? "Cancel Compare" : "Compare"}
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            onClick={onBackToEditor}
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
-          >
+          <Button onClick={onBackToEditor} size="sm">
             <ArrowLeft className="size-4" />
             Back
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Compare instructions */}
       {compareMode && (
-        <div className="rounded-xl border border-cyan-900/50 bg-cyan-950/20 p-4">
-          <p className="text-sm text-cyan-300">
-            Select 2 snapshots to compare. Shows diff between older (left) and newer (right).
-          </p>
+        <Alert tone="info" className="p-4">
+          <p>Select 2 snapshots to compare. Shows diff between older (left) and newer (right).</p>
           {selectedSaves.length === 2 && (
-            <button
-              type="button"
+            <Button
               onClick={handleCompare}
-              className="mt-3 rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
+              variant="primary"
+              size="sm"
+              className="mt-3 rounded-lg py-1.5"
             >
               Compare Selected
-            </button>
+            </Button>
           )}
-        </div>
+        </Alert>
       )}
 
       {/* Saves list */}
@@ -156,13 +145,13 @@ export function SaveHistoryPanel({
               </div>
 
               {!compareMode && (
-                <button
-                  type="button"
+                <Button
                   onClick={() => setPendingLoadSaveId(save.id)}
-                  className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+                  size="sm"
+                  className="rounded-lg py-1.5"
                 >
                   Load
-                </button>
+                </Button>
               )}
             </>
           );
@@ -191,40 +180,40 @@ export function SaveHistoryPanel({
             >
               <div className="flex items-center justify-between">{saveContent}</div>
               {isPendingLoad ? (
-                <div className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4">
-                  <p className="text-sm text-amber-200">
-                    Loading this snapshot will overwrite your current live deck.
-                  </p>
+                <Alert tone="warning" className="p-4">
+                  <p>Loading this snapshot will overwrite your current live deck.</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
+                    <Button
                       onClick={() => setPendingLoadSaveId(null)}
-                      className="rounded-lg border border-zinc-800 px-3 py-1.5 text-sm text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-900"
+                      size="sm"
+                      className="rounded-lg py-1.5"
                     >
                       Cancel
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => {
                         setPendingLoadSaveId(null);
                         onSaveSnapshotBeforeLoad(save);
                       }}
-                      className="rounded-lg bg-cyan-400 px-3 py-1.5 text-sm font-semibold text-cyan-950 transition hover:bg-cyan-300"
+                      className="rounded-lg py-1.5"
                     >
                       Save Snapshot
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant="warning"
+                      size="sm"
                       onClick={() => {
                         setPendingLoadSaveId(null);
                         onLoadSave(save);
                       }}
-                      className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-amber-950 transition hover:bg-amber-400"
+                      className="rounded-lg py-1.5"
                     >
                       Load Anyways
-                    </button>
+                    </Button>
                   </div>
-                </div>
+                </Alert>
               ) : null}
             </div>
           );

@@ -1,4 +1,6 @@
 import { X } from "lucide-react";
+import { Alert } from "#/components/ui/Alert";
+import { IconButton } from "#/components/ui/IconButton";
 import type { DeckState } from "../editor/types";
 
 type DeckAlertsProps = {
@@ -17,23 +19,23 @@ export function DeckAlerts({ deck, onDismissWarnings }: DeckAlertsProps) {
   return (
     <div className="space-y-4 px-5 pb-2 pt-5">
       {hasError ? (
-        <div className="rounded-xl border border-rose-900/60 bg-rose-950/40 p-4 text-sm text-rose-300">
+        <Alert tone="danger" className="border-rose-900/60 bg-rose-950/40 p-4">
           {deck.errorMessage}
-        </div>
+        </Alert>
       ) : null}
 
       {hasWarnings ? (
-        <section className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4">
+        <Alert as="section" tone="warning" className="p-4">
           <div className="flex items-start justify-between gap-4">
             <h3 className="text-sm font-semibold text-amber-200">Warnings</h3>
-            <button
-              type="button"
+            <IconButton
               onClick={onDismissWarnings}
-              className="rounded-lg p-1.5 text-amber-300 transition hover:bg-amber-900/30 hover:text-amber-100"
+              variant="warning"
+              size="sm"
               aria-label="Dismiss warnings"
             >
               <X className="size-4" />
-            </button>
+            </IconButton>
           </div>
           <ul className="mt-3 space-y-2 text-sm text-amber-100/90">
             {deck.invalidCards.map((card) => (
@@ -43,7 +45,7 @@ export function DeckAlerts({ deck, onDismissWarnings }: DeckAlertsProps) {
               </li>
             ))}
           </ul>
-        </section>
+        </Alert>
       ) : null}
     </div>
   );
