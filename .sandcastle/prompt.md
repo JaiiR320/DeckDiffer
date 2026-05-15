@@ -2,7 +2,7 @@
 
 ## Open issues
 
-!`gh issue list --state open --label Sandcastle --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
+!`gh issue list --state open --label ready-for-agent --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`
 
 ## Recent RALPH commits (last 10)
 
@@ -43,7 +43,7 @@ Pick the highest-priority open issue that is not blocked by another open issue.
 
 ## Rules
 
-**!!ONLY WORK ON ISSUES LABELED READY-FOR-AGENT!!**
+**!!ONLY WORK ON ISSUES LABELED ready-for-agent!!**
 
 - Work on **one issue per iteration**. Do not attempt multiple issues in a single iteration.
 - Do not close issues. Open PRs only; a human will review, merge, and close issues later.
