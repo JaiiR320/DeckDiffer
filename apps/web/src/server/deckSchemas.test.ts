@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { updateDeckCurrentInputSchema } from "./deckSchemas";
+import { updateDeckColorsInputSchema, updateDeckCurrentInputSchema } from "./deckSchemas";
 
 describe("updateDeckCurrentInputSchema", () => {
   it("preserves enriched card data when persisting current deck state", () => {
@@ -49,5 +49,17 @@ describe("updateDeckCurrentInputSchema", () => {
         },
       ],
     });
+  });
+});
+
+describe("updateDeckColorsInputSchema", () => {
+  it("accepts only deck colors", () => {
+    expect(updateDeckColorsInputSchema.parse({ deckId: "test-deck", colors: ["U", "B"] })).toEqual({
+      deckId: "test-deck",
+      colors: ["U", "B"],
+    });
+    expect(() =>
+      updateDeckColorsInputSchema.parse({ deckId: "test-deck", colors: ["U", "C"] }),
+    ).toThrow();
   });
 });

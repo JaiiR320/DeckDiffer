@@ -65,6 +65,7 @@ export function DeckDetailModals() {
           onRename={(id, name) => void deckActions.renameDeck(id, name)}
           onDelete={(id) => void deckActions.deleteDeck(id)}
           onExport={deckActions.exportDeck}
+          onColorsChange={(colors) => void deckActions.setDeckColors(colors)}
           onClearCover={() => void deckActions.setDeckCover(null)}
           onSwapSplitCover={(deck) =>
             void deckActions.setDeckCover(deck.cover ? swapSplitDeckCover(deck.cover) : null)

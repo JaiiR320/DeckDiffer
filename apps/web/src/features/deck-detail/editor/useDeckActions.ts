@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DeckItem, DeckSave, DeckStackLayout, DeckTileCover } from "#/lib/deck";
+import type { DeckColor, DeckItem, DeckSave, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import { normalizeDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
 import { normalizeDeckSave } from "#/lib/deckSave";
@@ -10,6 +10,7 @@ import {
   deleteDeckForUser,
   renameDeckForUser,
   saveDeckForUser,
+  updateDeckColorsForUser,
   updateDeckCoverForUser,
 } from "#/server/decks";
 import { downloadCurrentDeck } from "./deckDownloads";
@@ -35,7 +36,7 @@ type UseDeckActionsOptions = {
     persistEditorSnapshot: (snapshot: EditorSnapshot) => Promise<boolean>;
   };
   navigationState: {
-    setActiveTab: Dispatch<SetStateAction<"editor" | "history">>;
+    setActiveTab: Dispatch<SetStateAction<"editor" | "history" | "stats">>;
     setCompareMode: Dispatch<SetStateAction<boolean>>;
     setCompareSaves: Dispatch<SetStateAction<{ saveA: DeckSave; saveB: DeckSave } | null>>;
   };
@@ -197,6 +198,24 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     }
   }
 
+  async function setDeckColors(colors: DeckColor[]) {
+    if (!deck) return false;
+
+    try {
+      const updatedDeck = await updateDeckColorsForUser({ data: { deckId: deck.id, colors } });
+      if (!updatedDeck) throw new Error("Could not update deck colors.");
+
+      setDeck(updatedDeck);
+      setDeckErrorMessage(null);
+      return true;
+    } catch (error) {
+      setDeckErrorMessage(
+        error instanceof Error ? error.message : "Could not update deck colors right now.",
+      );
+      return false;
+    }
+  }
+
   function exportDeck(deckToExport: DeckItem) {
     downloadCurrentDeck({ ...deckToExport, cards: workingCards });
     setIsDeckActionsOpen(false);
@@ -256,6 +275,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     loadSave,
     renameDeck,
     saveDeck,
+    setDeckColors,
     setDeckCover,
     saveSnapshotBeforeLoad,
     closeSaveModal,

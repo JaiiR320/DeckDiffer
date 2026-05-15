@@ -23,6 +23,7 @@ import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
 import type { DeckState } from "./editor/types";
 import {
   type DeckDetailActions,
+  type DeckDetailTab,
   type DeckDetailModel,
   type DeckDetailServices,
   pageStateReducer,
@@ -145,7 +146,7 @@ export function useDeckDetailController() {
   const { baselineDeck, baselineCategories, baselineStackLayout, compareMode } = pageState;
   const { compareSaves, deck, stackLayout, categories, workingCards } = pageState;
   const preview = useDeckPreview();
-  const setActiveTab = (activeTab: SetStateAction<"editor" | "history">) =>
+  const setActiveTab = (activeTab: SetStateAction<DeckDetailTab>) =>
     setPageState((current) => ({ activeTab: resolveStateAction(current.activeTab, activeTab) }));
   const setBaselineDeck = (baselineDeck: SetStateAction<DeckState>) =>
     setPageState((current) => ({
@@ -331,7 +332,10 @@ export function useDeckDetailController() {
     const cardsNeedingBackfill = pageState.workingCards.filter((card) => {
       const key = getCardPriceBackfillKey(card);
       return (
-        (card.priceUsd === undefined || card.manaValue === undefined) &&
+        (card.priceUsd === undefined ||
+          card.manaValue === undefined ||
+          card.manaCost === undefined ||
+          card.producedMana === undefined) &&
         key &&
         !attemptedCardDataBackfillsRef.current.has(key)
       );
@@ -359,16 +363,22 @@ export function useDeckDetailController() {
         }).catch(() => null);
         return {
           key: getCardPriceBackfillKey(card),
+          manaCost: preview?.manaCost,
           manaValue: preview?.manaValue,
+          producedMana: preview?.producedMana,
           priceUsd: preview?.priceUsd,
         };
       }),
     ).then((cardData) => {
       if (!isCurrent) return;
       const cardDataByKey = new Map(
-        cardData.flatMap(({ key, manaValue, priceUsd }) =>
-          key && (manaValue !== undefined || priceUsd !== undefined)
-            ? [[key, { manaValue, priceUsd }] as const]
+        cardData.flatMap(({ key, manaCost, manaValue, producedMana, priceUsd }) =>
+          key &&
+          (manaCost !== undefined ||
+            manaValue !== undefined ||
+            producedMana !== undefined ||
+            priceUsd !== undefined)
+            ? [[key, { manaCost, manaValue, producedMana, priceUsd }] as const]
             : [],
         ),
       );
@@ -458,7 +468,9 @@ function getCardPriceBackfillKey(card: ValidatedDeckCard) {
 }
 
 type CardBackfillData = {
+  manaCost?: string;
   manaValue?: number;
+  producedMana?: string[];
   priceUsd?: number;
 };
 
@@ -472,7 +484,9 @@ function backfillCardData(
 
     return {
       ...card,
+      manaCost: card.manaCost ?? cardData.manaCost,
       manaValue: card.manaValue ?? cardData.manaValue,
+      producedMana: card.producedMana ?? cardData.producedMana,
       priceUsd: card.priceUsd ?? cardData.priceUsd,
     };
   });

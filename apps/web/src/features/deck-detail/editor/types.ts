@@ -13,7 +13,9 @@ export type EditorRow = {
   name: string;
   category: CardCategory;
   typeLine: string;
+  manaCost?: string;
   manaValue: number;
+  producedMana?: string[];
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;

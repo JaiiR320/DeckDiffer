@@ -9,7 +9,7 @@ import type { DeckItem, DeckSave, DeckStackLayout } from "#/lib/deck";
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 
 export type PageState = {
-  activeTab: "editor" | "history";
+  activeTab: DeckDetailTab;
   baselineDeck: DeckState;
   baselineCategories: DeckCategory[];
   baselineStackLayout: DeckStackLayout;
@@ -25,6 +25,8 @@ export type PageState = {
   categories: DeckCategory[];
   workingCards: ValidatedDeckCard[];
 };
+
+export type DeckDetailTab = "editor" | "history" | "stats";
 
 export type HydratedPageState = PageState & { deck: DeckItem };
 export type PageStateAction = Partial<PageState> | ((state: PageState) => Partial<PageState>);
@@ -46,7 +48,7 @@ export type DeckDetailActions = {
   onAddStackLane: () => void;
   onRedo: () => void;
   onUndo: () => void;
-  setActiveTab: (activeTab: SetStateAction<"editor" | "history">) => void;
+  setActiveTab: (activeTab: SetStateAction<DeckDetailTab>) => void;
   setBaselineDeck: (baselineDeck: SetStateAction<DeckState>) => void;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
   updateEditorSnapshot: (update: (snapshot: EditorSnapshot) => EditorSnapshot) => void;

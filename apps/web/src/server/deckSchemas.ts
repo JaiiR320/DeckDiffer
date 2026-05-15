@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
+import type { DeckColor, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import {
   normalizeCategoryNameForCompare,
   type DeckCategory,
@@ -26,6 +26,10 @@ export type UpdateDeckCurrentInput = {
 export type UpdateDeckCoverInput = {
   deckId: string;
   cover: DeckTileCover | null;
+};
+export type UpdateDeckColorsInput = {
+  deckId: string;
+  colors: DeckColor[];
 };
 
 export const deckIdSchema = z.object({
@@ -54,6 +58,7 @@ const legacyCardCategorySchema = z.enum([
   "Battle",
   "Other",
 ]);
+const deckColorSchema = z.enum(["W", "U", "B", "R", "G"]);
 
 const deckCategorySchema = z.object({
   id: z.string().trim().min(1, "Category ID is required."),
@@ -101,7 +106,9 @@ const validatedDeckCardSchema = z.object({
   typeLine: z.string().trim().min(1, "Card type line is required."),
   categoryId: z.string().trim().min(1, "Card category ID is required.").optional(),
   category: legacyCardCategorySchema.optional(),
+  manaCost: z.string().optional(),
   manaValue: z.number().nonnegative().optional(),
+  producedMana: z.array(z.string()).optional(),
   setCode: z.string().trim().min(1, "Card set code is required."),
   collectorNumber: z.string().trim().min(1, "Card collector number is required."),
   smallImageUrl: z.string().optional(),
@@ -154,4 +161,9 @@ export const updateDeckCurrentInputSchema = z.object({
 export const updateDeckCoverInputSchema = z.object({
   deckId: z.string().trim().min(1, "Deck ID is required."),
   cover: deckTileCoverSchema.nullable(),
+});
+
+export const updateDeckColorsInputSchema = z.object({
+  deckId: z.string().trim().min(1, "Deck ID is required."),
+  colors: z.array(deckColorSchema),
 });

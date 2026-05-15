@@ -1,5 +1,6 @@
 import { EditorHeader } from "./components/EditorHeader";
 import { SaveHistoryPanel } from "./components/SaveHistoryPanel";
+import { DeckStatsPanel } from "./stats/DeckStatsPanel";
 import type { DeckCardSort } from "#/lib/deck";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
@@ -63,6 +64,9 @@ export function DeckEditorSurface() {
         <TabButton active={activeTab === "history"} onClick={() => actions.setActiveTab("history")}>
           History
         </TabButton>
+        <TabButton active={activeTab === "stats"} onClick={() => actions.setActiveTab("stats")}>
+          Stats
+        </TabButton>
         {compareMode ? (
           <div className="ml-auto flex items-center gap-2 px-4">
             <span className="text-sm text-cyan-400">Comparing snapshots</span>
@@ -104,7 +108,7 @@ export function DeckEditorSurface() {
             />
           }
         />
-      ) : (
+      ) : activeTab === "history" ? (
         <SaveHistoryPanel
           deck={deck}
           onLoadSave={(save) => void deckActions.loadSave(save)}
@@ -112,6 +116,8 @@ export function DeckEditorSurface() {
           onCompareSaves={deckActions.compareSaves}
           onBackToEditor={() => actions.setActiveTab("editor")}
         />
+      ) : (
+        <DeckStatsPanel />
       )}
     </section>
   );
