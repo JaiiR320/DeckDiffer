@@ -1,56 +1,71 @@
 import { run, opencode } from "@ai-hero/sandcastle";
 import { docker } from "@ai-hero/sandcastle/sandboxes/docker";
+import { execFileSync } from "node:child_process";
 
-// Simple loop: an agent that picks open issues one by one and closes them.
-// Run this with: npx tsx .sandcastle/main.ts
-// Or add to package.json scripts: "sandcastle": "npx tsx .sandcastle/main.ts"
+type Issue = {
+  number: number;
+  title: string;
+};
 
-await run({
-  // A name for this run, shown as a prefix in log output.
-  name: "worker",
-
-  // Sandbox provider — Docker is the default runtime.
-  sandbox: docker({
-    mounts: [
-      {
-        hostPath: "~/.local/share/opencode/auth.json",
-        sandboxPath: "/home/agent/.local/share/opencode/auth.json",
-        readonly: true,
-      },
+const issues = JSON.parse(
+  execFileSync(
+    "gh",
+    [
+      "issue",
+      "list",
+      "--state",
+      "open",
+      "--label",
+      "ready-for-agent",
+      "--limit",
+      "100",
+      "--json",
+      "number,title",
     ],
-  }),
+    { encoding: "utf8" },
+  ),
+) as Issue[];
 
-  // The agent provider. The OpenCode CLI is installed in .sandcastle/Dockerfile.
-  agent: opencode("openai/gpt-5.5"),
+if (issues.length === 0) {
+  console.log("No ready-for-agent issues found.");
+  process.exit(0);
+}
 
-  // Path to the prompt file. Shell expressions inside are evaluated inside the
-  // sandbox at the start of each iteration, so the agent always sees fresh data.
-  promptFile: "./.sandcastle/prompt.md",
+for (const issue of issues) {
+  const branch = `ralph/issue-${issue.number}-${slugify(issue.title)}`;
 
-  // Maximum number of iterations (agent invocations) to run in a session.
-  // Each iteration works on a single issue. Increase this to process more issues
-  // per run, or set it to 1 for a single-shot mode.
-  maxIterations: 3,
+  console.log(`Starting #${issue.number}: ${issue.title}`);
 
-  // Branch strategy — merge-to-head creates a temporary branch for the agent
-  // to work on, then merges the result back to HEAD when the run completes.
-  // This is required when using copyToWorktree, since head mode bind-mounts
-  // the host directory directly (no worktree to copy into).
-  branchStrategy: { type: "merge-to-head" },
-
-  // Copy node_modules from the host into the worktree before the sandbox
-  // starts. This avoids a full pnpm install from scratch on every iteration.
-  // The onSandboxReady hook still runs pnpm install as a safety net to handle
-  // platform-specific binaries and any packages added since the last copy.
-  // copyToWorktree: ["node_modules"],
-
-  // Lifecycle hooks — commands grouped by where they run (host or sandbox).
-  hooks: {
-    sandbox: {
-      // onSandboxReady runs once after the sandbox is initialised and the repo is
-      // synced in, before the agent starts. Use it to install dependencies or run
-      // any other setup steps your project needs.
-      onSandboxReady: [{ command: "pnpm install" }],
+  await run({
+    name: `issue-${issue.number}`,
+    sandbox: docker({
+      mounts: [
+        {
+          hostPath: "~/.local/share/opencode/auth.json",
+          sandboxPath: "/home/agent/.local/share/opencode/auth.json",
+          readonly: true,
+        },
+      ],
+    }),
+    agent: opencode("openai/gpt-5.5"),
+    promptFile: "./.sandcastle/prompt.md",
+    promptArgs: {
+      ISSUE_NUMBER: String(issue.number),
     },
-  },
-});
+    maxIterations: 1,
+    branchStrategy: { type: "branch", branch },
+    hooks: {
+      sandbox: {
+        onSandboxReady: [{ command: "pnpm install" }],
+      },
+    },
+  });
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+}
