@@ -35,6 +35,8 @@ const TRANSITION_NAMES: DeckWorkspaceTransitionName[] = [
   "changeCardPrinting",
   "moveCardToCategory",
   "moveAllCardsBetweenCategories",
+  "beginImport",
+  "failImport",
   "applyValidatedImport",
 ];
 
@@ -316,6 +318,112 @@ describe("deckWorkspace", () => {
     expect(result.workspace.current).toEqual(workspace.current);
     expect(result.workspace.undoStack).toEqual([]);
     expect(result.workspace.importStatus.invalidCards).toHaveLength(1);
+    expect(result.intent).toEqual({ kind: "none" });
+  });
+
+  it("applies replace-empty Import through the Deck Workspace without creating a Save", () => {
+    const originalSave = save("save-1", "2026-01-01T00:00:00.000Z", snapshot("saved", 1));
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ saves: [originalSave] }),
+    );
+    const importedCards = [card("imported", 2)];
+    const warnings = [{ lineNumber: 2, quantity: 0, name: "Nope", reason: "not found" }];
+
+    const result = deckWorkspaceTransitions.applyValidatedImport(workspace, {
+      mode: "replace-empty",
+      validCards: importedCards,
+      warnings,
+      rawText: "2 Imported",
+    });
+
+    expect(result.workspace.current.workingCards).toEqual(importedCards);
+    expect(result.workspace.importStatus).toEqual({
+      rawText: "2 Imported",
+      cards: importedCards,
+      invalidCards: warnings,
+      status: "ready",
+      errorMessage: null,
+    });
+    expect(result.workspace.deck.saves).toEqual([originalSave]);
+    expect(result.intent).toEqual({ kind: "persist-current", snapshot: result.workspace.current });
+  });
+
+  it("applies bulk-add Import through the Deck Workspace and preserves undo behavior", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("existing", 1) }),
+    );
+
+    const imported = deckWorkspaceTransitions.applyValidatedImport(workspace, {
+      mode: "bulk-add",
+      validCards: [card("new", 3)],
+      warnings: [],
+      rawText: "3 New",
+    }).workspace;
+    const undone = deckWorkspaceTransitions.undoCurrentDecklistEdit(imported);
+
+    expect(imported.current.workingCards).toEqual([card("existing", 1), card("new", 3)]);
+    expect(imported.undoStack).toEqual([workspace.current]);
+    expect(undone.workspace.current.workingCards).toEqual([card("existing", 1)]);
+    expect(undone.intent).toEqual({ kind: "persist-current", snapshot: undone.workspace.current });
+  });
+
+  it("applies override Import through the Deck Workspace", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("old", 4) }),
+    );
+    const importedCards = [card("replacement", 2)];
+
+    const result = deckWorkspaceTransitions.applyValidatedImport(workspace, {
+      mode: "override",
+      validCards: importedCards,
+      warnings: [],
+      rawText: "2 Replacement",
+    });
+
+    expect(result.workspace.current.workingCards).toEqual(importedCards);
+    expect(result.workspace.importStatus.cards).toEqual([card("old", 4)]);
+    expect(result.intent).toEqual({ kind: "persist-current", snapshot: result.workspace.current });
+  });
+
+  it("keeps validation warnings visible after a validated Import", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("existing", 1) }),
+    );
+    const warnings = [{ lineNumber: 1, quantity: 0, name: "Bad Card", reason: "not found" }];
+
+    const result = deckWorkspaceTransitions.applyValidatedImport(workspace, {
+      mode: "bulk-add",
+      validCards: [],
+      warnings,
+      rawText: "Bad Card",
+    });
+
+    expect(result.workspace.importStatus.invalidCards).toEqual(warnings);
+    expect(result.workspace.importStatus.status).toBe("ready");
+    expect(result.workspace.importStatus.errorMessage).toBeNull();
+  });
+
+  it("keeps failed Import error state in the Deck Workspace without changing saves", () => {
+    const originalSave = save("save-1", "2026-01-01T00:00:00.000Z", snapshot("saved", 1));
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ saves: [originalSave], current: snapshot("existing", 1) }),
+    );
+
+    const loading = deckWorkspaceTransitions.beginImport(workspace, {
+      mode: "bulk-add",
+      rawText: "1 Broken",
+    }).workspace;
+    const result = deckWorkspaceTransitions.failImport(loading, {
+      mode: "bulk-add",
+      rawText: "1 Broken",
+      errorMessage: "Could not add cards right now.",
+    });
+
+    expect(loading.importStatus.status).toBe("loading");
+    expect(result.workspace.current).toEqual(workspace.current);
+    expect(result.workspace.importStatus.status).toBe("ready");
+    expect(result.workspace.importStatus.errorMessage).toBe("Could not add cards right now.");
+    expect(result.workspace.deck.saves).toEqual([originalSave]);
     expect(result.intent).toEqual({ kind: "none" });
   });
 });

@@ -156,10 +156,6 @@ export function useDeckDetailController() {
     setPageState((current) => ({
       showDiffOnly: resolveStateAction(current.showDiffOnly, showDiffOnly),
     }));
-  const setWorkingCards = (workingCards: SetStateAction<ValidatedDeckCard[]>) =>
-    setPageState((current) => ({
-      workingCards: resolveStateAction(current.workingCards, workingCards),
-    }));
   const clearUndoHistory = () => setPageState({ undoStack: [], redoStack: [] });
   const persistEditorSnapshot = async (snapshot: EditorSnapshot) => {
     const currentDeck = pageStateRef.current.deck;
@@ -233,12 +229,18 @@ export function useDeckDetailController() {
   const deckImport = useDeckImport({
     deckState: { baselineDeck, workingCards },
     editorActions: {
+      beginImport: (options) =>
+        requestDeckWorkspaceTransition((workspace) =>
+          deckWorkspaceTransitions.beginImport(workspace, options),
+        ),
+      failImport: (options) =>
+        requestDeckWorkspaceTransition((workspace) =>
+          deckWorkspaceTransitions.failImport(workspace, options),
+        ),
       applyValidatedImport: (options) =>
         requestDeckWorkspaceTransition((workspace) =>
           deckWorkspaceTransitions.applyValidatedImport(workspace, options),
         ),
-      setBaselineDeck,
-      setWorkingCards,
     },
   });
   const deckActions = useDeckActions({

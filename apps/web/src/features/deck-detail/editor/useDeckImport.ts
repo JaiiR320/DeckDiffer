@@ -11,8 +11,8 @@ type UseDeckImportOptions = {
     workingCards: ValidatedDeckCard[];
   };
   editorActions: {
-    setBaselineDeck: React.Dispatch<React.SetStateAction<DeckState>>;
-    setWorkingCards: React.Dispatch<React.SetStateAction<ValidatedDeckCard[]>>;
+    beginImport: (options: { mode: ImportMode; rawText: string }) => void;
+    failImport: (options: { mode: ImportMode; rawText: string; errorMessage: string }) => void;
     applyValidatedImport: (options: {
       mode: ImportMode;
       validCards: ValidatedDeckCard[];
@@ -28,7 +28,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportModalState>({ includeQuantity: true });
   const { baselineDeck, workingCards } = deckState;
-  const { applyValidatedImport, setBaselineDeck, setWorkingCards } = editorActions;
+  const { applyValidatedImport, beginImport, failImport } = editorActions;
 
   function openImportModal() {
     setDraftDeck(workingCards.length > 0 ? "" : baselineDeck.rawText);
@@ -61,13 +61,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   async function importDraftDeck(mode: ImportMode) {
     const rawText = draftDeck.trim();
 
-    setBaselineDeck((currentDeck) => ({
-      ...currentDeck,
-      ...(mode === "replace-empty" ? { rawText } : {}),
-      status: "loading",
-      invalidCards: [],
-      errorMessage: null,
-    }));
+    beginImport({ mode, rawText });
     closeImportModal();
 
     try {
@@ -75,29 +69,19 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
 
       applyValidatedImport({ mode, validCards, warnings, rawText });
     } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : mode === "bulk-add"
+            ? "Could not add cards right now."
+            : "Could not import this deck right now.";
+
       if (mode === "replace-empty") {
-        setBaselineDeck({
-          rawText,
-          cards: [],
-          invalidCards: [],
-          status: "error",
-          errorMessage:
-            error instanceof Error ? error.message : "Could not import this deck right now.",
-        });
-        setWorkingCards([]);
+        failImport({ mode, rawText, errorMessage });
         return;
       }
 
-      setBaselineDeck((currentDeck) => ({
-        ...currentDeck,
-        status: "ready",
-        errorMessage:
-          error instanceof Error
-            ? error.message
-            : mode === "bulk-add"
-              ? "Could not add cards right now."
-              : "Could not import this deck right now.",
-      }));
+      failImport({ mode, rawText, errorMessage });
     }
   }
 

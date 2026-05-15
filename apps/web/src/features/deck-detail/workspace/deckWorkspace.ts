@@ -87,6 +87,8 @@ export type DeckWorkspaceTransitionName =
   | "changeCardPrinting"
   | "moveCardToCategory"
   | "moveAllCardsBetweenCategories"
+  | "beginImport"
+  | "failImport"
   | "applyValidatedImport";
 
 export const deckWorkspaceTransitions = {
@@ -114,6 +116,8 @@ export const deckWorkspaceTransitions = {
   changeCardPrinting: changeCurrentDecklistCardPrinting,
   moveCardToCategory,
   moveAllCardsBetweenCategories,
+  beginImport,
+  failImport,
   applyValidatedImport,
 } satisfies Record<DeckWorkspaceTransitionName, unknown>;
 
@@ -496,6 +500,59 @@ function moveAllCardsBetweenCategories(
       card.categoryId === fromCategoryId ? { ...card, categoryId: toCategoryId } : card,
     ),
   }));
+}
+
+function beginImport(
+  workspace: DeckWorkspaceState,
+  { mode, rawText }: { mode: ImportMode; rawText: string },
+): DeckWorkspaceTransitionResult {
+  return {
+    workspace: {
+      ...workspace,
+      importStatus: {
+        ...workspace.importStatus,
+        ...(mode === "replace-empty" ? { rawText } : {}),
+        status: "loading",
+        invalidCards: [],
+        errorMessage: null,
+      },
+    },
+    intent: noPersistence,
+  };
+}
+
+function failImport(
+  workspace: DeckWorkspaceState,
+  { mode, rawText, errorMessage }: { mode: ImportMode; rawText: string; errorMessage: string },
+): DeckWorkspaceTransitionResult {
+  if (mode === "replace-empty") {
+    return {
+      workspace: {
+        ...workspace,
+        current: { ...workspace.current, workingCards: [] },
+        importStatus: {
+          rawText,
+          cards: [],
+          invalidCards: [],
+          status: "error",
+          errorMessage,
+        },
+      },
+      intent: noPersistence,
+    };
+  }
+
+  return {
+    workspace: {
+      ...workspace,
+      importStatus: {
+        ...workspace.importStatus,
+        status: "ready",
+        errorMessage,
+      },
+    },
+    intent: noPersistence,
+  };
 }
 
 function applyValidatedImport(
