@@ -30,11 +30,12 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
         <img
           src={deck.cover.imageUrl}
           alt={deck.cover.name}
-          className="absolute inset-0 h-full w-full object-cover opacity-80"
+          className="absolute inset-0 h-full w-full object-cover object-[50%_38%] opacity-85"
           loading="lazy"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/15 to-black/80" />
-        <div className="pointer-events-none relative z-10 flex min-h-48 flex-col justify-end px-7 py-6">
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
+        <div className="pointer-events-none relative z-10 flex min-h-48 flex-col justify-between px-7 py-6 pr-16">
           <span className="text-3xl font-semibold tracking-tight text-zinc-100 drop-shadow-lg">
             {deck.name}
           </span>
@@ -50,7 +51,18 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
           aria-label={`Open ${deck.name}`}
         />
 
-        {editButton}
+        <IconButton
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit(deck);
+          }}
+          aria-label={`Edit ${deck.name}`}
+          variant="ghost"
+          className="absolute right-6 top-6 z-20 cursor-pointer bg-black/35 p-2 text-zinc-100 backdrop-blur-sm hover:bg-black/50"
+        >
+          <MoreVertical className="size-5" strokeWidth={1.75} />
+        </IconButton>
       </div>
     );
   }
