@@ -4,6 +4,49 @@ import { Alert } from "#/components/ui/Alert";
 import { Button } from "#/components/ui/Button";
 import type { DeckItem, DeckSave } from "#/lib/deck";
 
+export type SaveHistoryItem =
+  | { kind: "save"; save: DeckSave }
+  | { count: number; id: string; kind: "collapsed" };
+
+export function isAutoSaveLabel(label: string) {
+  return /^Save #\d+$/.test(label);
+}
+
+export function groupSaveHistoryItems(
+  savesNewestFirst: DeckSave[],
+  collapseUnnamed: boolean,
+): SaveHistoryItem[] {
+  if (!collapseUnnamed) {
+    return savesNewestFirst.map((save) => ({ kind: "save", save }));
+  }
+
+  const items: SaveHistoryItem[] = [];
+  let collapsedRun: DeckSave[] = [];
+
+  function flushCollapsedRun() {
+    if (collapsedRun.length === 0) return;
+    items.push({
+      count: collapsedRun.length,
+      id: `collapsed-${collapsedRun[0].id}-${collapsedRun.length}`,
+      kind: "collapsed",
+    });
+    collapsedRun = [];
+  }
+
+  for (const save of savesNewestFirst) {
+    if (isAutoSaveLabel(save.label)) {
+      collapsedRun.push(save);
+      continue;
+    }
+
+    flushCollapsedRun();
+    items.push({ kind: "save", save });
+  }
+
+  flushCollapsedRun();
+  return items;
+}
+
 type SaveHistoryPanelProps = {
   deck: DeckItem;
   onLoadSave: (save: DeckSave) => void;
@@ -20,11 +63,14 @@ export function SaveHistoryPanel({
   onBackToEditor,
 }: SaveHistoryPanelProps) {
   const [compareMode, setCompareMode] = useState(false);
+  const [collapseUnnamedSaves, setCollapseUnnamedSaves] = useState(true);
   const [pendingLoadSaveId, setPendingLoadSaveId] = useState<string | null>(null);
   const [selectedSaves, setSelectedSaves] = useState<string[]>([]);
 
   // Newest first
   const saves = [...deck.saves].reverse();
+  const hasAutoSaves = saves.some((save) => isAutoSaveLabel(save.label));
+  const historyItems = groupSaveHistoryItems(saves, collapseUnnamedSaves);
 
   function toggleCompareMode() {
     setCompareMode(!compareMode);
@@ -87,6 +133,15 @@ export function SaveHistoryPanel({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {hasAutoSaves && (
+            <Button
+              onClick={() => setCollapseUnnamedSaves((current) => !current)}
+              size="sm"
+              variant="secondary"
+            >
+              {collapseUnnamedSaves ? "Show unnamed saves" : "Collapse unnamed saves"}
+            </Button>
+          )}
           {saves.length >= 2 && (
             <Button
               onClick={toggleCompareMode}
@@ -122,7 +177,20 @@ export function SaveHistoryPanel({
 
       {/* Saves list */}
       <div className="space-y-2">
-        {saves.map((save) => {
+        {historyItems.map((item) => {
+          if (item.kind === "collapsed") {
+            return (
+              <div key={item.id} className="flex items-center gap-3 py-2 text-sm text-zinc-500">
+                <div className="h-px flex-1 bg-zinc-800" />
+                <span>
+                  {item.count} unnamed save{item.count === 1 ? "" : "s"} collapsed
+                </span>
+                <div className="h-px flex-1 bg-zinc-800" />
+              </div>
+            );
+          }
+
+          const { save } = item;
           const isSelected = selectedSaves.includes(save.id);
           const isPendingLoad = pendingLoadSaveId === save.id;
           const selectionOrder = selectedSaves.indexOf(save.id) + 1;
