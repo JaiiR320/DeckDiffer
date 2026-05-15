@@ -13,8 +13,7 @@ import {
 import { downloadCurrentDeck } from "./deckDownloads";
 import {
   deckWorkspaceTransitions,
-  type DeckWorkspaceState,
-  type DeckWorkspaceTransitionResult,
+  type RequestDeckWorkspaceTransition,
 } from "../workspace/deckWorkspace";
 
 type UseDeckActionsOptions = {
@@ -27,9 +26,7 @@ type UseDeckActionsOptions = {
     stackLayout: DeckStackLayout;
     categories: DeckCategory[];
     workingCards: ValidatedDeckCard[];
-    requestDeckWorkspaceTransition: (
-      transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
-    ) => void;
+    requestDeckWorkspaceTransition: RequestDeckWorkspaceTransition;
   };
   navigationState: {
     setActiveTab: Dispatch<SetStateAction<"editor" | "history" | "stats">>;

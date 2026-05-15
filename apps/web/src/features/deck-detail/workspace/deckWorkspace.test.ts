@@ -12,7 +12,6 @@ import {
 
 const TRANSITION_NAMES: DeckWorkspaceTransitionName[] = [
   "hydrateDeckWorkspace",
-  "editCurrentDecklist",
   "undoCurrentDecklistEdit",
   "redoCurrentDecklistEdit",
   "markCurrentDecklistSaved",
@@ -140,12 +139,10 @@ describe("deckWorkspace", () => {
       deckItem({ current: snapshot("a", 1) }),
     );
 
-    const result: DeckWorkspaceTransitionResult = deckWorkspaceTransitions.editCurrentDecklist(
+    const result: DeckWorkspaceTransitionResult = deckWorkspaceTransitions.adjustCardQuantity(
       workspace,
-      (current) => ({
-        ...current,
-        workingCards: [card("a", 2)],
-      }),
+      editorRow("a", 1),
+      1,
     );
 
     const expectedIntent: PersistenceIntent = {
@@ -162,7 +159,7 @@ describe("deckWorkspace", () => {
       deckItem({ current: snapshot("a", 1) }),
     );
 
-    const result = deckWorkspaceTransitions.editCurrentDecklist(workspace, (current) => current);
+    const result = deckWorkspaceTransitions.moveCardToCategory(workspace, "a", "creature");
 
     expect(result.workspace).toBe(workspace);
     expect(result.intent).toEqual({ kind: "none" });
@@ -172,10 +169,11 @@ describe("deckWorkspace", () => {
     const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
       deckItem({ current: snapshot("a", 1) }),
     );
-    const edited = deckWorkspaceTransitions.editCurrentDecklist(workspace, (current) => ({
-      ...current,
-      workingCards: [card("a", 2)],
-    })).workspace;
+    const edited = deckWorkspaceTransitions.adjustCardQuantity(
+      workspace,
+      editorRow("a", 1),
+      1,
+    ).workspace;
 
     const result = deckWorkspaceTransitions.undoCurrentDecklistEdit(edited);
 
@@ -188,10 +186,11 @@ describe("deckWorkspace", () => {
     const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
       deckItem({ current: snapshot("a", 1) }),
     );
-    const edited = deckWorkspaceTransitions.editCurrentDecklist(workspace, (current) => ({
-      ...current,
-      workingCards: [card("a", 2)],
-    })).workspace;
+    const edited = deckWorkspaceTransitions.adjustCardQuantity(
+      workspace,
+      editorRow("a", 1),
+      1,
+    ).workspace;
     const undone = deckWorkspaceTransitions.undoCurrentDecklistEdit(edited).workspace;
 
     const result = deckWorkspaceTransitions.redoCurrentDecklistEdit(undone);
@@ -226,9 +225,10 @@ describe("deckWorkspace", () => {
   });
 
   it("marks the Current Decklist as saved after save persistence succeeds", () => {
-    const workspace = deckWorkspaceTransitions.editCurrentDecklist(
-      deckWorkspaceTransitions.hydrateDeckWorkspace(deckItem({ current: snapshot("current", 1) })),
-      (current) => ({ ...current, workingCards: [card("saved", 2)] }),
+    const workspace = deckWorkspaceTransitions.adjustCardQuantity(
+      deckWorkspaceTransitions.hydrateDeckWorkspace(deckItem({ current: snapshot("saved", 1) })),
+      editorRow("saved", 1),
+      1,
     ).workspace;
     const updatedDeck = deckItem({
       saves: [save("save-2", "2026-01-02T00:00:00.000Z", workspace.current)],
@@ -481,5 +481,16 @@ function card(
     typeLine: "Creature",
     categoryId: "creature",
     ...overrides,
+  };
+}
+
+function editorRow(oracleId: string, quantity: number) {
+  return {
+    ...card(oracleId, quantity),
+    baselineQuantity: quantity,
+    currentQuantity: quantity,
+    category: "creature" as const,
+    manaValue: 1,
+    status: "same" as const,
   };
 }

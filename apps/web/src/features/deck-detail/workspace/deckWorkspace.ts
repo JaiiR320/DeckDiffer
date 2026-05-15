@@ -62,9 +62,12 @@ export type DeckWorkspaceTransitionResult = {
   intent: PersistenceIntent;
 };
 
+export type RequestDeckWorkspaceTransition = (
+  transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
+) => void;
+
 export type DeckWorkspaceTransitionName =
   | "hydrateDeckWorkspace"
-  | "editCurrentDecklist"
   | "undoCurrentDecklistEdit"
   | "redoCurrentDecklistEdit"
   | "markCurrentDecklistSaved"
@@ -93,7 +96,6 @@ export type DeckWorkspaceTransitionName =
 
 export const deckWorkspaceTransitions = {
   hydrateDeckWorkspace,
-  editCurrentDecklist,
   undoCurrentDecklistEdit,
   redoCurrentDecklistEdit,
   markCurrentDecklistSaved,
