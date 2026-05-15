@@ -72,13 +72,26 @@ const cardPreviewFaceSchema = z.object({
   imageUrl: z.string().min(1, "Card face image URL is required."),
 });
 
-const deckTileCoverSchema = z.object({
+const deckTileCoverCardSchema = z.object({
   oracleId: z.string().trim().min(1, "Card oracle ID is required."),
   setCode: z.string().trim().min(1, "Card set code is required.").optional(),
   collectorNumber: z.string().trim().min(1, "Card collector number is required.").optional(),
   name: z.string().trim().min(1, "Cover name is required."),
   imageUrl: z.string().min(1, "Cover image URL is required."),
 });
+
+const singleDeckTileCoverSchema = deckTileCoverCardSchema.extend({
+  source: z.enum(["manual", "commander"]).optional(),
+  kind: z.literal("single").optional(),
+});
+
+const splitDeckTileCoverSchema = z.object({
+  source: z.literal("commander"),
+  kind: z.literal("split"),
+  cards: z.tuple([deckTileCoverCardSchema, deckTileCoverCardSchema]),
+});
+
+const deckTileCoverSchema = z.union([singleDeckTileCoverSchema, splitDeckTileCoverSchema]);
 
 const validatedDeckCardSchema = z.object({
   oracleId: z.string().trim().min(1, "Card oracle ID is required."),

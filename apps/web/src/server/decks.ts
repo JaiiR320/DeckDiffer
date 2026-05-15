@@ -4,6 +4,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "#/db";
 import { deckSaves, decks } from "#/db/schema";
 import { auth } from "#/lib/auth";
+import { createCommanderDeckCover, shouldRefreshCommanderCover } from "#/lib/deckCover";
 import { slugifyName } from "#/lib/deck";
 import { mapDeck, type DeckSaveRow } from "./deckMappers";
 import {
@@ -224,6 +225,9 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
 
     const saveLabel = data.label.trim() || `Save #1`;
     const now = new Date();
+    const cover = shouldRefreshCommanderCover(existingDeck.cover)
+      ? createCommanderDeckCover(data.categories, data.cards)
+      : existingDeck.cover;
 
     await db.insert(deckSaves).values({
       id: crypto.randomUUID(),
@@ -238,6 +242,7 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
     await db
       .update(decks)
       .set({
+        cover,
         updatedAt: now,
       })
       .where(eq(decks.id, existingDeck.id));
@@ -258,11 +263,16 @@ export const updateDeckCurrentForUser = createServerFn({ method: "POST" })
       throw new Error("Deck not found.");
     }
 
+    const cover = shouldRefreshCommanderCover(existingDeck.cover)
+      ? createCommanderDeckCover(data.categories, data.cards)
+      : existingDeck.cover;
+
     await db
       .update(decks)
       .set({
         categories: data.categories,
         cards: data.cards,
+        cover,
         layout: data.layout,
         updatedAt: new Date(),
       })

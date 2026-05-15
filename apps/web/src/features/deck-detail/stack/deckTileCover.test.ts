@@ -23,6 +23,8 @@ describe("createDeckTileCover", () => {
       collectorNumber: "123",
       name: "Lightning Bolt",
       imageUrl: "https://cards.example/bolt.jpg",
+      source: "manual",
+      kind: "single",
     });
   });
 

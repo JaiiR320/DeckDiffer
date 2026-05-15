@@ -12,5 +12,7 @@ export function createDeckTileCover(
     collectorNumber: row.collectorNumber,
     name,
     imageUrl,
+    source: "manual",
+    kind: "single",
   };
 }

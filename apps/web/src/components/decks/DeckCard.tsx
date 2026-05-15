@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Layers, MoreVertical } from "lucide-react";
 import { IconButton } from "#/components/ui/IconButton";
-import type { DeckItem } from "../../lib/deck";
+import type { DeckItem, DeckTileCover } from "../../lib/deck";
 
 type DeckCardProps = {
   deck: DeckItem;
@@ -27,12 +27,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
   if (deck.cover) {
     return (
       <div className="group relative flex min-h-48 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-left transition hover:border-zinc-700">
-        <img
-          src={deck.cover.imageUrl}
-          alt={deck.cover.name}
-          className="absolute inset-0 h-full w-full scale-[1.55] object-cover object-[50%_18%] opacity-85"
-          loading="lazy"
-        />
+        <CoverImage cover={deck.cover} />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
         <div className="pointer-events-none relative z-10 flex min-h-48 flex-col justify-between px-7 py-6 pr-16">
@@ -92,5 +87,39 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
       {/* Edit button - positioned outside content, after Link in DOM so it's on top */}
       {editButton}
     </div>
+  );
+}
+
+function CoverImage({ cover }: { cover: DeckTileCover }) {
+  if (cover.kind === "split") {
+    return (
+      <div className="absolute inset-0 opacity-85">
+        <div className="absolute inset-0 overflow-hidden [clip-path:polygon(0_0,57%_0,43%_100%,0_100%)]">
+          <img
+            src={cover.cards[0].imageUrl}
+            alt={cover.cards[0].name}
+            className="absolute inset-y-0 -left-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
+            loading="lazy"
+          />
+        </div>
+        <div className="absolute inset-0 overflow-hidden [clip-path:polygon(57%_0,100%_0,100%_100%,43%_100%)]">
+          <img
+            src={cover.cards[1].imageUrl}
+            alt={cover.cards[1].name}
+            className="absolute inset-y-0 -right-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
+            loading="lazy"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={cover.imageUrl}
+      alt={cover.name}
+      className="absolute inset-0 h-full w-full scale-[1.55] object-cover object-[50%_10%] opacity-85"
+      loading="lazy"
+    />
   );
 }

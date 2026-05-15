@@ -19,13 +19,26 @@ export type DeckSave = {
   layout?: DeckStackLayout;
 };
 
-export type DeckTileCover = {
+export type DeckTileCoverCard = {
   oracleId: string;
   setCode?: string;
   collectorNumber?: string;
   name: string;
   imageUrl: string;
 };
+
+type SingleDeckTileCover = DeckTileCoverCard & {
+  source?: "manual" | "commander";
+  kind?: "single";
+};
+
+export type DeckTileCover =
+  | SingleDeckTileCover
+  | {
+      source: "commander";
+      kind: "split";
+      cards: [DeckTileCoverCard, DeckTileCoverCard];
+    };
 
 export type DeckItem = {
   id: string; // slugified name, e.g., "my-commander-deck"
