@@ -65,7 +65,10 @@ function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partia
 function getDeckWorkspaceFromPageState(state: PageState): DeckWorkspaceState | null {
   if (!state.deck) return null;
 
-  const current = getEditorSnapshot(state);
+  const display = getEditorSnapshot(state);
+  const current = state.compareSaves
+    ? deckWorkspaceTransitions.hydrateDeckWorkspace(state.deck).current
+    : display;
   return {
     deck: state.deck,
     current,
@@ -77,13 +80,15 @@ function getDeckWorkspaceFromPageState(state: PageState): DeckWorkspaceState | n
     undoStack: state.undoStack,
     redoStack: state.redoStack,
     compare: state.compareSaves
-      ? { saveA: state.compareSaves.saveA, saveB: state.compareSaves.saveB, display: current }
+      ? { saveA: state.compareSaves.saveA, saveB: state.compareSaves.saveB, display }
       : null,
     importStatus: state.baselineDeck,
   };
 }
 
 function getPageStateFromDeckWorkspace(workspace: DeckWorkspaceState): Partial<PageState> {
+  const display = workspace.compare?.display ?? workspace.current;
+
   return {
     baselineDeck: workspace.importStatus,
     baselineCategories: workspace.baseline.categories,
@@ -93,10 +98,10 @@ function getPageStateFromDeckWorkspace(workspace: DeckWorkspaceState): Partial<P
       ? { saveA: workspace.compare.saveA, saveB: workspace.compare.saveB }
       : null,
     redoStack: workspace.redoStack,
-    stackLayout: workspace.current.stackLayout,
+    stackLayout: display.stackLayout,
     undoStack: workspace.undoStack,
-    categories: workspace.current.categories,
-    workingCards: workspace.current.workingCards,
+    categories: display.categories,
+    workingCards: display.workingCards,
   };
 }
 
@@ -141,18 +146,6 @@ export function useDeckDetailController() {
     setPageState((current) => ({
       baselineDeck: resolveStateAction(current.baselineDeck, baselineDeck),
     }));
-  const setBaselineStackLayout = (baselineStackLayout: SetStateAction<DeckStackLayout>) =>
-    setPageState((current) => ({
-      baselineStackLayout: resolveStateAction(current.baselineStackLayout, baselineStackLayout),
-    }));
-  const setCompareMode = (compareMode: SetStateAction<boolean>) =>
-    setPageState((current) => ({
-      compareMode: resolveStateAction(current.compareMode, compareMode),
-    }));
-  const setCompareSaves = (compareSaves: SetStateAction<PageState["compareSaves"]>) =>
-    setPageState((current) => ({
-      compareSaves: resolveStateAction(current.compareSaves, compareSaves),
-    }));
   const setDeck = (deck: SetStateAction<DeckItem | undefined>) =>
     setPageState((current) => ({ deck: resolveStateAction(current.deck, deck) }));
   const setDeckErrorMessage = (deckErrorMessage: SetStateAction<string | null>) =>
@@ -162,10 +155,6 @@ export function useDeckDetailController() {
   const setShowDiffOnly = (showDiffOnly: SetStateAction<boolean>) =>
     setPageState((current) => ({
       showDiffOnly: resolveStateAction(current.showDiffOnly, showDiffOnly),
-    }));
-  const setBaselineCategories = (baselineCategories: SetStateAction<DeckCategory[]>) =>
-    setPageState((current) => ({
-      baselineCategories: resolveStateAction(current.baselineCategories, baselineCategories),
     }));
   const setWorkingCards = (workingCards: SetStateAction<ValidatedDeckCard[]>) =>
     setPageState((current) => ({
@@ -258,13 +247,9 @@ export function useDeckDetailController() {
       stackLayout,
       categories,
       workingCards,
-      setBaselineDeck,
-      setBaselineCategories,
-      setBaselineStackLayout,
-      clearUndoHistory,
       requestDeckWorkspaceTransition,
     },
-    navigationState: { setActiveTab, setCompareMode, setCompareSaves },
+    navigationState: { setActiveTab },
   });
 
   useEffect(() => {

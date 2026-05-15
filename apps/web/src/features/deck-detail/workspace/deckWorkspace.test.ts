@@ -223,6 +223,25 @@ describe("deckWorkspace", () => {
     expect(result.intent).toEqual({ kind: "persist-current", snapshot: result.workspace.current });
   });
 
+  it("marks the Current Decklist as saved after save persistence succeeds", () => {
+    const workspace = deckWorkspaceTransitions.editCurrentDecklist(
+      deckWorkspaceTransitions.hydrateDeckWorkspace(deckItem({ current: snapshot("current", 1) })),
+      (current) => ({ ...current, workingCards: [card("saved", 2)] }),
+    ).workspace;
+    const updatedDeck = deckItem({
+      saves: [save("save-2", "2026-01-02T00:00:00.000Z", workspace.current)],
+      current: workspace.current,
+    });
+
+    const result = deckWorkspaceTransitions.markCurrentDecklistSaved(workspace, updatedDeck);
+
+    expect(result.workspace.deck).toBe(updatedDeck);
+    expect(result.workspace.baseline).toEqual(workspace.current);
+    expect(result.workspace.importStatus.cards).toEqual(workspace.current.workingCards);
+    expect(result.workspace.undoStack).toEqual([]);
+    expect(result.intent).toEqual({ kind: "none" });
+  });
+
   it("enters Compare Mode without persistence and displays the newer Save", () => {
     const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
       deckItem({ current: snapshot("current", 1) }),
@@ -234,7 +253,27 @@ describe("deckWorkspace", () => {
 
     expect(result.intent).toEqual({ kind: "none" });
     expect(result.workspace.compare).toMatchObject({ saveA: olderSave, saveB: newerSave });
-    expect(result.workspace.current.workingCards).toEqual([card("newer-card", 3)]);
+    expect(result.workspace.compare?.display.workingCards).toEqual([card("newer-card", 3)]);
+    expect(result.workspace.current).toEqual(workspace.current);
+  });
+
+  it("exits Compare Mode with the persisted Current Decklist restored", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("current", 1) }),
+    );
+    const newerSave = save("newer", "2026-01-03T00:00:00.000Z", snapshot("newer-card", 3));
+    const olderSave = save("older", "2026-01-01T00:00:00.000Z", snapshot("older-card", 1));
+    const comparing = deckWorkspaceTransitions.enterCompareMode(
+      workspace,
+      newerSave,
+      olderSave,
+    ).workspace;
+
+    const result = deckWorkspaceTransitions.exitCompareMode(comparing);
+
+    expect(result.intent).toEqual({ kind: "none" });
+    expect(result.workspace.compare).toBeNull();
+    expect(result.workspace.current.workingCards).toEqual([card("current", 1)]);
   });
 
   it("moves cards by named transition instead of exposing raw card mutation", () => {

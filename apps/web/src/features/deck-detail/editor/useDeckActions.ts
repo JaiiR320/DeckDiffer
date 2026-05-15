@@ -3,7 +3,6 @@ import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { DeckColor, DeckItem, DeckSave, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
-import type { DeckState } from "./types";
 import {
   deleteDeckForUser,
   renameDeckForUser,
@@ -12,7 +11,6 @@ import {
   updateDeckCoverForUser,
 } from "#/server/decks";
 import { downloadCurrentDeck } from "./deckDownloads";
-import type { EditorSnapshot } from "./editorUndo";
 import {
   deckWorkspaceTransitions,
   type DeckWorkspaceState,
@@ -29,18 +27,12 @@ type UseDeckActionsOptions = {
     stackLayout: DeckStackLayout;
     categories: DeckCategory[];
     workingCards: ValidatedDeckCard[];
-    setBaselineDeck: Dispatch<SetStateAction<DeckState>>;
-    setBaselineCategories: Dispatch<SetStateAction<DeckCategory[]>>;
-    setBaselineStackLayout: Dispatch<SetStateAction<DeckStackLayout>>;
-    clearUndoHistory: () => void;
     requestDeckWorkspaceTransition: (
       transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
     ) => void;
   };
   navigationState: {
     setActiveTab: Dispatch<SetStateAction<"editor" | "history" | "stats">>;
-    setCompareMode: Dispatch<SetStateAction<boolean>>;
-    setCompareSaves: Dispatch<SetStateAction<{ saveA: DeckSave; saveB: DeckSave } | null>>;
   };
 };
 
@@ -50,30 +42,8 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
   const [isDeckActionsOpen, setIsDeckActionsOpen] = useState(false);
   const [pendingLoadSave, setPendingLoadSave] = useState<DeckSave | null>(null);
   const { deck, setDeck, setDeckErrorMessage } = deckState;
-  const {
-    stackLayout,
-    categories,
-    workingCards,
-    setBaselineDeck,
-    setBaselineCategories,
-    setBaselineStackLayout,
-    clearUndoHistory,
-    requestDeckWorkspaceTransition,
-  } = editorState;
-  const { setActiveTab, setCompareMode, setCompareSaves } = navigationState;
-
-  function markSnapshotSaved(snapshot: EditorSnapshot) {
-    setBaselineDeck({
-      rawText: "",
-      cards: snapshot.workingCards,
-      invalidCards: [],
-      status: "ready",
-      errorMessage: null,
-    });
-    clearUndoHistory();
-    setBaselineCategories(snapshot.categories);
-    setBaselineStackLayout(snapshot.stackLayout);
-  }
+  const { stackLayout, categories, workingCards, requestDeckWorkspaceTransition } = editorState;
+  const { setActiveTab } = navigationState;
 
   async function saveDeck(label: string) {
     if (!deck) return;
@@ -88,7 +58,9 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
 
       setDeck(updatedDeck);
       setDeckErrorMessage(null);
-      markSnapshotSaved({ categories, stackLayout, workingCards });
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.markCurrentDecklistSaved(workspace, updatedDeck),
+      );
       setIsSaveOpen(false);
       setPendingLoadSave(null);
       if (saveToLoad) {
@@ -182,8 +154,6 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     requestDeckWorkspaceTransition((workspace) =>
       deckWorkspaceTransitions.loadSaveAsCurrentDecklist(workspace, save),
     );
-    setCompareMode(false);
-    setCompareSaves(null);
     setActiveTab("editor");
   }
 
@@ -201,7 +171,6 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     requestDeckWorkspaceTransition((workspace) =>
       deckWorkspaceTransitions.enterCompareMode(workspace, saveA, saveB),
     );
-    setCompareMode(true);
     setActiveTab("editor");
   }
 

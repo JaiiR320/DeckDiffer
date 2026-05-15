@@ -262,7 +262,6 @@ function enterCompareMode(
   return {
     workspace: {
       ...workspace,
-      current: display,
       undoStack: [],
       redoStack: [],
       compare: { saveA: olderSave, saveB: newerSave, display },
@@ -272,11 +271,8 @@ function enterCompareMode(
 }
 
 function exitCompareMode(workspace: DeckWorkspaceState): DeckWorkspaceTransitionResult {
-  const current =
-    getSnapshotFromCurrentDeck(workspace.deck, workspace.baseline) ?? workspace.current;
-
   return {
-    workspace: { ...workspace, current, undoStack: [], redoStack: [], compare: null },
+    workspace: { ...workspace, undoStack: [], redoStack: [], compare: null },
     intent: noPersistence,
   };
 }
