@@ -61,6 +61,7 @@ export function StackCard({
   const hasMultipleFaces = !!faces && faces.length > 1;
   const displayFaceIndex = hasMultipleFaces ? faceIndex % faces.length : 0;
   const imageUrl = hasMultipleFaces ? faces[displayFaceIndex]?.imageUrl : fallbackImageUrl;
+  const imageName = hasMultipleFaces ? (faces[displayFaceIndex]?.name ?? row.name) : row.name;
   const isChanged = row.status !== "same";
   const toneClass =
     row.status === "added"
@@ -184,7 +185,7 @@ export function StackCard({
                     <ContextMenuItem
                       onSelect={() => {
                         setIsMenuOpen(false);
-                        onSetDeckCover(createDeckTileCover(row, imageUrl));
+                        onSetDeckCover(createDeckTileCover(row, imageUrl, imageName));
                       }}
                     >
                       Use as deck cover

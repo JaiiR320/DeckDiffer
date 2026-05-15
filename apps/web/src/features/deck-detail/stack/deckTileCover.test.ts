@@ -25,4 +25,26 @@ describe("createDeckTileCover", () => {
       imageUrl: "https://cards.example/bolt.jpg",
     });
   });
+
+  it("uses the selected face name and image for double-faced cards", () => {
+    const row: EditorRow = {
+      oracleId: "oracle-2",
+      name: "Front Face // Back Face",
+      category: "land",
+      typeLine: "Land",
+      manaValue: 0,
+      setCode: "MDF",
+      collectorNumber: "10",
+      baselineQuantity: 0,
+      currentQuantity: 1,
+      status: "added",
+    };
+
+    expect(createDeckTileCover(row, "https://cards.example/back.jpg", "Back Face")).toMatchObject({
+      name: "Back Face",
+      imageUrl: "https://cards.example/back.jpg",
+      setCode: "MDF",
+      collectorNumber: "10",
+    });
+  });
 });
