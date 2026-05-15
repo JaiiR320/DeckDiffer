@@ -92,20 +92,23 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
 
 function CoverImage({ cover }: { cover: DeckTileCover }) {
   if (cover.kind === "split") {
+    const leftCard = cover.reversed ? cover.cards[1] : cover.cards[0];
+    const rightCard = cover.reversed ? cover.cards[0] : cover.cards[1];
+
     return (
       <div className="absolute inset-0 opacity-85">
         <div className="absolute inset-0 overflow-hidden [clip-path:polygon(0_0,57%_0,43%_100%,0_100%)]">
           <img
-            src={cover.cards[0].imageUrl}
-            alt={cover.cards[0].name}
+            src={leftCard.imageUrl}
+            alt={leftCard.name}
             className="absolute inset-y-0 -left-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
             loading="lazy"
           />
         </div>
         <div className="absolute inset-0 overflow-hidden [clip-path:polygon(57%_0,100%_0,100%_100%,43%_100%)]">
           <img
-            src={cover.cards[1].imageUrl}
-            alt={cover.cards[1].name}
+            src={rightCard.imageUrl}
+            alt={rightCard.name}
             className="absolute inset-y-0 -right-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
             loading="lazy"
           />

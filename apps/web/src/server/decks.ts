@@ -226,7 +226,7 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
     const saveLabel = data.label.trim() || `Save #1`;
     const now = new Date();
     const cover = shouldRefreshCommanderCover(existingDeck.cover)
-      ? createCommanderDeckCover(data.categories, data.cards)
+      ? createCommanderDeckCover(data.categories, data.cards, existingDeck.cover)
       : existingDeck.cover;
 
     await db.insert(deckSaves).values({
@@ -264,7 +264,7 @@ export const updateDeckCurrentForUser = createServerFn({ method: "POST" })
     }
 
     const cover = shouldRefreshCommanderCover(existingDeck.cover)
-      ? createCommanderDeckCover(data.categories, data.cards)
+      ? createCommanderDeckCover(data.categories, data.cards, existingDeck.cover)
       : existingDeck.cover;
 
     await db

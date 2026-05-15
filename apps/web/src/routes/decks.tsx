@@ -6,6 +6,7 @@ import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
+import { swapSplitDeckCover } from "../lib/deckCover";
 import { createDeckExport } from "../lib/deckExport";
 import {
   createDeckForUser,
@@ -146,6 +147,26 @@ function DecksPage() {
     }
   }
 
+  async function handleSwapSplitCover(deck: DeckItem) {
+    try {
+      const updatedDeck = await updateDeckCoverForUser({
+        data: { deckId: deck.id, cover: deck.cover ? swapSplitDeckCover(deck.cover) : null },
+      });
+      if (!updatedDeck) throw new Error("Could not swap deck cover.");
+
+      setState({
+        decks: decks.map((d) => (d.id === deck.id ? updatedDeck : d)),
+        editingDeck: updatedDeck,
+        errorMessage: null,
+      });
+    } catch (error) {
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not swap deck cover right now.",
+      });
+    }
+  }
+
   function handleExportDeck(deck: DeckItem) {
     const deckExport = createDeckExport(deck);
     if (!deckExport.ok) {
@@ -217,6 +238,7 @@ function DecksPage() {
           onDelete={handleDeleteDeck}
           onExport={handleExportDeck}
           onClearCover={handleClearCover}
+          onSwapSplitCover={handleSwapSplitCover}
         />
       ) : null}
     </>

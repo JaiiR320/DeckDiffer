@@ -89,6 +89,7 @@ const splitDeckTileCoverSchema = z.object({
   source: z.literal("commander"),
   kind: z.literal("split"),
   cards: z.tuple([deckTileCoverCardSchema, deckTileCoverCardSchema]),
+  reversed: z.boolean().optional(),
 });
 
 const deckTileCoverSchema = z.union([singleDeckTileCoverSchema, splitDeckTileCoverSchema]);

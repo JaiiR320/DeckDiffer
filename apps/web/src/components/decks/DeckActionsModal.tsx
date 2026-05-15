@@ -1,4 +1,4 @@
-import { Download, ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
 import type { Dispatch, FormEvent } from "react";
 import { useReducer } from "react";
 import { Alert } from "#/components/ui/Alert";
@@ -23,6 +23,7 @@ type DeckActionsModalProps = {
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
   onClearCover?: (deckId: string) => void;
+  onSwapSplitCover?: (deck: DeckItem) => void;
   categories?: DeckCategory[];
   cards?: ValidatedDeckCard[];
   showRemovedCardGhosts?: boolean;
@@ -61,6 +62,7 @@ export function DeckActionsModal({
   onDelete,
   onExport,
   onClearCover,
+  onSwapSplitCover,
   categories,
   cards = EMPTY_CARDS,
   showRemovedCardGhosts = true,
@@ -167,6 +169,7 @@ export function DeckActionsModal({
             onDelete={onDelete}
             onExport={onExport}
             onClearCover={onClearCover}
+            onSwapSplitCover={onSwapSplitCover}
             onRenameSubmit={handleRenameSubmit}
             setState={setState}
           />
@@ -204,6 +207,7 @@ function GeneralSettingsTab({
   onDelete,
   onExport,
   onClearCover,
+  onSwapSplitCover,
   onRenameSubmit,
   setState,
 }: {
@@ -215,6 +219,7 @@ function GeneralSettingsTab({
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
   onClearCover?: (deckId: string) => void;
+  onSwapSplitCover?: (deck: DeckItem) => void;
   onRenameSubmit: (event: FormEvent<HTMLFormElement>) => void;
   setState: Dispatch<Partial<ModalState>>;
 }) {
@@ -264,6 +269,16 @@ function GeneralSettingsTab({
         >
           <ImageOff className="size-5 text-zinc-500" strokeWidth={1.75} />
           <span>Clear deck cover</span>
+        </Button>
+      ) : null}
+
+      {deck.cover?.kind === "split" && onSwapSplitCover ? (
+        <Button
+          onClick={() => onSwapSplitCover(deck)}
+          className="w-full justify-start px-4 py-3 text-left"
+        >
+          <Shuffle className="size-5 text-zinc-500" strokeWidth={1.75} />
+          <span>Swap commander cover sides</span>
         </Button>
       ) : null}
 

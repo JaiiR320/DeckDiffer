@@ -38,6 +38,7 @@ export type DeckTileCover =
       source: "commander";
       kind: "split";
       cards: [DeckTileCoverCard, DeckTileCoverCard];
+      reversed?: boolean;
     };
 
 export type DeckItem = {

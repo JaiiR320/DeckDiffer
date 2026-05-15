@@ -10,6 +10,7 @@ import {
 export function createCommanderDeckCover(
   categories: DeckCategory[] | undefined,
   cards: ValidatedDeckCard[],
+  previousCover?: DeckTileCover | null,
 ): DeckTileCover | null {
   const normalizedCategories = normalizeDeckCategories(categories);
   const commanderCategory = normalizedCategories.find(
@@ -33,6 +34,7 @@ export function createCommanderDeckCover(
       source: "commander",
       kind: "split",
       cards: [commanderCards[0]!, commanderCards[1]!],
+      reversed: previousCover?.kind === "split" ? previousCover.reversed : undefined,
     };
   }
 
@@ -46,6 +48,10 @@ export function createCommanderDeckCover(
 
 export function shouldRefreshCommanderCover(cover: DeckTileCover | null | undefined) {
   return !cover || cover.source === "commander";
+}
+
+export function swapSplitDeckCover(cover: DeckTileCover): DeckTileCover {
+  return cover.kind === "split" ? { ...cover, reversed: !cover.reversed } : cover;
 }
 
 function toCoverCard(card: ValidatedDeckCard): DeckTileCoverCard {

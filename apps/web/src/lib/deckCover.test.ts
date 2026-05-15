@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { DeckTileCover } from "./deck";
 import type { DeckCategory, ValidatedDeckCard } from "./decklist";
-import { createCommanderDeckCover, shouldRefreshCommanderCover } from "./deckCover";
+import {
+  createCommanderDeckCover,
+  shouldRefreshCommanderCover,
+  swapSplitDeckCover,
+} from "./deckCover";
 
 const commanderCategory: DeckCategory = { id: "cmd", name: " Commander ", kind: "custom" };
 const mainCategory: DeckCategory = { id: "main", name: "Main", kind: "custom" };
@@ -60,10 +64,51 @@ describe("createCommanderDeckCover", () => {
     });
   });
 
+  it("preserves split cover side order when refreshing commander cover", () => {
+    expect(
+      createCommanderDeckCover(
+        [commanderCategory],
+        [
+          card(),
+          card({
+            oracleId: "oracle-2",
+            name: "Commander Two",
+            imageUrl: "https://cards.example/two.jpg",
+          }),
+        ],
+        {
+          source: "commander",
+          kind: "split",
+          reversed: true,
+          cards: [
+            { oracleId: "old-1", name: "Old One", imageUrl: "https://cards.example/old-one.jpg" },
+            { oracleId: "old-2", name: "Old Two", imageUrl: "https://cards.example/old-two.jpg" },
+          ],
+        },
+      ),
+    ).toMatchObject({ kind: "split", reversed: true });
+  });
+
   it("ignores commander cards without images", () => {
     expect(
       createCommanderDeckCover([commanderCategory], [card({ imageUrl: undefined })]),
     ).toBeNull();
+  });
+});
+
+describe("swapSplitDeckCover", () => {
+  it("toggles split cover side order without changing cards", () => {
+    const cover: DeckTileCover = {
+      source: "commander",
+      kind: "split",
+      cards: [
+        { oracleId: "one", name: "One", imageUrl: "https://cards.example/one.jpg" },
+        { oracleId: "two", name: "Two", imageUrl: "https://cards.example/two.jpg" },
+      ],
+    };
+
+    expect(swapSplitDeckCover(cover)).toEqual({ ...cover, reversed: true });
+    expect(swapSplitDeckCover({ ...cover, reversed: true })).toEqual({ ...cover, reversed: false });
   });
 });
 
