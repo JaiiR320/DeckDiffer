@@ -3,7 +3,6 @@ import { ImportDeckModal } from "./modals/ImportDeckModal";
 import { SaveDeckModal } from "./modals/SaveDeckModal";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
 import { swapSplitDeckCover } from "#/lib/deckCover";
-import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
   useDeckDetailActions,
   useDeckDetailModel,
@@ -74,19 +73,8 @@ export function DeckDetailModals() {
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}
           onAddLane={compareMode ? undefined : actions.onAddStackLane}
-          onCategoriesChange={(nextCategories) => {
-            actions.updateEditorSnapshot((current) => ({
-              ...current,
-              categories: nextCategories,
-              stackLayout: normalizeStackLayout(current.stackLayout, nextCategories),
-            }));
-          }}
-          onShowRemovedCardGhostsChange={(showRemovedCardGhosts) => {
-            actions.updateEditorSnapshot((current) => ({
-              ...current,
-              stackLayout: { ...current.stackLayout, showRemovedCardGhosts },
-            }));
-          }}
+          onCategoriesChange={actions.onReplaceCategories}
+          onShowRemovedCardGhostsChange={actions.onSetShowRemovedCardGhosts}
         />
       ) : null}
     </>

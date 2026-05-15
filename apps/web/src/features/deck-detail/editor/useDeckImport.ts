@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { parseDecklist, type ValidatedDeckCard } from "#/lib/decklist";
+import { parseDecklist, type InvalidDeckCard, type ValidatedDeckCard } from "#/lib/decklist";
 import { validateDeckEntries } from "#/lib/scryfall";
-import { applyValidatedDeckImport, type ImportMode } from "./deckImport";
+import { type ImportMode } from "./deckImport";
 import type { DeckState, ExportModalState } from "./types";
 
 type UseDeckImportOptions = {
@@ -13,7 +13,12 @@ type UseDeckImportOptions = {
   editorActions: {
     setBaselineDeck: React.Dispatch<React.SetStateAction<DeckState>>;
     setWorkingCards: React.Dispatch<React.SetStateAction<ValidatedDeckCard[]>>;
-    setWorkingCardsWithUndo?: React.Dispatch<React.SetStateAction<ValidatedDeckCard[]>>;
+    applyValidatedImport: (options: {
+      mode: ImportMode;
+      validCards: ValidatedDeckCard[];
+      warnings: InvalidDeckCard[];
+      rawText: string;
+    }) => void;
   };
 };
 
@@ -23,11 +28,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [exportOptions, setExportOptions] = useState<ExportModalState>({ includeQuantity: true });
   const { baselineDeck, workingCards } = deckState;
-  const {
-    setBaselineDeck,
-    setWorkingCards,
-    setWorkingCardsWithUndo = setWorkingCards,
-  } = editorActions;
+  const { applyValidatedImport, setBaselineDeck, setWorkingCards } = editorActions;
 
   function openImportModal() {
     setDraftDeck(workingCards.length > 0 ? "" : baselineDeck.rawText);
@@ -58,7 +59,6 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   }
 
   async function importDraftDeck(mode: ImportMode) {
-    const snapshotCards = workingCards;
     const rawText = draftDeck.trim();
 
     setBaselineDeck((currentDeck) => ({
@@ -73,43 +73,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
     try {
       const { validCards, warnings } = await validateDraftDeck(rawText);
 
-      if (mode === "bulk-add") {
-        setWorkingCardsWithUndo(
-          (currentCards) =>
-            applyValidatedDeckImport({
-              mode,
-              baselineDeck,
-              workingCards: currentCards,
-              validCards,
-              warnings,
-              rawText,
-            }).workingCards,
-        );
-        setBaselineDeck(
-          (currentDeck) =>
-            applyValidatedDeckImport({
-              mode,
-              baselineDeck: currentDeck,
-              workingCards: snapshotCards,
-              validCards,
-              warnings,
-              rawText,
-            }).baselineDeck,
-        );
-        return;
-      }
-
-      const nextImportState = applyValidatedDeckImport({
-        mode,
-        baselineDeck,
-        workingCards: snapshotCards,
-        validCards,
-        warnings,
-        rawText,
-      });
-
-      setBaselineDeck(nextImportState.baselineDeck);
-      setWorkingCardsWithUndo(nextImportState.workingCards);
+      applyValidatedImport({ mode, validCards, warnings, rawText });
     } catch (error) {
       if (mode === "replace-empty") {
         setBaselineDeck({

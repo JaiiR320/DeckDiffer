@@ -1,8 +1,6 @@
 import { EditorHeader } from "./components/EditorHeader";
 import { SaveHistoryPanel } from "./components/SaveHistoryPanel";
 import { DeckStatsPanel } from "./stats/DeckStatsPanel";
-import type { DeckCardSort } from "#/lib/deck";
-import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
   useDeckDetailActions,
   useDeckDetailModel,
@@ -30,30 +28,6 @@ export function DeckEditorSurface() {
   const canUndo = !compareMode && undoStack.length > 0;
   const cardSort = stackLayout.cardSort ?? "manaValue";
   const cardSortDirection = stackLayout.cardSortDirection ?? "desc";
-
-  function updateCardSort(nextSort: DeckCardSort) {
-    actions.updateEditorSnapshot((current) => ({
-      ...current,
-      stackLayout: normalizeStackLayout(
-        { ...current.stackLayout, cardSort: nextSort },
-        current.categories,
-      ),
-    }));
-  }
-
-  function reverseCardSortDirection() {
-    actions.updateEditorSnapshot((current) => ({
-      ...current,
-      stackLayout: normalizeStackLayout(
-        {
-          ...current.stackLayout,
-          cardSortDirection:
-            (current.stackLayout.cardSortDirection ?? "desc") === "asc" ? "desc" : "asc",
-        },
-        current.categories,
-      ),
-    }));
-  }
 
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
@@ -96,8 +70,8 @@ export function DeckEditorSurface() {
               onUndo={actions.onUndo}
               cardSort={cardSort}
               cardSortDirection={cardSortDirection}
-              onCardSortChange={updateCardSort}
-              onReverseCardSortDirection={reverseCardSortDirection}
+              onCardSortChange={actions.onSetCardSort}
+              onReverseCardSortDirection={actions.onReverseCardSortDirection}
               onPreviewCard={(card) =>
                 preview.updatePreviewCard({
                   name: card.name,

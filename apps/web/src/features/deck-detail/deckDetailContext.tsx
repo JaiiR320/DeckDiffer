@@ -5,8 +5,9 @@ import type { EditorSnapshot } from "./editor/editorUndo";
 import type { useDeckActions } from "./editor/useDeckActions";
 import type { useDeckImport } from "./editor/useDeckImport";
 import type { useDeckPreview } from "./editor/useDeckPreview";
-import type { DeckItem, DeckSave, DeckStackLayout } from "#/lib/deck";
+import type { DeckCardSort, DeckItem, DeckSave, DeckStackLayout } from "#/lib/deck";
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
+import type { CardPrintingOption, SearchCardResult } from "#/lib/scryfall";
 
 export type PageState = {
   activeTab: DeckDetailTab;
@@ -48,10 +49,24 @@ export type DeckDetailActions = {
   onAddStackLane: () => void;
   onRedo: () => void;
   onUndo: () => void;
+  onAddSearchCard: (card: SearchCardResult, category: CardCategory) => void;
+  onAdjustQuantity: (row: EditorRow, delta: number) => void;
+  onChangePrinting: (row: EditorRow, printing: CardPrintingOption) => void;
+  onCreateCategoryInLane: (laneIndex: number, category: DeckCategory) => void;
+  onMoveAllCardsBetweenCategories: (fromCategory: CardCategory, toCategory: CardCategory) => void;
+  onMoveCardToCategory: (row: EditorRow, category: CardCategory) => void;
+  onRemoveCategory: (category: CardCategory) => void;
+  onRemoveStackLane: (laneIndex: number) => void;
+  onRenameCategory: (category: CardCategory, name: string) => void;
+  onReplaceCategories: (categories: DeckCategory[]) => void;
+  onReverseCardSortDirection: () => void;
+  onSetCardSort: (cardSort: DeckCardSort) => void;
+  onSetShowRemovedCardGhosts: (showRemovedCardGhosts: boolean) => void;
+  onSetStackLayout: (layout: DeckStackLayout) => void;
+  onUpdateCategory: (category: CardCategory, patch: Partial<DeckCategory>) => void;
   setActiveTab: (activeTab: SetStateAction<DeckDetailTab>) => void;
   setBaselineDeck: (baselineDeck: SetStateAction<DeckState>) => void;
   setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
-  updateEditorSnapshot: (update: (snapshot: EditorSnapshot) => EditorSnapshot) => void;
 };
 
 export type DeckDetailServices = {

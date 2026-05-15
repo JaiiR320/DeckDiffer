@@ -1,4 +1,10 @@
-import { getLatestSave, type DeckCardSort, type DeckItem, type DeckSave } from "#/lib/deck";
+import {
+  getLatestSave,
+  type DeckCardSort,
+  type DeckItem,
+  type DeckSave,
+  type DeckStackLayout,
+} from "#/lib/deck";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
   createCategoryId,
@@ -6,10 +12,17 @@ import {
   defaultDeckCategories,
   normalizeDeckCategories,
   type CardCategory,
+  type DeckCategory,
   type InvalidDeckCard,
   type ValidatedDeckCard,
 } from "#/lib/decklist";
 import { normalizeDeckSave } from "#/lib/deckSave";
+import type { CardPrintingOption, SearchCardResult } from "#/lib/scryfall";
+import {
+  adjustCardQuantity,
+  appendSearchCard,
+  changeCardPrinting,
+} from "../editor/deckCardMutations";
 import { applyValidatedDeckImport, type ImportMode } from "../editor/deckImport";
 import {
   type EditorSnapshot,
@@ -18,6 +31,11 @@ import {
   undoEditorSnapshot,
 } from "../editor/editorUndo";
 import type { DeckState } from "../editor/types";
+import type { EditorRow } from "../editor/types";
+import {
+  addEmptyStackLane,
+  removeStackLane as removeStackLaneFromLayout,
+} from "../editor/stackLayoutLane";
 
 export type DeckWorkspaceState = {
   deck: DeckItem;
@@ -55,9 +73,18 @@ export type DeckWorkspaceTransitionName =
   | "exitCompareMode"
   | "setCardSort"
   | "reverseCardSortDirection"
+  | "setStackLayout"
+  | "addStackLane"
+  | "removeStackLane"
+  | "setShowRemovedCardGhosts"
+  | "replaceCategories"
   | "createCategoryInLane"
   | "renameCategory"
+  | "updateCategory"
   | "removeEmptyCategory"
+  | "appendSearchCard"
+  | "adjustCardQuantity"
+  | "changeCardPrinting"
   | "moveCardToCategory"
   | "moveAllCardsBetweenCategories"
   | "applyValidatedImport";
@@ -73,9 +100,18 @@ export const deckWorkspaceTransitions = {
   exitCompareMode,
   setCardSort,
   reverseCardSortDirection,
+  setStackLayout,
+  addStackLane,
+  removeStackLane,
+  setShowRemovedCardGhosts,
+  replaceCategories,
   createCategoryInLane,
   renameCategory,
+  updateCategory,
   removeEmptyCategory,
+  appendSearchCard: appendSearchCardToCurrentDecklist,
+  adjustCardQuantity: adjustCurrentDecklistCardQuantity,
+  changeCardPrinting: changeCurrentDecklistCardPrinting,
   moveCardToCategory,
   moveAllCardsBetweenCategories,
   applyValidatedImport,
@@ -251,42 +287,102 @@ function setCardSort(
 ): DeckWorkspaceTransitionResult {
   return editCurrentDecklist(workspace, (current) => ({
     ...current,
-    stackLayout: { ...current.stackLayout, cardSort },
+    stackLayout: normalizeStackLayout({ ...current.stackLayout, cardSort }, current.categories),
   }));
 }
 
 function reverseCardSortDirection(workspace: DeckWorkspaceState): DeckWorkspaceTransitionResult {
   return editCurrentDecklist(workspace, (current) => ({
     ...current,
-    stackLayout: {
-      ...current.stackLayout,
-      cardSortDirection: current.stackLayout.cardSortDirection === "asc" ? "desc" : "asc",
-    },
+    stackLayout: normalizeStackLayout(
+      {
+        ...current.stackLayout,
+        cardSortDirection: current.stackLayout.cardSortDirection === "asc" ? "desc" : "asc",
+      },
+      current.categories,
+    ),
   }));
+}
+
+function setStackLayout(
+  workspace: DeckWorkspaceState,
+  stackLayout: DeckStackLayout,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    stackLayout: normalizeStackLayout(stackLayout, current.categories),
+  }));
+}
+
+function addStackLane(workspace: DeckWorkspaceState): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    stackLayout: addEmptyStackLane(current.stackLayout),
+  }));
+}
+
+function removeStackLane(
+  workspace: DeckWorkspaceState,
+  laneIndex: number,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    stackLayout: removeStackLaneFromLayout(current.stackLayout, laneIndex),
+  }));
+}
+
+function setShowRemovedCardGhosts(
+  workspace: DeckWorkspaceState,
+  showRemovedCardGhosts: boolean,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    stackLayout: { ...current.stackLayout, showRemovedCardGhosts },
+  }));
+}
+
+function replaceCategories(
+  workspace: DeckWorkspaceState,
+  categories: DeckCategory[],
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => {
+    const nextCategories = normalizeDeckCategories(categories);
+    return {
+      ...current,
+      categories: nextCategories,
+      stackLayout: normalizeStackLayout(current.stackLayout, nextCategories),
+    };
+  });
 }
 
 function createCategoryInLane(
   workspace: DeckWorkspaceState,
   laneIndex: number,
-  name = "Category",
+  category: DeckCategory,
 ): DeckWorkspaceTransitionResult {
   return editCurrentDecklist(workspace, (current) => {
-    const categoryName = createCategoryName(name, current.categories);
-    const category = {
-      id: createCategoryId(categoryName, current.categories),
+    const categoryName = createCategoryName(category.name, current.categories);
+    const categoryIds = new Set(current.categories.map((item) => item.id));
+    const nextCategory = {
+      id:
+        category.id && !categoryIds.has(category.id)
+          ? category.id
+          : createCategoryId(categoryName, current.categories),
       name: categoryName,
-      kind: "custom" as const,
+      kind: category.kind,
+      hidden: category.hidden,
+      includeInDeck: category.includeInDeck,
     };
     const lanes = current.stackLayout.lanes.map((lane, index) =>
-      index === laneIndex ? [...lane, category.id] : lane,
+      index === laneIndex ? [...lane, nextCategory.id] : lane,
     );
 
     return {
       ...current,
-      categories: [...current.categories, category],
+      categories: [...current.categories, nextCategory],
       stackLayout: {
         ...current.stackLayout,
-        lanes: lanes[laneIndex] ? lanes : [...lanes, [category.id]],
+        lanes: lanes[laneIndex] ? lanes : [...lanes, [nextCategory.id]],
       },
     };
   });
@@ -313,6 +409,19 @@ function renameCategory(
   }));
 }
 
+function updateCategory(
+  workspace: DeckWorkspaceState,
+  categoryId: CardCategory,
+  patch: Partial<DeckCategory>,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    categories: current.categories.map((category) =>
+      category.id === categoryId ? { ...category, ...patch, id: category.id } : category,
+    ),
+  }));
+}
+
 function removeEmptyCategory(
   workspace: DeckWorkspaceState,
   categoryId: CardCategory,
@@ -325,7 +434,10 @@ function removeEmptyCategory(
       categories: current.categories.filter((category) => category.id !== categoryId),
       stackLayout: {
         ...current.stackLayout,
-        lanes: current.stackLayout.lanes.map((lane) => lane.filter((id) => id !== categoryId)),
+        lanes: current.stackLayout.lanes.reduce<CardCategory[][]>((lanes, lane) => {
+          const nextLane = lane.filter((id) => id !== categoryId);
+          return nextLane.length > 0 ? [...lanes, nextLane] : lanes;
+        }, []),
       },
     };
   });
@@ -341,6 +453,39 @@ function moveCardToCategory(
     workingCards: current.workingCards.map((card) =>
       card.oracleId === oracleId ? { ...card, categoryId } : card,
     ),
+  }));
+}
+
+function appendSearchCardToCurrentDecklist(
+  workspace: DeckWorkspaceState,
+  card: SearchCardResult,
+  categoryId: CardCategory,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    workingCards: appendSearchCard(current.workingCards, card, categoryId),
+  }));
+}
+
+function adjustCurrentDecklistCardQuantity(
+  workspace: DeckWorkspaceState,
+  row: EditorRow,
+  delta: number,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    workingCards: adjustCardQuantity(current.workingCards, row, delta),
+  }));
+}
+
+function changeCurrentDecklistCardPrinting(
+  workspace: DeckWorkspaceState,
+  row: EditorRow,
+  printing: CardPrintingOption,
+): DeckWorkspaceTransitionResult {
+  return editCurrentDecklist(workspace, (current) => ({
+    ...current,
+    workingCards: changeCardPrinting(current.workingCards, row, printing),
   }));
 }
 
@@ -372,6 +517,13 @@ function applyValidatedImport(
     workingCards: workspace.current.workingCards,
   });
   const nextCurrent = { ...workspace.current, workingCards: result.workingCards };
+  if (isSameSnapshot(workspace.current, nextCurrent)) {
+    return {
+      workspace: { ...workspace, importStatus: result.baselineDeck },
+      intent: noPersistence,
+    };
+  }
+
   const nextUndoState = pushUndoSnapshot(workspace, workspace.current);
 
   return {

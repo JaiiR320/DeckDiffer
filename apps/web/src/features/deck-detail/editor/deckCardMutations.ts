@@ -78,25 +78,6 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
   });
 }
 
-export function moveEditorRowCategory(
-  cards: ValidatedDeckCard[],
-  row: EditorRow,
-  category: CardCategory,
-) {
-  if (row.category === category || row.currentQuantity <= 0) {
-    return cards;
-  }
-
-  return cards.map((card) =>
-    card.oracleId === row.oracleId
-      ? {
-          ...card,
-          categoryId: category,
-        }
-      : card,
-  );
-}
-
 export function changeCardPrinting(
   cards: ValidatedDeckCard[],
   row: EditorRow,

@@ -21,9 +21,18 @@ const TRANSITION_NAMES: DeckWorkspaceTransitionName[] = [
   "exitCompareMode",
   "setCardSort",
   "reverseCardSortDirection",
+  "setStackLayout",
+  "addStackLane",
+  "removeStackLane",
+  "setShowRemovedCardGhosts",
+  "replaceCategories",
   "createCategoryInLane",
   "renameCategory",
+  "updateCategory",
   "removeEmptyCategory",
+  "appendSearchCard",
+  "adjustCardQuantity",
+  "changeCardPrinting",
   "moveCardToCategory",
   "moveAllCardsBetweenCategories",
   "applyValidatedImport",
@@ -157,6 +166,50 @@ describe("deckWorkspace", () => {
     expect(result.intent).toEqual({ kind: "none" });
   });
 
+  it("owns undo and returns a persistence intent", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("a", 1) }),
+    );
+    const edited = deckWorkspaceTransitions.editCurrentDecklist(workspace, (current) => ({
+      ...current,
+      workingCards: [card("a", 2)],
+    })).workspace;
+
+    const result = deckWorkspaceTransitions.undoCurrentDecklistEdit(edited);
+
+    expect(result.workspace.current.workingCards).toEqual([card("a", 1)]);
+    expect(result.workspace.redoStack).toEqual([edited.current]);
+    expect(result.intent).toEqual({ kind: "persist-current", snapshot: result.workspace.current });
+  });
+
+  it("owns redo and returns a persistence intent", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("a", 1) }),
+    );
+    const edited = deckWorkspaceTransitions.editCurrentDecklist(workspace, (current) => ({
+      ...current,
+      workingCards: [card("a", 2)],
+    })).workspace;
+    const undone = deckWorkspaceTransitions.undoCurrentDecklistEdit(edited).workspace;
+
+    const result = deckWorkspaceTransitions.redoCurrentDecklistEdit(undone);
+
+    expect(result.workspace.current.workingCards).toEqual([card("a", 2)]);
+    expect(result.workspace.undoStack).toEqual([workspace.current]);
+    expect(result.intent).toEqual({ kind: "persist-current", snapshot: result.workspace.current });
+  });
+
+  it("does not request persistence when undo has no history", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("a", 1) }),
+    );
+
+    const result = deckWorkspaceTransitions.undoCurrentDecklistEdit(workspace);
+
+    expect(result.workspace).toBe(workspace);
+    expect(result.intent).toEqual({ kind: "none" });
+  });
+
   it("loads a Save as the Current Decklist through a persistence intent", () => {
     const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
       deckItem({ current: snapshot("current", 1) }),
@@ -193,6 +246,38 @@ describe("deckWorkspace", () => {
 
     expect(result.workspace.current.workingCards[0]?.categoryId).toBe("artifact");
     expect(result.intent.kind).toBe("persist-current");
+  });
+
+  it("removes empty lanes when removing an empty category", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("a", 1) }),
+    );
+
+    const result = deckWorkspaceTransitions.removeEmptyCategory(workspace, "artifact");
+
+    expect(result.workspace.current.categories.map((category) => category.id)).toEqual([
+      "creature",
+    ]);
+    expect(result.workspace.current.stackLayout.lanes).toEqual([["creature"]]);
+    expect(result.intent.kind).toBe("persist-current");
+  });
+
+  it("updates import status without persistence when import cards do not change", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("a", 1) }),
+    );
+
+    const result = deckWorkspaceTransitions.applyValidatedImport(workspace, {
+      mode: "bulk-add",
+      validCards: [],
+      warnings: [{ lineNumber: 1, quantity: 0, name: "Nope", reason: "not found" }],
+      rawText: "Nope",
+    });
+
+    expect(result.workspace.current).toEqual(workspace.current);
+    expect(result.workspace.undoStack).toEqual([]);
+    expect(result.workspace.importStatus.invalidCards).toHaveLength(1);
+    expect(result.intent).toEqual({ kind: "none" });
   });
 });
 

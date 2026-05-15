@@ -2,16 +2,7 @@ import { DeckAlerts } from "./components/DeckAlerts";
 import { EditorDeckStack } from "./stack/EditorDeckStack";
 import type { EditorRow } from "./editor/types";
 import { useState, type ReactNode } from "react";
-import {
-  adjustCardQuantity,
-  appendSearchCard,
-  changeCardPrinting,
-  moveEditorRowCategory,
-} from "./editor/deckCardMutations";
 import { PrintingPickerModal } from "./modals/PrintingPickerModal";
-import { removeStackLane } from "./editor/stackLayoutLane";
-import { normalizeStackLayout } from "#/lib/deckLayout";
-import { createCategoryName, hasCategoryName, type CardCategory } from "#/lib/decklist";
 import {
   useDeckDetailActions,
   useDeckDetailModel,
@@ -42,107 +33,33 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
         showDiffOnly={showDiffOnly}
         layout={stackLayout}
         onToggleShowDiffOnly={() => actions.setShowDiffOnly((current) => !current)}
-        onLayoutChange={(layout) =>
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            stackLayout: normalizeStackLayout(layout, current.categories),
-          }))
-        }
+        onLayoutChange={actions.onSetStackLayout}
         searchToolbar={searchToolbar}
-        onAddSearchCard={(card, category) =>
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            workingCards: appendSearchCard(current.workingCards, card, category),
-          }))
-        }
-        onAdjustQuantity={
-          compareMode
-            ? undefined
-            : (row: EditorRow, delta: number) =>
-                actions.updateEditorSnapshot((current) => ({
-                  ...current,
-                  workingCards: adjustCardQuantity(current.workingCards, row, delta),
-                }))
-        }
-        onMoveCardCategory={
-          compareMode
-            ? undefined
-            : (row: EditorRow, category: CardCategory) =>
-                actions.updateEditorSnapshot((current) => ({
-                  ...current,
-                  workingCards: moveEditorRowCategory(current.workingCards, row, category),
-                }))
-        }
+        onAddSearchCard={actions.onAddSearchCard}
+        onAdjustQuantity={compareMode ? undefined : actions.onAdjustQuantity}
+        onMoveCardCategory={compareMode ? undefined : actions.onMoveCardToCategory}
         onChangePrinting={compareMode ? undefined : (row) => setPrintingRow(row)}
         onSetDeckCover={(cover) => void deckActions.setDeckCover(cover)}
-        onMoveCategoryCards={
-          compareMode
-            ? undefined
-            : (category: CardCategory, targetCategory: CardCategory) =>
-                actions.updateEditorSnapshot((current) => ({
-                  ...current,
-                  workingCards: current.workingCards.map((card) =>
-                    card.categoryId === category ? { ...card, categoryId: targetCategory } : card,
-                  ),
-                }))
-        }
+        onMoveCategoryCards={compareMode ? undefined : actions.onMoveAllCardsBetweenCategories}
         onCreateCategoryInLane={(laneIndex, category) => {
           if (compareMode) return;
-          actions.updateEditorSnapshot((current) => {
-            const name = createCategoryName(category.name, current.categories);
-            const nextCategory = { ...category, name };
-
-            return {
-              ...current,
-              categories: [...current.categories, nextCategory],
-              stackLayout: {
-                ...current.stackLayout,
-                lanes: current.stackLayout.lanes.map((lane, index) =>
-                  index === laneIndex ? [...lane, nextCategory.id] : lane,
-                ),
-              },
-            };
-          });
+          actions.onCreateCategoryInLane(laneIndex, category);
         }}
         onRemoveLane={(laneIndex) => {
           if (compareMode) return;
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            stackLayout: removeStackLane(current.stackLayout, laneIndex),
-          }));
+          actions.onRemoveStackLane(laneIndex);
         }}
         onRenameCategory={(categoryId, name) => {
           if (compareMode) return;
-          if (hasCategoryName(categories, name, categoryId)) return;
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            categories: current.categories.map((category) =>
-              category.id === categoryId ? { ...category, name } : category,
-            ),
-          }));
+          actions.onRenameCategory(categoryId, name);
         }}
         onCategoryChange={(categoryId, patch) => {
           if (compareMode) return;
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            categories: current.categories.map((category) =>
-              category.id === categoryId ? { ...category, ...patch } : category,
-            ),
-          }));
+          actions.onUpdateCategory(categoryId, patch);
         }}
         onRemoveCategory={(categoryId) => {
           if (compareMode || (groupedRows[categoryId] ?? []).length > 0) return;
-          actions.updateEditorSnapshot((current) => ({
-            ...current,
-            categories: current.categories.filter((category) => category.id !== categoryId),
-            stackLayout: {
-              ...current.stackLayout,
-              lanes: current.stackLayout.lanes.reduce<CardCategory[][]>((lanes, lane) => {
-                const nextLane = lane.filter((category) => category !== categoryId);
-                return nextLane.length > 0 ? [...lanes, nextLane] : lanes;
-              }, []),
-            },
-          }));
+          actions.onRemoveCategory(categoryId);
         }}
         readOnly={compareMode}
       />
@@ -151,10 +68,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
           row={printingRow}
           onClose={() => setPrintingRow(null)}
           onSelect={(printing) => {
-            actions.updateEditorSnapshot((current) => ({
-              ...current,
-              workingCards: changeCardPrinting(current.workingCards, printingRow, printing),
-            }));
+            actions.onChangePrinting(printingRow, printing);
             setPrintingRow(null);
           }}
         />
