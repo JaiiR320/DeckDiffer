@@ -8,7 +8,7 @@ When you are told to, or want to look at the logs of the devserve, look in .devs
 
 MUST USE pnpm and NOT npm for package management
 
-When doing React work, ALWAYS run `npx react-doctor@latest` before finishing and fix relevant issues it reports.
+When doing React work, ALWAYS run `npx react-doctor@latest` before finishing and fix relevant issues it reports. Keep doing so until there are no issues reported.
 
 Read rules/ when discussing Magic: The Gathering in any capacity
 
