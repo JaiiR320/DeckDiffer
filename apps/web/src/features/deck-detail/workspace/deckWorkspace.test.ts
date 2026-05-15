@@ -3,7 +3,9 @@ import type { DeckItem, DeckSave } from "#/lib/deck";
 import type { ValidatedDeckCard } from "#/lib/decklist";
 import type { EditorSnapshot } from "../editor/editorUndo";
 import {
+  applyDeckWorkspaceTransition,
   deckWorkspaceTransitions,
+  getDeckWorkspaceDisplay,
   type DeckWorkspaceState,
   type DeckWorkspaceTransitionResult,
   type DeckWorkspaceTransitionName,
@@ -274,6 +276,66 @@ describe("deckWorkspace", () => {
     const result = deckWorkspaceTransitions.exitCompareMode(comparing);
 
     expect(result.intent).toEqual({ kind: "none" });
+    expect(result.workspace.compare).toBeNull();
+    expect(result.workspace.current.workingCards).toEqual([card("current", 1)]);
+  });
+
+  it("keeps unsynced Current Decklist edits while displaying Compare Mode saves", () => {
+    const savedDeck = deckItem({ current: snapshot("persisted", 1) });
+    const workspace = deckWorkspaceTransitions.adjustCardQuantity(
+      deckWorkspaceTransitions.hydrateDeckWorkspace(savedDeck),
+      editorRow("persisted", 1),
+      2,
+    ).workspace;
+    const newerSave = save("newer", "2026-01-03T00:00:00.000Z", snapshot("newer-card", 3));
+    const olderSave = save("older", "2026-01-01T00:00:00.000Z", snapshot("older-card", 1));
+
+    const comparing = deckWorkspaceTransitions.enterCompareMode(
+      workspace,
+      newerSave,
+      olderSave,
+    ).workspace;
+    const exited = deckWorkspaceTransitions.exitCompareMode(comparing).workspace;
+
+    expect(getDeckWorkspaceDisplay(comparing).workingCards).toEqual([card("newer-card", 3)]);
+    expect(comparing.current.workingCards).toEqual([card("persisted", 3)]);
+    expect(exited.current.workingCards).toEqual([card("persisted", 3)]);
+  });
+
+  it("blocks Current Decklist edits while Compare Mode is active", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("current", 1) }),
+    );
+    const comparing = deckWorkspaceTransitions.enterCompareMode(
+      workspace,
+      save("newer", "2026-01-03T00:00:00.000Z", snapshot("newer-card", 3)),
+      save("older", "2026-01-01T00:00:00.000Z", snapshot("older-card", 1)),
+    ).workspace;
+
+    const result = applyDeckWorkspaceTransition(comparing, (currentWorkspace) =>
+      deckWorkspaceTransitions.adjustCardQuantity(currentWorkspace, editorRow("current", 1), 1),
+    );
+
+    expect(result.workspace).toBe(comparing);
+    expect(result.intent).toEqual({ kind: "none" });
+  });
+
+  it("allows explicit Compare Mode exit while edit transitions are blocked", () => {
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
+      deckItem({ current: snapshot("current", 1) }),
+    );
+    const comparing = deckWorkspaceTransitions.enterCompareMode(
+      workspace,
+      save("newer", "2026-01-03T00:00:00.000Z", snapshot("newer-card", 3)),
+      save("older", "2026-01-01T00:00:00.000Z", snapshot("older-card", 1)),
+    ).workspace;
+
+    const result = applyDeckWorkspaceTransition(
+      comparing,
+      deckWorkspaceTransitions.exitCompareMode,
+      { allowDuringCompare: true },
+    );
+
     expect(result.workspace.compare).toBeNull();
     expect(result.workspace.current.workingCards).toEqual([card("current", 1)]);
   });

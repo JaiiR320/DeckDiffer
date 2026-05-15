@@ -73,8 +73,10 @@ export function DeckDetailModals() {
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}
           onAddLane={compareMode ? undefined : workspaceActions.onAddStackLane}
-          onCategoriesChange={workspaceActions.onReplaceCategories}
-          onShowRemovedCardGhostsChange={workspaceActions.onSetShowRemovedCardGhosts}
+          onCategoriesChange={compareMode ? undefined : workspaceActions.onReplaceCategories}
+          onShowRemovedCardGhostsChange={
+            compareMode ? undefined : workspaceActions.onSetShowRemovedCardGhosts
+          }
         />
       ) : null}
     </>

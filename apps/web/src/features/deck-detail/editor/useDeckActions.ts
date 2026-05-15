@@ -55,8 +55,9 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
 
       setDeck(updatedDeck);
       setDeckErrorMessage(null);
-      requestDeckWorkspaceTransition((workspace) =>
-        deckWorkspaceTransitions.markCurrentDecklistSaved(workspace, updatedDeck),
+      requestDeckWorkspaceTransition(
+        (workspace) => deckWorkspaceTransitions.markCurrentDecklistSaved(workspace, updatedDeck),
+        { allowDuringCompare: true },
       );
       setIsSaveOpen(false);
       setPendingLoadSave(null);
@@ -148,8 +149,9 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
   }
 
   async function loadSave(save: DeckSave) {
-    requestDeckWorkspaceTransition((workspace) =>
-      deckWorkspaceTransitions.loadSaveAsCurrentDecklist(workspace, save),
+    requestDeckWorkspaceTransition(
+      (workspace) => deckWorkspaceTransitions.loadSaveAsCurrentDecklist(workspace, save),
+      { allowDuringCompare: true },
     );
     setActiveTab("editor");
   }
@@ -165,14 +167,17 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
   }
 
   function compareSaves(saveA: DeckSave, saveB: DeckSave) {
-    requestDeckWorkspaceTransition((workspace) =>
-      deckWorkspaceTransitions.enterCompareMode(workspace, saveA, saveB),
+    requestDeckWorkspaceTransition(
+      (workspace) => deckWorkspaceTransitions.enterCompareMode(workspace, saveA, saveB),
+      { allowDuringCompare: true },
     );
     setActiveTab("editor");
   }
 
   function exitCompareMode() {
-    requestDeckWorkspaceTransition(deckWorkspaceTransitions.exitCompareMode);
+    requestDeckWorkspaceTransition(deckWorkspaceTransitions.exitCompareMode, {
+      allowDuringCompare: true,
+    });
   }
 
   return {

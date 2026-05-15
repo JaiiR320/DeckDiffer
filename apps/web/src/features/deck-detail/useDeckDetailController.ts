@@ -30,7 +30,9 @@ import {
 } from "./deckDetailContext";
 import { useDeckEditorShortcuts } from "./useDeckEditorShortcuts";
 import {
+  applyDeckWorkspaceTransition,
   deckWorkspaceTransitions,
+  getDeckWorkspaceDisplay,
   type DeckWorkspaceState,
   type DeckWorkspaceTransitionResult,
 } from "./workspace/deckWorkspace";
@@ -45,65 +47,11 @@ const emptyDeckState: DeckState = {
   errorMessage: null,
 };
 
-function getEditorSnapshot(state: Pick<PageState, "categories" | "stackLayout" | "workingCards">) {
-  return {
-    categories: state.categories,
-    stackLayout: state.stackLayout,
-    workingCards: state.workingCards,
-  };
-}
-
 function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partial<PageState> {
-  const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
-
   return {
-    ...getPageStateFromDeckWorkspace(workspace),
-    deck,
+    workspace: deckWorkspaceTransitions.hydrateDeckWorkspace(deck),
     deckErrorMessage: errorMessage,
     isHydrated: true,
-  };
-}
-
-function getDeckWorkspaceFromPageState(state: PageState): DeckWorkspaceState | null {
-  if (!state.deck) return null;
-
-  const display = getEditorSnapshot(state);
-  const current = state.compareSaves
-    ? deckWorkspaceTransitions.hydrateDeckWorkspace(state.deck).current
-    : display;
-  return {
-    deck: state.deck,
-    current,
-    baseline: {
-      categories: state.baselineCategories,
-      stackLayout: state.baselineStackLayout,
-      workingCards: state.baselineDeck.cards,
-    },
-    undoStack: state.undoStack,
-    redoStack: state.redoStack,
-    compare: state.compareSaves
-      ? { saveA: state.compareSaves.saveA, saveB: state.compareSaves.saveB, display }
-      : null,
-    importStatus: state.baselineDeck,
-  };
-}
-
-function getPageStateFromDeckWorkspace(workspace: DeckWorkspaceState): Partial<PageState> {
-  const display = workspace.compare?.display ?? workspace.current;
-
-  return {
-    baselineDeck: workspace.importStatus,
-    baselineCategories: workspace.baseline.categories,
-    baselineStackLayout: workspace.baseline.stackLayout,
-    compareMode: workspace.compare !== null,
-    compareSaves: workspace.compare
-      ? { saveA: workspace.compare.saveA, saveB: workspace.compare.saveB }
-      : null,
-    redoStack: workspace.redoStack,
-    stackLayout: display.stackLayout,
-    undoStack: workspace.undoStack,
-    categories: display.categories,
-    workingCards: display.workingCards,
   };
 }
 
@@ -114,20 +62,12 @@ export function useDeckDetailController() {
   const persistVersionRef = useRef(0);
   const [pageState, dispatchPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
-    baselineDeck: emptyDeckState,
-    baselineCategories: defaultDeckCategories(),
-    baselineStackLayout: defaultStackLayout(),
-    compareMode: false,
-    compareSaves: null,
-    deck: loaderData.deck ?? undefined,
     deckErrorMessage: loaderData.errorMessage,
     isHydrated: false,
-    redoStack: [],
     showDiffOnly: false,
-    stackLayout: defaultStackLayout(),
-    undoStack: [],
-    categories: defaultDeckCategories(),
-    workingCards: [],
+    workspace: loaderData.deck
+      ? deckWorkspaceTransitions.hydrateDeckWorkspace(loaderData.deck)
+      : null,
   });
   const pageStateRef = useRef(pageState);
   useEffect(() => {
@@ -139,13 +79,34 @@ export function useDeckDetailController() {
     pageStateRef.current = { ...pageStateRef.current, ...patch };
     dispatchPageState(patch);
   };
-  const { baselineDeck, baselineCategories, baselineStackLayout, compareMode } = pageState;
-  const { compareSaves, deck, stackLayout, categories, workingCards } = pageState;
+  const workspace = pageState.workspace;
+  const display = workspace ? getDeckWorkspaceDisplay(workspace) : null;
+  const deck = workspace?.deck;
+  const baselineDeck = workspace?.importStatus ?? emptyDeckState;
+  const baselineCategories = workspace?.baseline.categories ?? defaultDeckCategories();
+  const baselineStackLayout = workspace?.baseline.stackLayout ?? defaultStackLayout();
+  const compareMode = workspace ? workspace.compare !== null : false;
+  const compareSaves = workspace?.compare
+    ? { saveA: workspace.compare.saveA, saveB: workspace.compare.saveB }
+    : null;
+  const stackLayout = display?.stackLayout ?? defaultStackLayout();
+  const categories = display?.categories ?? defaultDeckCategories();
+  const workingCards = display?.workingCards ?? [];
   const preview = useDeckPreview();
   const setActiveTab = (activeTab: SetStateAction<DeckDetailTab>) =>
     setPageState((current) => ({ activeTab: resolveStateAction(current.activeTab, activeTab) }));
   const setDeck = (deck: SetStateAction<DeckItem | undefined>) =>
-    setPageState((current) => ({ deck: resolveStateAction(current.deck, deck) }));
+    setPageState((current) => {
+      const currentDeck = current.workspace?.deck;
+      const nextDeck = resolveStateAction(currentDeck, deck);
+
+      if (!nextDeck) return { workspace: null };
+      if (!current.workspace) {
+        return { workspace: deckWorkspaceTransitions.hydrateDeckWorkspace(nextDeck) };
+      }
+
+      return { workspace: { ...current.workspace, deck: nextDeck } };
+    });
   const setDeckErrorMessage = (deckErrorMessage: SetStateAction<string | null>) =>
     setPageState((current) => ({
       deckErrorMessage: resolveStateAction(current.deckErrorMessage, deckErrorMessage),
@@ -154,13 +115,25 @@ export function useDeckDetailController() {
     setPageState((current) => ({
       showDiffOnly: resolveStateAction(current.showDiffOnly, showDiffOnly),
     }));
-  const clearUndoHistory = () => setPageState({ undoStack: [], redoStack: [] });
+  const clearUndoHistory = () =>
+    setPageState((current) =>
+      current.workspace
+        ? { workspace: { ...current.workspace, undoStack: [], redoStack: [] } }
+        : {},
+    );
   const dismissImportWarnings = () =>
-    setPageState((current) => ({
-      baselineDeck: { ...current.baselineDeck, invalidCards: [] },
-    }));
+    setPageState((current) =>
+      current.workspace
+        ? {
+            workspace: {
+              ...current.workspace,
+              importStatus: { ...current.workspace.importStatus, invalidCards: [] },
+            },
+          }
+        : {},
+    );
   const persistEditorSnapshot = async (snapshot: EditorSnapshot) => {
-    const currentDeck = pageStateRef.current.deck;
+    const currentDeck = pageStateRef.current.workspace?.deck;
     if (!currentDeck) return false;
 
     const version = ++persistVersionRef.current;
@@ -207,15 +180,16 @@ export function useDeckDetailController() {
   };
   const requestDeckWorkspaceTransition = (
     transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
+    options: { allowDuringCompare?: boolean } = {},
   ) => {
     let snapshotToPersist: EditorSnapshot | null = null;
     setPageState((current) => {
-      const workspace = getDeckWorkspaceFromPageState(current);
+      const workspace = current.workspace;
       if (!workspace) return {};
 
-      const result = transition(workspace);
+      const result = applyDeckWorkspaceTransition(workspace, transition, options);
       snapshotToPersist = result.intent.kind === "persist-current" ? result.intent.snapshot : null;
-      return getPageStateFromDeckWorkspace(result.workspace);
+      return { workspace: result.workspace };
     });
 
     if (snapshotToPersist) {
@@ -248,9 +222,9 @@ export function useDeckDetailController() {
   const deckActions = useDeckActions({
     deckState: { deck, setDeck, setDeckErrorMessage },
     editorState: {
-      stackLayout,
-      categories,
-      workingCards,
+      stackLayout: workspace?.current.stackLayout ?? stackLayout,
+      categories: workspace?.current.categories ?? categories,
+      workingCards: workspace?.current.workingCards ?? workingCards,
       requestDeckWorkspaceTransition,
     },
     navigationState: { setActiveTab },
@@ -261,9 +235,9 @@ export function useDeckDetailController() {
 
     if (!nextDeck) {
       setPageState({
-        deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
+        workspace: null,
       });
       return;
     }
@@ -273,8 +247,11 @@ export function useDeckDetailController() {
 
   useEffect(() => {
     if (!pageState.isHydrated) return;
+    const workspace = pageState.workspace;
+    if (!workspace) return;
+    const display = getDeckWorkspaceDisplay(workspace);
 
-    const cardsNeedingBackfill = pageState.workingCards.filter((card) => {
+    const cardsNeedingBackfill = display.workingCards.filter((card) => {
       const key = getCardPriceBackfillKey(card);
       return (
         (card.priceUsd === undefined ||
@@ -330,19 +307,48 @@ export function useDeckDetailController() {
 
       if (cardDataByKey.size === 0) return;
 
-      setPageState((current) => ({
-        baselineDeck: {
-          ...current.baselineDeck,
-          cards: backfillCardData(current.baselineDeck.cards, cardDataByKey),
-        },
-        workingCards: backfillCardData(current.workingCards, cardDataByKey),
-      }));
+      setPageState((current) => {
+        if (!current.workspace) return {};
+
+        return {
+          workspace: {
+            ...current.workspace,
+            baseline: {
+              ...current.workspace.baseline,
+              workingCards: backfillCardData(
+                current.workspace.baseline.workingCards,
+                cardDataByKey,
+              ),
+            },
+            current: {
+              ...current.workspace.current,
+              workingCards: backfillCardData(current.workspace.current.workingCards, cardDataByKey),
+            },
+            compare: current.workspace.compare
+              ? {
+                  ...current.workspace.compare,
+                  display: {
+                    ...current.workspace.compare.display,
+                    workingCards: backfillCardData(
+                      current.workspace.compare.display.workingCards,
+                      cardDataByKey,
+                    ),
+                  },
+                }
+              : null,
+            importStatus: {
+              ...current.workspace.importStatus,
+              cards: backfillCardData(current.workspace.importStatus.cards, cardDataByKey),
+            },
+          },
+        };
+      });
     });
 
     return () => {
       isCurrent = false;
     };
-  }, [pageState.isHydrated, pageState.workingCards]);
+  }, [pageState.isHydrated, pageState.workspace]);
 
   const editorModel = buildDeckEditorModel({
     baselineDeck,
@@ -360,11 +366,13 @@ export function useDeckDetailController() {
       })
     : null;
   const exportPreview = previewExport && previewExport.ok ? previewExport.text : "";
+  const currentSnapshot = workspace?.current;
   const hasCards = workingCards.length > 0;
   const hasEditorChanges =
-    JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||
-    JSON.stringify(categories) !== JSON.stringify(baselineCategories) ||
-    JSON.stringify(stackLayout) !== JSON.stringify(baselineStackLayout) ||
+    JSON.stringify(currentSnapshot?.workingCards ?? []) !== JSON.stringify(baselineDeck.cards) ||
+    JSON.stringify(currentSnapshot?.categories ?? []) !== JSON.stringify(baselineCategories) ||
+    JSON.stringify(currentSnapshot?.stackLayout ?? defaultStackLayout()) !==
+      JSON.stringify(baselineStackLayout) ||
     !deck ||
     deck.saves.length === 0;
 
@@ -379,17 +387,17 @@ export function useDeckDetailController() {
   }
 
   const workspaceView: DeckWorkspaceView = {
-    baselineDeck: pageState.baselineDeck,
-    baselineCategories: pageState.baselineCategories,
-    baselineStackLayout: pageState.baselineStackLayout,
-    compareMode: pageState.compareMode,
-    compareSaves: pageState.compareSaves,
+    baselineDeck,
+    baselineCategories,
+    baselineStackLayout,
+    compareMode,
+    compareSaves,
     deck,
-    redoStack: pageState.redoStack,
-    stackLayout: pageState.stackLayout,
-    undoStack: pageState.undoStack,
-    categories: pageState.categories,
-    workingCards: pageState.workingCards,
+    redoStack: workspace?.redoStack ?? [],
+    stackLayout,
+    undoStack: workspace?.undoStack ?? [],
+    categories,
+    workingCards,
   };
   const deckUiView: DeckUiView = {
     activeTab: pageState.activeTab,

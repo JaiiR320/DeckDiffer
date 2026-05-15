@@ -64,7 +64,12 @@ export type DeckWorkspaceTransitionResult = {
 
 export type RequestDeckWorkspaceTransition = (
   transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
+  options?: { allowDuringCompare?: boolean },
 ) => void;
+
+export type DeckWorkspaceTransitionOptions = {
+  allowDuringCompare?: boolean;
+};
 
 export type DeckWorkspaceTransitionName =
   | "hydrateDeckWorkspace"
@@ -122,6 +127,22 @@ export const deckWorkspaceTransitions = {
   failImport,
   applyValidatedImport,
 } satisfies Record<DeckWorkspaceTransitionName, unknown>;
+
+export function getDeckWorkspaceDisplay(workspace: DeckWorkspaceState): EditorSnapshot {
+  return workspace.compare?.display ?? workspace.current;
+}
+
+export function applyDeckWorkspaceTransition(
+  workspace: DeckWorkspaceState,
+  transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
+  options: DeckWorkspaceTransitionOptions = {},
+): DeckWorkspaceTransitionResult {
+  if (workspace.compare && !options.allowDuringCompare) {
+    return { workspace, intent: noPersistence };
+  }
+
+  return transition(workspace);
+}
 
 const noPersistence: PersistenceIntent = { kind: "none" };
 

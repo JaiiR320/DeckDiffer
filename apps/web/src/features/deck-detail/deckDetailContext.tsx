@@ -8,23 +8,14 @@ import type { useDeckPreview } from "./editor/useDeckPreview";
 import type { DeckCardSort, DeckItem, DeckSave, DeckStackLayout } from "#/lib/deck";
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 import type { CardPrintingOption, SearchCardResult } from "#/lib/scryfall";
+import type { DeckWorkspaceState } from "./workspace/deckWorkspace";
 
 export type PageState = {
   activeTab: DeckDetailTab;
-  baselineDeck: DeckState;
-  baselineCategories: DeckCategory[];
-  baselineStackLayout: DeckStackLayout;
-  compareMode: boolean;
-  compareSaves: { saveA: DeckSave; saveB: DeckSave } | null;
-  deck: DeckItem | undefined;
   deckErrorMessage: string | null;
   isHydrated: boolean;
-  redoStack: EditorSnapshot[];
   showDiffOnly: boolean;
-  stackLayout: DeckStackLayout;
-  undoStack: EditorSnapshot[];
-  categories: DeckCategory[];
-  workingCards: ValidatedDeckCard[];
+  workspace: DeckWorkspaceState | null;
 };
 
 export type DeckDetailTab = "editor" | "history" | "stats";
