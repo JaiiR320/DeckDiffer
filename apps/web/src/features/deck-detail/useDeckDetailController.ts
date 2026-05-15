@@ -17,11 +17,7 @@ import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } fro
 import { createDeckExport } from "#/lib/deckExport";
 import { defaultStackLayout, normalizeStackLayout } from "#/lib/deckLayout";
 import { normalizeDeckSave } from "#/lib/deckSave";
-import {
-  defaultDeckCategories,
-  type DeckCategory,
-  type ValidatedDeckCard,
-} from "#/lib/decklist";
+import { defaultDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
 import { getCardPreview } from "#/lib/scryfall";
 import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
 import type { DeckState } from "./editor/types";
