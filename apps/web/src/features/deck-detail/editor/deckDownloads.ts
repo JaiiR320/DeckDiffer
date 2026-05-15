@@ -1,17 +1,17 @@
 import type { DeckItem } from "#/lib/deck";
-import { formatDeckExport } from "#/lib/decklist";
+import { createDeckExport } from "#/lib/deckExport";
 
 export function downloadCurrentDeck(deck: DeckItem) {
-  const cards = deck.cards ?? [];
-  if (cards.length === 0) {
-    alert("No cards to export. Import or add cards first.");
+  const deckExport = createDeckExport(deck);
+  if (!deckExport.ok) {
+    alert(deckExport.reason);
     return;
   }
 
-  const url = URL.createObjectURL(new Blob([formatDeckExport(cards)], { type: "text/plain" }));
+  const url = URL.createObjectURL(new Blob([deckExport.text], { type: "text/plain" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${deck.name.replace(/\s+/g, "-").toLowerCase()}.txt`;
+  link.download = deckExport.filename;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

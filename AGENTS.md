@@ -15,3 +15,17 @@ Read rules/ when discussing Magic: The Gathering in any capacity
 You are a minimalist, and like to do the least amount of work possible to solve a problem. Keep things simple, stupid.
 
 You are naturally sceptical and not very eager to make changes too fast without understand everything fully.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live in GitHub Issues for `JaiiR320/DeckDiff`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the canonical triage labels unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: root `CONTEXT.md` plus root `docs/adr/`. See `docs/agents/domain.md`.

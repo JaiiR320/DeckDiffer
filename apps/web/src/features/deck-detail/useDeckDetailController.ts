@@ -14,15 +14,10 @@ import { useDeckActions } from "./editor/useDeckActions";
 import { useDeckImport } from "./editor/useDeckImport";
 import { useDeckPreview } from "./editor/useDeckPreview";
 import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "#/lib/deck";
+import { createDeckExport } from "#/lib/deckExport";
 import { defaultStackLayout, normalizeStackLayout } from "#/lib/deckLayout";
 import { normalizeDeckSave } from "#/lib/deckSave";
-import {
-  defaultDeckCategories,
-  formatDecklist,
-  type CardCategory,
-  type DeckCategory,
-  type ValidatedDeckCard,
-} from "#/lib/decklist";
+import { defaultDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
 import { getCardPreview } from "#/lib/scryfall";
 import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
 import type { DeckState } from "./editor/types";
@@ -402,21 +397,14 @@ export function useDeckDetailController() {
     compareSaves,
     workingCards,
   });
-  const includedCategoryIds = new Set<CardCategory>();
-  for (const category of categories) {
-    if (category.includeInDeck !== false) {
-      includedCategoryIds.add(category.id);
-    }
-  }
-  const exportPreview = formatDecklist(
-    editorModel.mergedWorkingCards.filter((card) => includedCategoryIds.has(card.categoryId ?? "")),
-    {
-      includeQuantity: deckImport.exportOptions.includeQuantity,
-      includeSet: false,
-      includeCollectorNumber: false,
-      setStyle: "brackets",
-    },
-  );
+  const previewExport = deck
+    ? createDeckExport(deck, {
+        cards: editorModel.mergedWorkingCards,
+        categories,
+        includeQuantity: deckImport.exportOptions.includeQuantity,
+      })
+    : null;
+  const exportPreview = previewExport && previewExport.ok ? previewExport.text : "";
   const hasCards = workingCards.length > 0;
   const hasEditorChanges =
     JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||
