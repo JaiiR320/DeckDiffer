@@ -94,7 +94,7 @@ const emptyImportStatus: DeckState = {
 function hydrateDeckWorkspace(deck: DeckItem): DeckWorkspaceState {
   const latestSave = getLatestSave(deck);
   const baseline = latestSave ? getSnapshotFromSave(latestSave) : getEmptySnapshot();
-  const current = getSnapshotFromCurrentDeck(deck) ?? baseline;
+  const current = getSnapshotFromCurrentDeck(deck, baseline) ?? baseline;
 
   return {
     deck,
@@ -106,8 +106,7 @@ function hydrateDeckWorkspace(deck: DeckItem): DeckWorkspaceState {
     importStatus: {
       ...emptyImportStatus,
       cards: baseline.workingCards,
-      status:
-        baseline.workingCards.length > 0 || current.workingCards.length > 0 ? "ready" : "idle",
+      status: latestSave || current.workingCards.length > 0 ? "ready" : "idle",
     },
   };
 }
@@ -237,7 +236,8 @@ function enterCompareMode(
 }
 
 function exitCompareMode(workspace: DeckWorkspaceState): DeckWorkspaceTransitionResult {
-  const current = getSnapshotFromCurrentDeck(workspace.deck) ?? workspace.current;
+  const current =
+    getSnapshotFromCurrentDeck(workspace.deck, workspace.baseline) ?? workspace.current;
 
   return {
     workspace: { ...workspace, current, undoStack: [], redoStack: [], compare: null },
@@ -403,14 +403,25 @@ function getSnapshotFromSave(save: DeckSave): EditorSnapshot {
   };
 }
 
-function getSnapshotFromCurrentDeck(deck: DeckItem): EditorSnapshot | null {
+function getSnapshotFromCurrentDeck(
+  deck: DeckItem,
+  fallback: Pick<EditorSnapshot, "categories" | "stackLayout">,
+): EditorSnapshot | null {
   if (!deck.cards) return null;
 
-  const categories = normalizeDeckCategories(deck.categories);
+  const currentSave = normalizeDeckSave({
+    id: "current",
+    label: "Current",
+    savedAt: deck.updatedAt,
+    categories: deck.categories ?? fallback.categories,
+    cards: deck.cards,
+    layout: deck.layout ?? fallback.stackLayout,
+  });
+  const categories = normalizeDeckCategories(currentSave.categories);
   return {
     categories,
-    stackLayout: normalizeStackLayout(deck.layout, categories),
-    workingCards: deck.cards,
+    stackLayout: normalizeStackLayout(currentSave.layout, categories),
+    workingCards: currentSave.cards,
   };
 }
 

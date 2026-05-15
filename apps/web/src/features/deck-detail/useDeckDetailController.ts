@@ -13,10 +13,9 @@ import { addEmptyStackLane } from "./editor/stackLayoutLane";
 import { useDeckActions } from "./editor/useDeckActions";
 import { useDeckImport } from "./editor/useDeckImport";
 import { useDeckPreview } from "./editor/useDeckPreview";
-import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "#/lib/deck";
+import { type DeckItem, type DeckStackLayout } from "#/lib/deck";
 import { createDeckExport } from "#/lib/deckExport";
-import { defaultStackLayout, normalizeStackLayout } from "#/lib/deckLayout";
-import { normalizeDeckSave } from "#/lib/deckSave";
+import { defaultStackLayout } from "#/lib/deckLayout";
 import { defaultDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
 import { getCardPreview } from "#/lib/scryfall";
 import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
@@ -32,6 +31,7 @@ import {
   type PageState,
 } from "./deckDetailContext";
 import { useDeckEditorShortcuts } from "./useDeckEditorShortcuts";
+import { deckWorkspaceTransitions, type DeckWorkspaceState } from "./workspace/deckWorkspace";
 
 const routeApi = getRouteApi("/decks_/$deckId");
 
@@ -64,50 +64,30 @@ function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): Editor
 }
 
 function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partial<PageState> {
-  const latestSave = getLatestSave(deck);
-  const normalizedBaselineSave = latestSave ? normalizeDeckSave(latestSave) : null;
-  const baselineCategories = normalizedBaselineSave?.categories ?? defaultDeckCategories();
-  const baselineLayout = normalizeStackLayout(normalizedBaselineSave?.layout, baselineCategories);
-  const liveCategories = deck.categories
-    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).categories
-    : baselineCategories;
-  const liveLayout = normalizeStackLayout(
-    deck.layout ?? normalizedBaselineSave?.layout,
-    liveCategories,
-  );
-  const liveCards = deck.cards
-    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).cards
-    : (normalizedBaselineSave?.cards ?? []);
+  const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
 
   return {
-    baselineDeck: {
-      rawText: "",
-      cards: normalizedBaselineSave?.cards ?? [],
-      invalidCards: [],
-      status: normalizedBaselineSave || liveCards.length > 0 ? "ready" : "idle",
-      errorMessage: null,
-    },
-    baselineCategories,
-    baselineStackLayout: baselineLayout,
+    ...getPageStateFromDeckWorkspace(workspace),
     deck,
     deckErrorMessage: errorMessage,
     isHydrated: true,
-    redoStack: [],
-    stackLayout: liveLayout,
-    undoStack: [],
-    categories: liveCategories,
-    workingCards: liveCards,
   };
 }
 
-function getDeckSaveFromCurrent(deck: DeckItem): DeckSave {
+function getPageStateFromDeckWorkspace(workspace: DeckWorkspaceState): Partial<PageState> {
   return {
-    id: "current",
-    label: "Current",
-    savedAt: deck.updatedAt,
-    categories: deck.categories,
-    cards: deck.cards ?? [],
-    layout: deck.layout,
+    baselineDeck: workspace.importStatus,
+    baselineCategories: workspace.baseline.categories,
+    baselineStackLayout: workspace.baseline.stackLayout,
+    compareMode: workspace.compare !== null,
+    compareSaves: workspace.compare
+      ? { saveA: workspace.compare.saveA, saveB: workspace.compare.saveB }
+      : null,
+    redoStack: workspace.redoStack,
+    stackLayout: workspace.current.stackLayout,
+    undoStack: workspace.undoStack,
+    categories: workspace.current.categories,
+    workingCards: workspace.current.workingCards,
   };
 }
 

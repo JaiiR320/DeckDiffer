@@ -46,6 +46,84 @@ describe("deckWorkspace", () => {
     expect(workspace.compare).toBeNull();
   });
 
+  it("hydrates current decklist from the latest save when current deck data is missing", () => {
+    const latestSave = save("save-1", "2026-01-01T00:00:00.000Z", snapshot("save-card", 2));
+    const deck = deckItem({ saves: [latestSave] });
+
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
+
+    expect(workspace.current).toEqual(workspace.baseline);
+    expect(workspace.current.workingCards).toEqual([card("save-card", 2)]);
+    expect(workspace.importStatus.status).toBe("ready");
+  });
+
+  it("keeps baseline status ready when the latest save has no cards", () => {
+    const latestSave = save("save-1", "2026-01-01T00:00:00.000Z", {
+      ...snapshot("save-card", 1),
+      workingCards: [],
+    });
+    const deck = deckItem({ saves: [latestSave] });
+
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
+
+    expect(workspace.current.workingCards).toEqual([]);
+    expect(workspace.importStatus.status).toBe("ready");
+  });
+
+  it("normalizes categories while hydrating the current decklist", () => {
+    const deck = deckItem({
+      current: {
+        categories: [
+          { id: "creature", name: "Creature" },
+          { id: "creature", name: "Duplicate" },
+          { id: "", name: "Missing ID" },
+        ],
+        stackLayout: { lanes: [["creature"]] },
+        workingCards: [card("current-card", 1, { category: "Creature", categoryId: undefined })],
+      },
+    });
+
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
+
+    expect(workspace.current.categories).toEqual([
+      {
+        id: "creature",
+        name: "Creature",
+        hidden: false,
+        includeInDeck: true,
+        kind: undefined,
+      },
+    ]);
+    expect(workspace.current.workingCards[0]?.categoryId).toBe("creature");
+  });
+
+  it("normalizes layout while hydrating the current decklist", () => {
+    const deck = deckItem({
+      current: {
+        categories: [
+          { id: "creature", name: "Creature", kind: "default" },
+          { id: "artifact", name: "Artifact", kind: "default" },
+        ],
+        stackLayout: {
+          lanes: [["Creature", "missing", "creature"]],
+          cardSort: "not-a-sort",
+          cardSortDirection: "sideways",
+          showRemovedCardGhosts: false,
+        } as unknown as EditorSnapshot["stackLayout"],
+        workingCards: [card("current-card", 1)],
+      },
+    });
+
+    const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(deck);
+
+    expect(workspace.current.stackLayout).toEqual({
+      lanes: [["creature"], ["artifact"]],
+      cardSort: "manaValue",
+      cardSortDirection: "desc",
+      showRemovedCardGhosts: false,
+    });
+  });
+
   it("returns persistence intents from current decklist edits", () => {
     const workspace = deckWorkspaceTransitions.hydrateDeckWorkspace(
       deckItem({ current: snapshot("a", 1) }),
@@ -159,12 +237,17 @@ function snapshot(oracleId: string, quantity: number): EditorSnapshot {
   };
 }
 
-function card(oracleId: string, quantity: number): ValidatedDeckCard {
+function card(
+  oracleId: string,
+  quantity: number,
+  overrides: Partial<ValidatedDeckCard> = {},
+): ValidatedDeckCard {
   return {
     oracleId,
     name: oracleId,
     quantity,
     typeLine: "Creature",
     categoryId: "creature",
+    ...overrides,
   };
 }
