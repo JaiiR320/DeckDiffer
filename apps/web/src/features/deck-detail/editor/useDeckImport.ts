@@ -1,10 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { mergeValidatedCards, parseDecklist, type ValidatedDeckCard } from "#/lib/decklist";
+import { parseDecklist, type ValidatedDeckCard } from "#/lib/decklist";
 import { validateDeckEntries } from "#/lib/scryfall";
+import { applyValidatedDeckImport, type ImportMode } from "./deckImport";
 import type { DeckState, ExportModalState } from "./types";
-
-type ImportMode = "replace-empty" | "bulk-add" | "override";
 
 type UseDeckImportOptions = {
   deckState: {
@@ -75,38 +74,42 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
       const { validCards, warnings } = await validateDraftDeck(rawText);
 
       if (mode === "bulk-add") {
-        setWorkingCardsWithUndo((currentCards) =>
-          mergeValidatedCards([...currentCards, ...validCards]),
+        setWorkingCardsWithUndo(
+          (currentCards) =>
+            applyValidatedDeckImport({
+              mode,
+              baselineDeck,
+              workingCards: currentCards,
+              validCards,
+              warnings,
+              rawText,
+            }).workingCards,
         );
-        setBaselineDeck((currentDeck) => ({
-          ...currentDeck,
-          invalidCards: warnings,
-          status: "ready",
-          errorMessage: null,
-        }));
+        setBaselineDeck(
+          (currentDeck) =>
+            applyValidatedDeckImport({
+              mode,
+              baselineDeck: currentDeck,
+              workingCards: snapshotCards,
+              validCards,
+              warnings,
+              rawText,
+            }).baselineDeck,
+        );
         return;
       }
 
-      if (mode === "override") {
-        setBaselineDeck({
-          rawText: "",
-          cards: snapshotCards,
-          invalidCards: warnings,
-          status: "ready",
-          errorMessage: null,
-        });
-        setWorkingCardsWithUndo(validCards);
-        return;
-      }
-
-      setBaselineDeck({
+      const nextImportState = applyValidatedDeckImport({
+        mode,
+        baselineDeck,
+        workingCards: snapshotCards,
+        validCards,
+        warnings,
         rawText,
-        cards: validCards,
-        invalidCards: warnings,
-        status: "ready",
-        errorMessage: null,
       });
-      setWorkingCardsWithUndo(validCards);
+
+      setBaselineDeck(nextImportState.baselineDeck);
+      setWorkingCardsWithUndo(nextImportState.workingCards);
     } catch (error) {
       if (mode === "replace-empty") {
         setBaselineDeck({
