@@ -7,6 +7,12 @@ DeckDiff Web is the deck editing surface for importing, editing, comparing, savi
 **Deck Workspace**:
 The saved editing surface for a deck, including its current decklist, save history, and display organization.
 
+**Deck Tile**:
+The clickable deck summary shown in the deck list.
+
+**Deck Tile Cover**:
+The printing selected to visually represent a deck tile.
+
 **Decklist**:
 A list of decklist entries.
 
@@ -67,12 +73,14 @@ A deck workspace state where two saves are compared to each other instead of com
 ## Relationships
 
 - A **Deck Workspace** has one **Current Decklist**.
+- A **Deck Workspace** may have one **Deck Tile Cover**.
 - A **Deck Workspace** has one **Save History**.
 - A **Save History** contains zero or more **Saves**.
 - The **Latest Save** is the most recent **Save** in the **Save History**.
 - A **Decklist** contains one or more **Decklist Entries**.
 - A **Decklist Entry** refers to one **Functional Card**.
 - A **Decklist Entry** may preserve one **Printing**.
+- A **Deck Tile Cover** refers to one **Printing**.
 - A **Printing** is identified in DeckDiff by **Set Code** and **Collector Number**.
 - A **Category** groups **Decklist Entries** for display.
 - A normal **Diff** compares the **Latest Save** to the **Current Decklist**.
