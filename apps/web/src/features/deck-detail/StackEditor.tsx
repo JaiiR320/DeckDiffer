@@ -4,16 +4,20 @@ import type { EditorRow } from "./editor/types";
 import { useState, type ReactNode } from "react";
 import { PrintingPickerModal } from "./modals/PrintingPickerModal";
 import {
-  useDeckDetailActions,
   useDeckDetailModel,
   useDeckDetailServices,
-  useDeckDetailState,
+  useDeckUiActions,
+  useDeckUiView,
+  useDeckWorkspaceActions,
+  useDeckWorkspaceView,
 } from "./deckDetailContext";
 
 export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
-  const { baselineDeck, categories, compareMode, showDiffOnly, stackLayout } = useDeckDetailState();
+  const { baselineDeck, categories, compareMode, stackLayout } = useDeckWorkspaceView();
+  const { showDiffOnly } = useDeckUiView();
   const { categoryDiffs, groupedRows, resultCardTotal } = useDeckDetailModel();
-  const actions = useDeckDetailActions();
+  const workspaceActions = useDeckWorkspaceActions();
+  const deckUiActions = useDeckUiActions();
   const { deckActions } = useDeckDetailServices();
   const [printingRow, setPrintingRow] = useState<EditorRow | null>(null);
 
@@ -21,9 +25,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
     <div className="min-w-0">
       <DeckAlerts
         deck={baselineDeck}
-        onDismissWarnings={() =>
-          actions.setBaselineDeck((current) => ({ ...current, invalidCards: [] }))
-        }
+        onDismissWarnings={workspaceActions.onDismissImportWarnings}
       />
       <EditorDeckStack
         categories={categories}
@@ -32,34 +34,36 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
         resultCardTotal={resultCardTotal}
         showDiffOnly={showDiffOnly}
         layout={stackLayout}
-        onToggleShowDiffOnly={() => actions.setShowDiffOnly((current) => !current)}
-        onLayoutChange={actions.onSetStackLayout}
+        onToggleShowDiffOnly={deckUiActions.onToggleShowDiffOnly}
+        onLayoutChange={workspaceActions.onSetStackLayout}
         searchToolbar={searchToolbar}
-        onAddSearchCard={actions.onAddSearchCard}
-        onAdjustQuantity={compareMode ? undefined : actions.onAdjustQuantity}
-        onMoveCardCategory={compareMode ? undefined : actions.onMoveCardToCategory}
+        onAddSearchCard={workspaceActions.onAddSearchCard}
+        onAdjustQuantity={compareMode ? undefined : workspaceActions.onAdjustQuantity}
+        onMoveCardCategory={compareMode ? undefined : workspaceActions.onMoveCardToCategory}
         onChangePrinting={compareMode ? undefined : (row) => setPrintingRow(row)}
         onSetDeckCover={(cover) => void deckActions.setDeckCover(cover)}
-        onMoveCategoryCards={compareMode ? undefined : actions.onMoveAllCardsBetweenCategories}
+        onMoveCategoryCards={
+          compareMode ? undefined : workspaceActions.onMoveAllCardsBetweenCategories
+        }
         onCreateCategoryInLane={(laneIndex, category) => {
           if (compareMode) return;
-          actions.onCreateCategoryInLane(laneIndex, category);
+          workspaceActions.onCreateCategoryInLane(laneIndex, category);
         }}
         onRemoveLane={(laneIndex) => {
           if (compareMode) return;
-          actions.onRemoveStackLane(laneIndex);
+          workspaceActions.onRemoveStackLane(laneIndex);
         }}
         onRenameCategory={(categoryId, name) => {
           if (compareMode) return;
-          actions.onRenameCategory(categoryId, name);
+          workspaceActions.onRenameCategory(categoryId, name);
         }}
         onCategoryChange={(categoryId, patch) => {
           if (compareMode) return;
-          actions.onUpdateCategory(categoryId, patch);
+          workspaceActions.onUpdateCategory(categoryId, patch);
         }}
         onRemoveCategory={(categoryId) => {
           if (compareMode || (groupedRows[categoryId] ?? []).length > 0) return;
-          actions.onRemoveCategory(categoryId);
+          workspaceActions.onRemoveCategory(categoryId);
         }}
         readOnly={compareMode}
       />
@@ -68,7 +72,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
           row={printingRow}
           onClose={() => setPrintingRow(null)}
           onSelect={(printing) => {
-            actions.onChangePrinting(printingRow, printing);
+            workspaceActions.onChangePrinting(printingRow, printing);
             setPrintingRow(null);
           }}
         />

@@ -4,16 +4,16 @@ import { SaveDeckModal } from "./modals/SaveDeckModal";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
 import { swapSplitDeckCover } from "#/lib/deckCover";
 import {
-  useDeckDetailActions,
   useDeckDetailModel,
   useDeckDetailServices,
-  useDeckDetailState,
+  useDeckWorkspaceActions,
+  useDeckWorkspaceView,
 } from "./deckDetailContext";
 
 export function DeckDetailModals() {
-  const { categories, compareMode, deck, stackLayout, workingCards } = useDeckDetailState();
+  const { categories, compareMode, deck, stackLayout, workingCards } = useDeckWorkspaceView();
   const { defaultSaveLabel, exportPreview, hasCards } = useDeckDetailModel();
-  const actions = useDeckDetailActions();
+  const workspaceActions = useDeckWorkspaceActions();
   const { deckActions, deckImport } = useDeckDetailServices();
 
   return (
@@ -50,7 +50,7 @@ export function DeckDetailModals() {
           onClose={deckActions.closeSaveModal}
           onSave={(label) =>
             void deckActions.saveDeck(label).then((saved) => {
-              if (saved) actions.clearUndoHistory();
+              if (saved) workspaceActions.onClearUndoHistory();
             })
           }
         />
@@ -72,9 +72,9 @@ export function DeckDetailModals() {
           categories={categories}
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}
-          onAddLane={compareMode ? undefined : actions.onAddStackLane}
-          onCategoriesChange={actions.onReplaceCategories}
-          onShowRemovedCardGhostsChange={actions.onSetShowRemovedCardGhosts}
+          onAddLane={compareMode ? undefined : workspaceActions.onAddStackLane}
+          onCategoriesChange={workspaceActions.onReplaceCategories}
+          onShowRemovedCardGhostsChange={workspaceActions.onSetShowRemovedCardGhosts}
         />
       ) : null}
     </>

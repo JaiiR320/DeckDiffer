@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ManaSymbolIcon } from "#/components/cards/ManaSymbolIcon";
-import { useDeckDetailState } from "../deckDetailContext";
+import { useDeckWorkspaceView } from "../deckDetailContext";
 import { buildDeckStats, MANA_COLORS, type ManaColor, type ManaColorCounts } from "./deckStats";
 
 const MANA_COLOR_LABELS = {
@@ -22,7 +22,7 @@ const MANA_COLOR_BACKGROUNDS = {
 };
 
 export function DeckStatsPanel() {
-  const { categories, deck, workingCards } = useDeckDetailState();
+  const { categories, deck, workingCards } = useDeckWorkspaceView();
   const stats = useMemo(
     () => buildDeckStats(workingCards, categories, deck.colors),
     [categories, deck.colors, workingCards],

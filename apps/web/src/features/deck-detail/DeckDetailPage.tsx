@@ -12,16 +12,18 @@ export function DeckDetailPage() {
     return <StatusMessage>{controller.errorMessage}</StatusMessage>;
   }
 
-  if (!controller.state) {
+  if (!controller.workspaceView) {
     return <DeckNotFound />;
   }
 
   return (
     <DeckDetailProvider
-      actions={controller.actions}
+      deckUiActions={controller.deckUiActions}
+      deckUiView={controller.deckUiView}
       model={controller.model}
       services={controller.services}
-      state={controller.state}
+      workspaceActions={controller.workspaceActions}
+      workspaceView={controller.workspaceView}
     >
       <DeckDetailMain />
       <DeckDetailModals />

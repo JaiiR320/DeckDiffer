@@ -29,8 +29,28 @@ export type PageState = {
 
 export type DeckDetailTab = "editor" | "history" | "stats";
 
-export type HydratedPageState = PageState & { deck: DeckItem };
 export type PageStateAction = Partial<PageState> | ((state: PageState) => Partial<PageState>);
+
+export type DeckWorkspaceView = {
+  baselineDeck: DeckState;
+  baselineCategories: DeckCategory[];
+  baselineStackLayout: DeckStackLayout;
+  compareMode: boolean;
+  compareSaves: { saveA: DeckSave; saveB: DeckSave } | null;
+  deck: DeckItem;
+  redoStack: EditorSnapshot[];
+  stackLayout: DeckStackLayout;
+  undoStack: EditorSnapshot[];
+  categories: DeckCategory[];
+  workingCards: ValidatedDeckCard[];
+};
+
+export type DeckUiView = {
+  activeTab: DeckDetailTab;
+  deckErrorMessage: string | null;
+  isHydrated: boolean;
+  showDiffOnly: boolean;
+};
 
 export type DeckDetailModel = {
   canSave: boolean;
@@ -44,8 +64,9 @@ export type DeckDetailModel = {
   resultCardTotal: number;
 };
 
-export type DeckDetailActions = {
-  clearUndoHistory: () => void;
+export type DeckWorkspaceActions = {
+  onClearUndoHistory: () => void;
+  onDismissImportWarnings: () => void;
   onAddStackLane: () => void;
   onRedo: () => void;
   onUndo: () => void;
@@ -64,9 +85,11 @@ export type DeckDetailActions = {
   onSetShowRemovedCardGhosts: (showRemovedCardGhosts: boolean) => void;
   onSetStackLayout: (layout: DeckStackLayout) => void;
   onUpdateCategory: (category: CardCategory, patch: Partial<DeckCategory>) => void;
-  setActiveTab: (activeTab: SetStateAction<DeckDetailTab>) => void;
-  setBaselineDeck: (baselineDeck: SetStateAction<DeckState>) => void;
-  setShowDiffOnly: (showDiffOnly: SetStateAction<boolean>) => void;
+};
+
+export type DeckUiActions = {
+  onSetActiveTab: (activeTab: SetStateAction<DeckDetailTab>) => void;
+  onToggleShowDiffOnly: () => void;
 };
 
 export type DeckDetailServices = {
@@ -75,47 +98,65 @@ export type DeckDetailServices = {
   preview: ReturnType<typeof useDeckPreview>;
 };
 
-const DeckDetailStateContext = createContext<HydratedPageState | null>(null);
+const DeckWorkspaceViewContext = createContext<DeckWorkspaceView | null>(null);
+const DeckWorkspaceActionsContext = createContext<DeckWorkspaceActions | null>(null);
+const DeckUiViewContext = createContext<DeckUiView | null>(null);
+const DeckUiActionsContext = createContext<DeckUiActions | null>(null);
 const DeckDetailModelContext = createContext<DeckDetailModel | null>(null);
-const DeckDetailActionsContext = createContext<DeckDetailActions | null>(null);
 const DeckDetailServicesContext = createContext<DeckDetailServices | null>(null);
 
 export function DeckDetailProvider({
-  actions,
   children,
+  deckUiActions,
+  deckUiView,
   model,
   services,
-  state,
+  workspaceActions,
+  workspaceView,
 }: {
-  actions: DeckDetailActions;
   children: ReactNode;
+  deckUiActions: DeckUiActions;
+  deckUiView: DeckUiView;
   model: DeckDetailModel;
   services: DeckDetailServices;
-  state: HydratedPageState;
+  workspaceActions: DeckWorkspaceActions;
+  workspaceView: DeckWorkspaceView;
 }) {
   return (
-    <DeckDetailStateContext.Provider value={state}>
+    <DeckWorkspaceViewContext.Provider value={workspaceView}>
       <DeckDetailModelContext.Provider value={model}>
-        <DeckDetailActionsContext.Provider value={actions}>
-          <DeckDetailServicesContext.Provider value={services}>
-            {children}
-          </DeckDetailServicesContext.Provider>
-        </DeckDetailActionsContext.Provider>
+        <DeckWorkspaceActionsContext.Provider value={workspaceActions}>
+          <DeckUiViewContext.Provider value={deckUiView}>
+            <DeckUiActionsContext.Provider value={deckUiActions}>
+              <DeckDetailServicesContext.Provider value={services}>
+                {children}
+              </DeckDetailServicesContext.Provider>
+            </DeckUiActionsContext.Provider>
+          </DeckUiViewContext.Provider>
+        </DeckWorkspaceActionsContext.Provider>
       </DeckDetailModelContext.Provider>
-    </DeckDetailStateContext.Provider>
+    </DeckWorkspaceViewContext.Provider>
   );
 }
 
-export function useDeckDetailState() {
-  return useRequiredContext(DeckDetailStateContext, "useDeckDetailState");
+export function useDeckWorkspaceView() {
+  return useRequiredContext(DeckWorkspaceViewContext, "useDeckWorkspaceView");
+}
+
+export function useDeckWorkspaceActions() {
+  return useRequiredContext(DeckWorkspaceActionsContext, "useDeckWorkspaceActions");
+}
+
+export function useDeckUiView() {
+  return useRequiredContext(DeckUiViewContext, "useDeckUiView");
+}
+
+export function useDeckUiActions() {
+  return useRequiredContext(DeckUiActionsContext, "useDeckUiActions");
 }
 
 export function useDeckDetailModel() {
   return useRequiredContext(DeckDetailModelContext, "useDeckDetailModel");
-}
-
-export function useDeckDetailActions() {
-  return useRequiredContext(DeckDetailActionsContext, "useDeckDetailActions");
 }
 
 export function useDeckDetailServices() {
