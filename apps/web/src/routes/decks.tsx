@@ -196,11 +196,11 @@ function DecksPage() {
           </p>
         ) : null}
 
-        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid justify-center gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),24rem))]">
           <button
             type="button"
             onClick={() => setState({ isCreateOpen: true })}
-            className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300"
+            className="flex aspect-[3/2] min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300 sm:min-h-0"
           >
             <Plus className="size-9" strokeWidth={1.75} />
             <span className="mt-5 text-xl font-medium text-zinc-300">New Deck</span>

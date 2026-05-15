@@ -26,11 +26,11 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
 
   if (deck.cover) {
     return (
-      <div className="group relative flex min-h-48 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-left transition hover:border-zinc-700">
+      <div className="group relative flex aspect-[3/2] min-h-48 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-left transition hover:border-zinc-700 sm:min-h-0">
         <CoverImage cover={deck.cover} />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
-        <div className="pointer-events-none relative z-10 flex min-h-48 flex-col justify-between px-7 py-6 pr-16">
+        <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between px-7 py-6 pr-16">
           <span className="text-3xl font-semibold tracking-tight text-zinc-100 drop-shadow-lg">
             {deck.name}
           </span>
@@ -63,7 +63,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
   }
 
   return (
-    <div className="group relative flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700">
+    <div className="group relative flex aspect-[3/2] min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700 sm:min-h-0">
       {/* Content - sits below the Link */}
       <div className="pointer-events-none">
         <Layers className="size-8 text-cyan-300" strokeWidth={1.75} />
@@ -101,7 +101,7 @@ function CoverImage({ cover }: { cover: DeckTileCover }) {
           <img
             src={leftCard.imageUrl}
             alt={leftCard.name}
-            className="absolute inset-y-0 -left-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
+            className="absolute left-[-31%] top-[-40%] h-auto w-[142%] max-w-none"
             loading="lazy"
           />
         </div>
@@ -109,7 +109,7 @@ function CoverImage({ cover }: { cover: DeckTileCover }) {
           <img
             src={rightCard.imageUrl}
             alt={rightCard.name}
-            className="absolute inset-y-0 -right-[22%] h-full w-full scale-[1.55] object-cover object-[50%_10%]"
+            className="absolute right-[-31%] top-[-40%] h-auto w-[142%] max-w-none"
             loading="lazy"
           />
         </div>
@@ -121,7 +121,7 @@ function CoverImage({ cover }: { cover: DeckTileCover }) {
     <img
       src={cover.imageUrl}
       alt={cover.name}
-      className="absolute inset-0 h-full w-full scale-[1.55] object-cover object-[50%_10%] opacity-85"
+      className="absolute left-[-21%] top-[-40%] h-auto w-[142%] max-w-none opacity-85"
       loading="lazy"
     />
   );
