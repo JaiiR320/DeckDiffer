@@ -30,7 +30,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
         <img
           src={deck.cover.imageUrl}
           alt={deck.cover.name}
-          className="absolute inset-0 h-full w-full object-cover object-[50%_38%] opacity-85"
+          className="absolute inset-0 h-full w-full scale-[1.55] object-cover object-[50%_30%] opacity-85"
           loading="lazy"
         />
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 to-transparent" />
