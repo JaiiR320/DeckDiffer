@@ -7,7 +7,7 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
 };
 
-const user = pgTable("user", {
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -16,7 +16,7 @@ const user = pgTable("user", {
   ...timestamps,
 });
 
-const session = pgTable(
+export const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
@@ -32,7 +32,7 @@ const session = pgTable(
   (table) => [index("session_user_id_idx").on(table.userId)],
 );
 
-const account = pgTable(
+export const account = pgTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -59,7 +59,7 @@ const account = pgTable(
   (table) => [index("account_user_id_idx").on(table.userId)],
 );
 
-const verification = pgTable(
+export const verification = pgTable(
   "verification",
   {
     id: text("id").primaryKey(),
