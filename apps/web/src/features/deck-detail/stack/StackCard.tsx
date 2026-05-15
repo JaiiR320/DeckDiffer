@@ -164,7 +164,7 @@ export function StackCard({
                 ref={menuButtonRef}
                 type="button"
                 aria-label={`${row.name} actions`}
-                disabled={readOnly || (!onChangePrinting && (!onSetDeckCover || !imageUrl))}
+                disabled={!onChangePrinting && (!onSetDeckCover || !imageUrl)}
                 onClick={(event) => {
                   event.stopPropagation();
                   setIsMenuOpen((current) => !current);
