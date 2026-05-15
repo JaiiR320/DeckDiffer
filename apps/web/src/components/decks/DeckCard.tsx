@@ -9,6 +9,52 @@ type DeckCardProps = {
 };
 
 export function DeckCard({ deck, onEdit }: DeckCardProps) {
+  const editButton = (
+    <IconButton
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onEdit(deck);
+      }}
+      aria-label={`Edit ${deck.name}`}
+      variant="ghost"
+      className="absolute right-6 top-6 z-20 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
+    >
+      <MoreVertical className="size-5" strokeWidth={1.75} />
+    </IconButton>
+  );
+
+  if (deck.cover) {
+    return (
+      <div className="group relative flex min-h-48 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 text-left transition hover:border-zinc-700">
+        <img
+          src={deck.cover.imageUrl}
+          alt={deck.cover.name}
+          className="absolute inset-0 h-full w-full object-cover opacity-80"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/15 to-black/80" />
+        <div className="pointer-events-none relative z-10 flex min-h-48 flex-col justify-end px-7 py-6">
+          <span className="text-3xl font-semibold tracking-tight text-zinc-100 drop-shadow-lg">
+            {deck.name}
+          </span>
+          <p className="mt-2 text-lg text-zinc-300 drop-shadow-lg">
+            {deck.saves.length} snapshot{deck.saves.length === 1 ? "" : "s"}
+          </p>
+        </div>
+
+        <Link
+          to="/decks/$deckId"
+          params={{ deckId: deck.id }}
+          className="absolute inset-0 z-10 rounded-2xl"
+          aria-label={`Open ${deck.name}`}
+        />
+
+        {editButton}
+      </div>
+    );
+  }
+
   return (
     <div className="group relative flex min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700">
       {/* Content - sits below the Link */}
@@ -32,18 +78,7 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
       />
 
       {/* Edit button - positioned outside content, after Link in DOM so it's on top */}
-      <IconButton
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onEdit(deck);
-        }}
-        aria-label={`Edit ${deck.name}`}
-        variant="ghost"
-        className="absolute right-6 top-6 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
-      >
-        <MoreVertical className="size-5" strokeWidth={1.75} />
-      </IconButton>
+      {editButton}
     </div>
   );
 }

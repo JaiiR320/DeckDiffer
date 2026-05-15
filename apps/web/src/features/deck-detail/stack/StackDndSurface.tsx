@@ -11,7 +11,7 @@ import { Fragment, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent, ReactNode } from "react";
 import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
 import { IconButton } from "#/components/ui/IconButton";
-import type { DeckStackLayout } from "#/lib/deck";
+import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import { createCategoryId, type CardCategory, type DeckCategory } from "#/lib/decklist";
 import type { SearchCardResult } from "#/lib/scryfall";
 import type { CategoryDiff, EditorRow } from "../editor/types";
@@ -37,6 +37,7 @@ type EditorDeckStackProps = {
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   onChangePrinting?: (row: EditorRow) => void;
+  onSetDeckCover?: (cover: DeckTileCover) => void;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onCreateCategoryInLane?: (laneIndex: number, category: DeckCategory) => void;
   onRemoveLane?: (laneIndex: number) => void;
@@ -69,6 +70,7 @@ type StackLaneGridActions = Pick<
   | "onAdjustQuantity"
   | "onMoveCardCategory"
   | "onChangePrinting"
+  | "onSetDeckCover"
   | "onMoveCategoryCards"
   | "onRemoveLane"
   | "onRemoveCategory"
@@ -90,6 +92,7 @@ export function EditorDeckStack({
   onAdjustQuantity,
   onMoveCardCategory,
   onChangePrinting,
+  onSetDeckCover,
   onMoveCategoryCards,
   onCreateCategoryInLane,
   onRemoveLane,
@@ -166,6 +169,7 @@ export function EditorDeckStack({
     onAdjustQuantity,
     onMoveCardCategory,
     onChangePrinting,
+    onSetDeckCover,
     onMoveCategoryCards,
     onRemoveLane,
     onRemoveCategory,
@@ -407,6 +411,7 @@ function StackLaneGrid({
                   onAdjustQuantity={actions.onAdjustQuantity}
                   onMoveCardCategory={actions.onMoveCardCategory}
                   onChangePrinting={actions.onChangePrinting}
+                  onSetDeckCover={actions.onSetDeckCover}
                   onMoveCategoryCards={actions.onMoveCategoryCards}
                   onRemoveCategory={actions.onRemoveCategory}
                   onCategoryChange={actions.onCategoryChange}

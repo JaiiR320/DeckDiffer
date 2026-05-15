@@ -7,7 +7,13 @@ import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
 import { createDeckExport } from "../lib/deckExport";
-import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from "#/server/decks";
+import {
+  createDeckForUser,
+  deleteDeckForUser,
+  listDecks,
+  renameDeckForUser,
+  updateDeckCoverForUser,
+} from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 
 export const Route = createFileRoute("/decks")({
@@ -122,6 +128,24 @@ function DecksPage() {
     }
   }
 
+  async function handleClearCover(deckId: string) {
+    try {
+      const updatedDeck = await updateDeckCoverForUser({ data: { deckId, cover: null } });
+      if (!updatedDeck) throw new Error("Could not clear deck cover.");
+
+      setState({
+        decks: decks.map((d) => (d.id === deckId ? updatedDeck : d)),
+        editingDeck: updatedDeck,
+        errorMessage: null,
+      });
+    } catch (error) {
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not clear deck cover right now.",
+      });
+    }
+  }
+
   function handleExportDeck(deck: DeckItem) {
     const deckExport = createDeckExport(deck);
     if (!deckExport.ok) {
@@ -192,6 +216,7 @@ function DecksPage() {
           onRename={handleRenameDeck}
           onDelete={handleDeleteDeck}
           onExport={handleExportDeck}
+          onClearCover={handleClearCover}
         />
       ) : null}
     </>

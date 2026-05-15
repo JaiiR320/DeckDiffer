@@ -64,6 +64,7 @@ export function DeckDetailModals() {
           onRename={(id, name) => void deckActions.renameDeck(id, name)}
           onDelete={(id) => void deckActions.deleteDeck(id)}
           onExport={deckActions.exportDeck}
+          onClearCover={() => void deckActions.setDeckCover(null)}
           categories={categories}
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}

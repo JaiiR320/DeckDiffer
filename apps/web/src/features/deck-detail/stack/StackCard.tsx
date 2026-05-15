@@ -2,8 +2,10 @@ import { useDraggable } from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
+import type { DeckTileCover } from "#/lib/deck";
 import type { CardCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
+import { createDeckTileCover } from "./deckTileCover";
 import { cardDragId } from "./stackIds";
 import { useFallbackCardImage } from "./useFallbackCardImage";
 
@@ -18,6 +20,7 @@ type StackCardProps = {
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   onChangePrinting?: (row: EditorRow) => void;
+  onSetDeckCover?: (cover: DeckTileCover) => void;
   dragData?: Record<string, unknown>;
   dragId?: string;
   dragType?: "card" | "search-card";
@@ -35,6 +38,7 @@ export function StackCard({
   onAdjustQuantity,
   onMoveCardCategory,
   onChangePrinting,
+  onSetDeckCover,
   dragData,
   dragId,
   dragType = "card",
@@ -159,7 +163,7 @@ export function StackCard({
                 ref={menuButtonRef}
                 type="button"
                 aria-label={`${row.name} actions`}
-                disabled={readOnly || !onChangePrinting}
+                disabled={readOnly || (!onChangePrinting && (!onSetDeckCover || !imageUrl))}
                 onClick={(event) => {
                   event.stopPropagation();
                   setIsMenuOpen((current) => !current);
@@ -174,16 +178,28 @@ export function StackCard({
                   onOpenChange={setIsMenuOpen}
                   anchorRef={menuButtonRef}
                   placement="left-start"
-                  widthClassName="w-40"
+                  widthClassName="w-44"
                 >
-                  <ContextMenuItem
-                    onSelect={() => {
-                      setIsMenuOpen(false);
-                      onChangePrinting?.(row);
-                    }}
-                  >
-                    Change printing
-                  </ContextMenuItem>
+                  {imageUrl && onSetDeckCover ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        setIsMenuOpen(false);
+                        onSetDeckCover(createDeckTileCover(row, imageUrl));
+                      }}
+                    >
+                      Use as deck cover
+                    </ContextMenuItem>
+                  ) : null}
+                  {onChangePrinting ? (
+                    <ContextMenuItem
+                      onSelect={() => {
+                        setIsMenuOpen(false);
+                        onChangePrinting(row);
+                      }}
+                    >
+                      Change printing
+                    </ContextMenuItem>
+                  ) : null}
                 </ContextMenu>
               ) : null}
             </div>

@@ -1,4 +1,4 @@
-import { Download, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, ImageOff, Pencil, Plus, Trash2 } from "lucide-react";
 import type { Dispatch, FormEvent } from "react";
 import { useReducer } from "react";
 import { Alert } from "#/components/ui/Alert";
@@ -22,6 +22,7 @@ type DeckActionsModalProps = {
   onRename: (deckId: string, newName: string) => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onClearCover?: (deckId: string) => void;
   categories?: DeckCategory[];
   cards?: ValidatedDeckCard[];
   showRemovedCardGhosts?: boolean;
@@ -59,6 +60,7 @@ export function DeckActionsModal({
   onRename,
   onDelete,
   onExport,
+  onClearCover,
   categories,
   cards = EMPTY_CARDS,
   showRemovedCardGhosts = true,
@@ -164,6 +166,7 @@ export function DeckActionsModal({
             onClose={onClose}
             onDelete={onDelete}
             onExport={onExport}
+            onClearCover={onClearCover}
             onRenameSubmit={handleRenameSubmit}
             setState={setState}
           />
@@ -200,6 +203,7 @@ function GeneralSettingsTab({
   onClose,
   onDelete,
   onExport,
+  onClearCover,
   onRenameSubmit,
   setState,
 }: {
@@ -210,6 +214,7 @@ function GeneralSettingsTab({
   onClose: () => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onClearCover?: (deckId: string) => void;
   onRenameSubmit: (event: FormEvent<HTMLFormElement>) => void;
   setState: Dispatch<Partial<ModalState>>;
 }) {
@@ -251,6 +256,16 @@ function GeneralSettingsTab({
         <Download className="size-5 text-zinc-500" strokeWidth={1.75} />
         <span>Export deck list</span>
       </Button>
+
+      {deck.cover && onClearCover ? (
+        <Button
+          onClick={() => onClearCover(deck.id)}
+          className="w-full justify-start px-4 py-3 text-left"
+        >
+          <ImageOff className="size-5 text-zinc-500" strokeWidth={1.75} />
+          <span>Clear deck cover</span>
+        </Button>
+      ) : null}
 
       {showDeleteConfirm ? (
         <Alert tone="danger" className="space-y-3 bg-rose-950/20 p-4">

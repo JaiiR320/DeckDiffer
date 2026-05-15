@@ -12,12 +12,18 @@ import { PrintingPickerModal } from "./modals/PrintingPickerModal";
 import { removeStackLane } from "./editor/stackLayoutLane";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import { createCategoryName, hasCategoryName, type CardCategory } from "#/lib/decklist";
-import { useDeckDetailActions, useDeckDetailModel, useDeckDetailState } from "./deckDetailContext";
+import {
+  useDeckDetailActions,
+  useDeckDetailModel,
+  useDeckDetailServices,
+  useDeckDetailState,
+} from "./deckDetailContext";
 
 export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
   const { baselineDeck, categories, compareMode, showDiffOnly, stackLayout } = useDeckDetailState();
   const { categoryDiffs, groupedRows, resultCardTotal } = useDeckDetailModel();
   const actions = useDeckDetailActions();
+  const { deckActions } = useDeckDetailServices();
   const [printingRow, setPrintingRow] = useState<EditorRow | null>(null);
 
   return (
@@ -68,6 +74,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
                 }))
         }
         onChangePrinting={compareMode ? undefined : (row) => setPrintingRow(row)}
+        onSetDeckCover={(cover) => void deckActions.setDeckCover(cover)}
         onMoveCategoryCards={
           compareMode
             ? undefined

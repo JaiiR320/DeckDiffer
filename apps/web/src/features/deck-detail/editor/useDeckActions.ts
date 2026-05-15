@@ -1,12 +1,17 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { DeckItem, DeckSave, DeckStackLayout } from "#/lib/deck";
+import type { DeckItem, DeckSave, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import { normalizeDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
 import { normalizeDeckSave } from "#/lib/deckSave";
 import type { DeckState } from "./types";
-import { deleteDeckForUser, renameDeckForUser, saveDeckForUser } from "#/server/decks";
+import {
+  deleteDeckForUser,
+  renameDeckForUser,
+  saveDeckForUser,
+  updateDeckCoverForUser,
+} from "#/server/decks";
 import { downloadCurrentDeck } from "./deckDownloads";
 import type { EditorSnapshot } from "./editorUndo";
 
@@ -174,6 +179,24 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     }
   }
 
+  async function setDeckCover(cover: DeckTileCover | null) {
+    if (!deck) return false;
+
+    try {
+      const updatedDeck = await updateDeckCoverForUser({ data: { deckId: deck.id, cover } });
+      if (!updatedDeck) throw new Error("Could not update deck cover.");
+
+      setDeck(updatedDeck);
+      setDeckErrorMessage(null);
+      return true;
+    } catch (error) {
+      setDeckErrorMessage(
+        error instanceof Error ? error.message : "Could not update deck cover right now.",
+      );
+      return false;
+    }
+  }
+
   function exportDeck(deckToExport: DeckItem) {
     downloadCurrentDeck({ ...deckToExport, cards: workingCards });
     setIsDeckActionsOpen(false);
@@ -233,6 +256,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
     loadSave,
     renameDeck,
     saveDeck,
+    setDeckCover,
     saveSnapshotBeforeLoad,
     closeSaveModal,
     setIsDeckActionsOpen,

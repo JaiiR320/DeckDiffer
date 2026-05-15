@@ -1,4 +1,4 @@
-import type { DeckStackLayout } from "#/lib/deck";
+import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
@@ -82,6 +82,7 @@ export const decks = pgTable(
     name: text("name").notNull(),
     categories: jsonb("categories").$type<DeckCategory[] | null>(),
     cards: jsonb("cards").$type<ValidatedDeckCard[] | null>(),
+    cover: jsonb("cover").$type<DeckTileCover | null>(),
     layout: jsonb("layout").$type<DeckStackLayout | null>(),
     ...timestamps,
   },
