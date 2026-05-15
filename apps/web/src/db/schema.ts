@@ -1,4 +1,4 @@
-import type { DeckStackLayout } from "#/lib/deck";
+import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
 import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
@@ -7,7 +7,7 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull(),
 };
 
-const user = pgTable("user", {
+export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -16,7 +16,7 @@ const user = pgTable("user", {
   ...timestamps,
 });
 
-const session = pgTable(
+export const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
@@ -32,7 +32,7 @@ const session = pgTable(
   (table) => [index("session_user_id_idx").on(table.userId)],
 );
 
-const account = pgTable(
+export const account = pgTable(
   "account",
   {
     id: text("id").primaryKey(),
@@ -59,7 +59,7 @@ const account = pgTable(
   (table) => [index("account_user_id_idx").on(table.userId)],
 );
 
-const verification = pgTable(
+export const verification = pgTable(
   "verification",
   {
     id: text("id").primaryKey(),
@@ -82,6 +82,7 @@ export const decks = pgTable(
     name: text("name").notNull(),
     categories: jsonb("categories").$type<DeckCategory[] | null>(),
     cards: jsonb("cards").$type<ValidatedDeckCard[] | null>(),
+    cover: jsonb("cover").$type<DeckTileCover | null>(),
     layout: jsonb("layout").$type<DeckStackLayout | null>(),
     ...timestamps,
   },

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DeckStackLayout } from "#/lib/deck";
+import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import {
   normalizeCategoryNameForCompare,
   type DeckCategory,
@@ -22,6 +22,10 @@ export type UpdateDeckCurrentInput = {
   categories: DeckCategory[];
   cards: ValidatedDeckCard[];
   layout: DeckStackLayout;
+};
+export type UpdateDeckCoverInput = {
+  deckId: string;
+  cover: DeckTileCover | null;
 };
 
 export const deckIdSchema = z.object({
@@ -67,6 +71,28 @@ const cardPreviewFaceSchema = z.object({
   smallImageUrl: z.string().min(1, "Card face small image URL is required."),
   imageUrl: z.string().min(1, "Card face image URL is required."),
 });
+
+const deckTileCoverCardSchema = z.object({
+  oracleId: z.string().trim().min(1, "Card oracle ID is required."),
+  setCode: z.string().trim().min(1, "Card set code is required.").optional(),
+  collectorNumber: z.string().trim().min(1, "Card collector number is required.").optional(),
+  name: z.string().trim().min(1, "Cover name is required."),
+  imageUrl: z.string().min(1, "Cover image URL is required."),
+});
+
+const singleDeckTileCoverSchema = deckTileCoverCardSchema.extend({
+  source: z.enum(["manual", "commander"]).optional(),
+  kind: z.literal("single").optional(),
+});
+
+const splitDeckTileCoverSchema = z.object({
+  source: z.literal("commander"),
+  kind: z.literal("split"),
+  cards: z.tuple([deckTileCoverCardSchema, deckTileCoverCardSchema]),
+  reversed: z.boolean().optional(),
+});
+
+const deckTileCoverSchema = z.union([singleDeckTileCoverSchema, splitDeckTileCoverSchema]);
 
 const validatedDeckCardSchema = z.object({
   oracleId: z.string().trim().min(1, "Card oracle ID is required."),
@@ -123,4 +149,9 @@ export const updateDeckCurrentInputSchema = z.object({
   categories: z.array(deckCategorySchema),
   cards: z.array(validatedDeckCardSchema),
   layout: deckStackLayoutSchema,
+});
+
+export const updateDeckCoverInputSchema = z.object({
+  deckId: z.string().trim().min(1, "Deck ID is required."),
+  cover: deckTileCoverSchema.nullable(),
 });

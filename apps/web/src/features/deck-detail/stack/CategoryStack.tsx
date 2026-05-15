@@ -5,6 +5,7 @@ import type { RefObject } from "react";
 import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
 import { IconButton } from "#/components/ui/IconButton";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
+import type { DeckTileCover } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
 import { StackCard, STACK_CARD_OFFSET } from "./StackCard";
@@ -23,6 +24,7 @@ type CategoryStackProps = {
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   onChangePrinting?: (row: EditorRow) => void;
+  onSetDeckCover?: (cover: DeckTileCover) => void;
   onMoveCategoryCards?: (category: CardCategory, targetCategory: CardCategory) => void;
   onRemoveCategory?: (category: CardCategory) => void;
   onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
@@ -65,6 +67,7 @@ export function CategoryStack({
   onAdjustQuantity,
   onMoveCardCategory,
   onChangePrinting,
+  onSetDeckCover,
   onMoveCategoryCards,
   onRemoveCategory,
   onCategoryChange,
@@ -240,6 +243,7 @@ export function CategoryStack({
                 onAdjustQuantity={onAdjustQuantity}
                 onMoveCardCategory={onMoveCardCategory}
                 onChangePrinting={onChangePrinting}
+                onSetDeckCover={onSetDeckCover}
                 readOnly={readOnly}
               />
             ))}

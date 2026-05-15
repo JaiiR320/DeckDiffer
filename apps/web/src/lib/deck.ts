@@ -19,6 +19,28 @@ export type DeckSave = {
   layout?: DeckStackLayout;
 };
 
+export type DeckTileCoverCard = {
+  oracleId: string;
+  setCode?: string;
+  collectorNumber?: string;
+  name: string;
+  imageUrl: string;
+};
+
+type SingleDeckTileCover = DeckTileCoverCard & {
+  source?: "manual" | "commander";
+  kind?: "single";
+};
+
+export type DeckTileCover =
+  | SingleDeckTileCover
+  | {
+      source: "commander";
+      kind: "split";
+      cards: [DeckTileCoverCard, DeckTileCoverCard];
+      reversed?: boolean;
+    };
+
 export type DeckItem = {
   id: string; // slugified name, e.g., "my-commander-deck"
   name: string;
@@ -26,6 +48,7 @@ export type DeckItem = {
   updatedAt: string; // ISO-8601
   categories?: DeckCategory[];
   cards?: ValidatedDeckCard[];
+  cover?: DeckTileCover;
   layout?: DeckStackLayout;
   saves: DeckSave[]; // oldest-first
 };

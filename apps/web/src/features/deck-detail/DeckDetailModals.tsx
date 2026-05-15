@@ -2,6 +2,7 @@ import { ExportDeckModal } from "./modals/ExportDeckModal";
 import { ImportDeckModal } from "./modals/ImportDeckModal";
 import { SaveDeckModal } from "./modals/SaveDeckModal";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
+import { swapSplitDeckCover } from "#/lib/deckCover";
 import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
   useDeckDetailActions,
@@ -64,6 +65,10 @@ export function DeckDetailModals() {
           onRename={(id, name) => void deckActions.renameDeck(id, name)}
           onDelete={(id) => void deckActions.deleteDeck(id)}
           onExport={deckActions.exportDeck}
+          onClearCover={() => void deckActions.setDeckCover(null)}
+          onSwapSplitCover={(deck) =>
+            void deckActions.setDeckCover(deck.cover ? swapSplitDeckCover(deck.cover) : null)
+          }
           categories={categories}
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}

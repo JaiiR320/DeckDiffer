@@ -6,8 +6,15 @@ import { DeckActionsModal } from "../components/decks/DeckActionsModal";
 import { CreateDeckModal } from "../components/decks/CreateDeckModal";
 import { DeckCard } from "../components/decks/DeckCard";
 import type { DeckItem } from "../lib/deck";
+import { swapSplitDeckCover } from "../lib/deckCover";
 import { createDeckExport } from "../lib/deckExport";
-import { createDeckForUser, deleteDeckForUser, listDecks, renameDeckForUser } from "#/server/decks";
+import {
+  createDeckForUser,
+  deleteDeckForUser,
+  listDecks,
+  renameDeckForUser,
+  updateDeckCoverForUser,
+} from "#/server/decks";
 import { getCurrentSession } from "#/server/session";
 
 export const Route = createFileRoute("/decks")({
@@ -122,6 +129,44 @@ function DecksPage() {
     }
   }
 
+  async function handleClearCover(deckId: string) {
+    try {
+      const updatedDeck = await updateDeckCoverForUser({ data: { deckId, cover: null } });
+      if (!updatedDeck) throw new Error("Could not clear deck cover.");
+
+      setState({
+        decks: decks.map((d) => (d.id === deckId ? updatedDeck : d)),
+        editingDeck: updatedDeck,
+        errorMessage: null,
+      });
+    } catch (error) {
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not clear deck cover right now.",
+      });
+    }
+  }
+
+  async function handleSwapSplitCover(deck: DeckItem) {
+    try {
+      const updatedDeck = await updateDeckCoverForUser({
+        data: { deckId: deck.id, cover: deck.cover ? swapSplitDeckCover(deck.cover) : null },
+      });
+      if (!updatedDeck) throw new Error("Could not swap deck cover.");
+
+      setState({
+        decks: decks.map((d) => (d.id === deck.id ? updatedDeck : d)),
+        editingDeck: updatedDeck,
+        errorMessage: null,
+      });
+    } catch (error) {
+      setState({
+        errorMessage:
+          error instanceof Error ? error.message : "Could not swap deck cover right now.",
+      });
+    }
+  }
+
   function handleExportDeck(deck: DeckItem) {
     const deckExport = createDeckExport(deck);
     if (!deckExport.ok) {
@@ -151,11 +196,11 @@ function DecksPage() {
           </p>
         ) : null}
 
-        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid justify-center gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),24rem))]">
           <button
             type="button"
             onClick={() => setState({ isCreateOpen: true })}
-            className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300"
+            className="flex aspect-[3/2] min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 text-zinc-400 transition hover:border-cyan-500/50 hover:text-cyan-300 sm:min-h-0"
           >
             <Plus className="size-9" strokeWidth={1.75} />
             <span className="mt-5 text-xl font-medium text-zinc-300">New Deck</span>
@@ -192,6 +237,8 @@ function DecksPage() {
           onRename={handleRenameDeck}
           onDelete={handleDeleteDeck}
           onExport={handleExportDeck}
+          onClearCover={handleClearCover}
+          onSwapSplitCover={handleSwapSplitCover}
         />
       ) : null}
     </>

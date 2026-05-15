@@ -4,6 +4,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "#/db";
 import { deckSaves, decks } from "#/db/schema";
 import { auth } from "#/lib/auth";
+import { createCommanderDeckCover, shouldRefreshCommanderCover } from "#/lib/deckCover";
 import { slugifyName } from "#/lib/deck";
 import { mapDeck, type DeckSaveRow } from "./deckMappers";
 import {
@@ -11,12 +12,14 @@ import {
   deckIdSchema,
   renameDeckInputSchema,
   saveDeckInputSchema,
+  updateDeckCoverInputSchema,
   updateDeckCurrentInputSchema,
   type CreateDeckInput,
   type DeleteDeckInput,
   type GetDeckInput,
   type RenameDeckInput,
   type SaveDeckInput,
+  type UpdateDeckCoverInput,
   type UpdateDeckCurrentInput,
 } from "./deckSchemas";
 
@@ -222,6 +225,9 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
 
     const saveLabel = data.label.trim() || `Save #1`;
     const now = new Date();
+    const cover = shouldRefreshCommanderCover(existingDeck.cover)
+      ? createCommanderDeckCover(data.categories, data.cards, existingDeck.cover)
+      : existingDeck.cover;
 
     await db.insert(deckSaves).values({
       id: crypto.randomUUID(),
@@ -236,6 +242,7 @@ export const saveDeckForUser = createServerFn({ method: "POST" })
     await db
       .update(decks)
       .set({
+        cover,
         updatedAt: now,
       })
       .where(eq(decks.id, existingDeck.id));
@@ -256,12 +263,41 @@ export const updateDeckCurrentForUser = createServerFn({ method: "POST" })
       throw new Error("Deck not found.");
     }
 
+    const cover = shouldRefreshCommanderCover(existingDeck.cover)
+      ? createCommanderDeckCover(data.categories, data.cards, existingDeck.cover)
+      : existingDeck.cover;
+
     await db
       .update(decks)
       .set({
         categories: data.categories,
         cards: data.cards,
+        cover,
         layout: data.layout,
+        updatedAt: new Date(),
+      })
+      .where(eq(decks.id, existingDeck.id));
+
+    return getDeckWithSavesBySlug(userId, existingDeck.slug);
+  });
+
+export const updateDeckCoverForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: UpdateDeckCoverInput) => updateDeckCoverInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+
+    const existingDeck = await db.query.decks.findFirst({
+      where: and(eq(decks.userId, userId), eq(decks.slug, data.deckId)),
+    });
+
+    if (!existingDeck) {
+      throw new Error("Deck not found.");
+    }
+
+    await db
+      .update(decks)
+      .set({
+        cover: data.cover,
         updatedAt: new Date(),
       })
       .where(eq(decks.id, existingDeck.id));

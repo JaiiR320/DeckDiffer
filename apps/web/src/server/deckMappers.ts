@@ -23,6 +23,7 @@ export function mapDeck(deck: DeckRow, saves: DeckSaveRow[]): DeckItem {
     updatedAt: deck.updatedAt.toISOString(),
     categories: deck.categories ?? undefined,
     cards: deck.cards ?? undefined,
+    cover: deck.cover ?? undefined,
     layout: deck.layout ?? undefined,
     saves: saves.map(mapDeckSave),
   };
