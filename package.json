@@ -12,9 +12,11 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "vitest run",
-    "verify": "pnpm fmt:check && pnpm lint && pnpm check && pnpm test && pnpm build"
+    "verify": "pnpm fmt:check && pnpm lint && pnpm check && pnpm test && pnpm build",
+    "sandcastle": "pnpm exec tsx .sandcastle/main.ts"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "^0.5.10",
     "@types/node": "^25.6.0",
     "@typescript/native-preview": "beta",
     "oxfmt": "^0.47.0",
