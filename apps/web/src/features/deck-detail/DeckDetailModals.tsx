@@ -3,18 +3,17 @@ import { ImportDeckModal } from "./modals/ImportDeckModal";
 import { SaveDeckModal } from "./modals/SaveDeckModal";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
 import { swapSplitDeckCover } from "#/lib/deckCover";
-import { normalizeStackLayout } from "#/lib/deckLayout";
 import {
-  useDeckDetailActions,
   useDeckDetailModel,
   useDeckDetailServices,
-  useDeckDetailState,
+  useDeckWorkspaceActions,
+  useDeckWorkspaceView,
 } from "./deckDetailContext";
 
 export function DeckDetailModals() {
-  const { categories, compareMode, deck, stackLayout, workingCards } = useDeckDetailState();
+  const { categories, compareMode, deck, stackLayout, workingCards } = useDeckWorkspaceView();
   const { defaultSaveLabel, exportPreview, hasCards } = useDeckDetailModel();
-  const actions = useDeckDetailActions();
+  const workspaceActions = useDeckWorkspaceActions();
   const { deckActions, deckImport } = useDeckDetailServices();
 
   return (
@@ -51,7 +50,7 @@ export function DeckDetailModals() {
           onClose={deckActions.closeSaveModal}
           onSave={(label) =>
             void deckActions.saveDeck(label).then((saved) => {
-              if (saved) actions.clearUndoHistory();
+              if (saved) workspaceActions.onClearUndoHistory();
             })
           }
         />
@@ -65,6 +64,7 @@ export function DeckDetailModals() {
           onRename={(id, name) => void deckActions.renameDeck(id, name)}
           onDelete={(id) => void deckActions.deleteDeck(id)}
           onExport={deckActions.exportDeck}
+          onColorsChange={(colors) => void deckActions.setDeckColors(colors)}
           onClearCover={() => void deckActions.setDeckCover(null)}
           onSwapSplitCover={(deck) =>
             void deckActions.setDeckCover(deck.cover ? swapSplitDeckCover(deck.cover) : null)
@@ -72,20 +72,11 @@ export function DeckDetailModals() {
           categories={categories}
           cards={workingCards}
           showRemovedCardGhosts={stackLayout.showRemovedCardGhosts !== false}
-          onAddLane={compareMode ? undefined : actions.onAddStackLane}
-          onCategoriesChange={(nextCategories) => {
-            actions.updateEditorSnapshot((current) => ({
-              ...current,
-              categories: nextCategories,
-              stackLayout: normalizeStackLayout(current.stackLayout, nextCategories),
-            }));
-          }}
-          onShowRemovedCardGhostsChange={(showRemovedCardGhosts) => {
-            actions.updateEditorSnapshot((current) => ({
-              ...current,
-              stackLayout: { ...current.stackLayout, showRemovedCardGhosts },
-            }));
-          }}
+          onAddLane={compareMode ? undefined : workspaceActions.onAddStackLane}
+          onCategoriesChange={compareMode ? undefined : workspaceActions.onReplaceCategories}
+          onShowRemovedCardGhostsChange={
+            compareMode ? undefined : workspaceActions.onSetShowRemovedCardGhosts
+          }
         />
       ) : null}
     </>

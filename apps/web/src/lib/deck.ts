@@ -1,5 +1,6 @@
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
 
+export type DeckColor = "W" | "U" | "B" | "R" | "G";
 export type DeckCardSort = "manaValue" | "alphabetical" | "price";
 export type DeckCardSortDirection = "asc" | "desc";
 
@@ -48,6 +49,7 @@ export type DeckItem = {
   updatedAt: string; // ISO-8601
   categories?: DeckCategory[];
   cards?: ValidatedDeckCard[];
+  colors?: DeckColor[];
   cover?: DeckTileCover;
   layout?: DeckStackLayout;
   saves: DeckSave[]; // oldest-first

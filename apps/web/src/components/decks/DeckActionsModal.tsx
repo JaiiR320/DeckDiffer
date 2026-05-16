@@ -1,13 +1,14 @@
 import { Download, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
+import { ManaSymbolIcon } from "#/components/cards/ManaSymbolIcon";
 import type { Dispatch, FormEvent } from "react";
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import { Alert } from "#/components/ui/Alert";
 import { Button } from "#/components/ui/Button";
 import { Input } from "#/components/ui/Input";
 import { Modal } from "#/components/ui/Modal";
 import { TabButton } from "#/components/ui/TabButton";
 import { ToggleChip } from "#/components/ui/ToggleChip";
-import type { DeckItem } from "../../lib/deck";
+import type { DeckColor, DeckItem } from "../../lib/deck";
 import {
   createCategoryId,
   hasCategoryName,
@@ -22,6 +23,7 @@ type DeckActionsModalProps = {
   onRename: (deckId: string, newName: string) => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
   onClearCover?: (deckId: string) => void;
   onSwapSplitCover?: (deck: DeckItem) => void;
   categories?: DeckCategory[];
@@ -33,6 +35,16 @@ type DeckActionsModalProps = {
 };
 
 const EMPTY_CARDS: ValidatedDeckCard[] = [];
+const DECK_COLORS: Array<{
+  color: DeckColor;
+  label: string;
+}> = [
+  { color: "W", label: "White" },
+  { color: "U", label: "Blue" },
+  { color: "B", label: "Black" },
+  { color: "R", label: "Red" },
+  { color: "G", label: "Green" },
+];
 
 type ModalState = {
   activeTab: "general" | "categories";
@@ -61,6 +73,7 @@ export function DeckActionsModal({
   onRename,
   onDelete,
   onExport,
+  onColorsChange,
   onClearCover,
   onSwapSplitCover,
   categories,
@@ -83,13 +96,26 @@ export function DeckActionsModal({
     renamingCategoryId,
     showDeleteConfirm,
   } = state;
+  const [draftColors, setDraftColors] = useState<DeckColor[]>(deck.colors ?? []);
 
   if (!isOpen) return null;
+
+  function persistDraftColors() {
+    if (!onColorsChange || areDeckColorsEqual(deck.colors ?? [], draftColors)) return;
+
+    void onColorsChange(draftColors);
+  }
+
+  function handleClose() {
+    persistDraftColors();
+    onClose();
+  }
 
   function handleRenameSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = newName.trim();
     if (trimmed && trimmed !== deck.name) {
+      persistDraftColors();
       onRename(deck.id, trimmed);
     }
     setState({ isEditing: false });
@@ -135,7 +161,7 @@ export function DeckActionsModal({
       ariaLabel="Close deck actions modal"
       className="items-center justify-center overflow-y-auto overscroll-contain p-6"
       maxWidth="4xl"
-      onClose={onClose}
+      onClose={handleClose}
       panelClassName="flex h-[640px] !max-w-[800px] max-h-[85vh] flex-col p-6"
     >
       <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
@@ -164,10 +190,16 @@ export function DeckActionsModal({
             deck={deck}
             isEditing={isEditing}
             newName={newName}
+            draftColors={draftColors}
             showDeleteConfirm={showDeleteConfirm}
             onClose={onClose}
             onDelete={onDelete}
-            onExport={onExport}
+            onExport={(deckToExport) => {
+              persistDraftColors();
+              onExport({ ...deckToExport, colors: draftColors });
+            }}
+            onColorsChange={onColorsChange}
+            onDraftColorsChange={setDraftColors}
             onClearCover={onClearCover}
             onSwapSplitCover={onSwapSplitCover}
             onRenameSubmit={handleRenameSubmit}
@@ -191,7 +223,7 @@ export function DeckActionsModal({
         ) : null}
       </div>
 
-      <Button onClick={onClose} className="mt-5 w-full">
+      <Button onClick={handleClose} className="mt-5 w-full">
         Close
       </Button>
     </Modal>
@@ -202,10 +234,13 @@ function GeneralSettingsTab({
   deck,
   isEditing,
   newName,
+  draftColors,
   showDeleteConfirm,
   onClose,
   onDelete,
   onExport,
+  onColorsChange,
+  onDraftColorsChange,
   onClearCover,
   onSwapSplitCover,
   onRenameSubmit,
@@ -214,10 +249,13 @@ function GeneralSettingsTab({
   deck: DeckItem;
   isEditing: boolean;
   newName: string;
+  draftColors: DeckColor[];
   showDeleteConfirm: boolean;
   onClose: () => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
+  onDraftColorsChange: (colors: DeckColor[]) => void;
   onClearCover?: (deckId: string) => void;
   onSwapSplitCover?: (deck: DeckItem) => void;
   onRenameSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -256,6 +294,41 @@ function GeneralSettingsTab({
           <span>Rename deck</span>
         </Button>
       )}
+
+      {onColorsChange ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-zinc-100">Deck colors</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Used to clamp flexible mana production stats.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              {DECK_COLORS.map(({ color, label }) => {
+                const isSelected = draftColors.includes(color);
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`${isSelected ? "Remove" : "Add"} ${label}`}
+                    title={label}
+                    onClick={() => onDraftColorsChange(toggleDeckColor(draftColors, color))}
+                    className={`inline-flex size-10 items-center justify-center rounded-full border transition ${
+                      isSelected
+                        ? "border-white/40 bg-zinc-950 shadow-[0_0_18px_rgba(34,211,238,0.12)]"
+                        : "border-zinc-800 bg-zinc-950 opacity-30 grayscale hover:border-zinc-700 hover:opacity-60"
+                    }`}
+                  >
+                    <ManaSymbolIcon symbol={color} label={label} className="size-7" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Button onClick={() => onExport(deck)} className="w-full justify-start px-4 py-3 text-left">
         <Download className="size-5 text-zinc-500" strokeWidth={1.75} />
@@ -315,6 +388,24 @@ function GeneralSettingsTab({
       )}
     </div>
   );
+}
+
+function toggleDeckColor(colors: DeckColor[], color: DeckColor) {
+  const nextColors = new Set(colors);
+
+  if (nextColors.has(color)) {
+    nextColors.delete(color);
+  } else {
+    nextColors.add(color);
+  }
+
+  return DECK_COLORS.flatMap((deckColor) =>
+    nextColors.has(deckColor.color) ? [deckColor.color] : [],
+  );
+}
+
+function areDeckColorsEqual(left: DeckColor[], right: DeckColor[]) {
+  return left.length === right.length && left.every((color, index) => color === right[index]);
 }
 
 function CategoriesSettingsTab({

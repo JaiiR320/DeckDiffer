@@ -57,6 +57,7 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
       card.card_faces?.flatMap((face) => (face.oracle_text ? [face.oracle_text] : [])).join("\n\n"),
     setCode: card.set?.toUpperCase(),
     collectorNumber: card.collector_number,
+    producedMana: card.produced_mana,
     manaValue: card.cmc ?? 0,
     smallImageUrl,
     imageUrl,

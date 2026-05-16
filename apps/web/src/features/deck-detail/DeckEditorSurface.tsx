@@ -1,67 +1,50 @@
 import { EditorHeader } from "./components/EditorHeader";
 import { SaveHistoryPanel } from "./components/SaveHistoryPanel";
-import type { DeckCardSort } from "#/lib/deck";
-import { normalizeStackLayout } from "#/lib/deckLayout";
+import { DeckStatsPanel } from "./stats/DeckStatsPanel";
 import {
-  useDeckDetailActions,
   useDeckDetailModel,
   useDeckDetailServices,
-  useDeckDetailState,
+  useDeckUiActions,
+  useDeckUiView,
+  useDeckWorkspaceActions,
+  useDeckWorkspaceView,
 } from "./deckDetailContext";
 import { StackEditor } from "./StackEditor";
 import { TabButton } from "./TabButton";
 
 export function DeckEditorSurface() {
-  const {
-    activeTab,
-    baselineDeck,
-    compareMode,
-    deck,
-    isHydrated,
-    redoStack,
-    stackLayout,
-    undoStack,
-  } = useDeckDetailState();
+  const { baselineDeck, compareMode, deck, redoStack, stackLayout, undoStack } =
+    useDeckWorkspaceView();
+  const { activeTab, isHydrated } = useDeckUiView();
   const { mergedWorkingCardsLength } = useDeckDetailModel();
-  const actions = useDeckDetailActions();
+  const workspaceActions = useDeckWorkspaceActions();
+  const deckUiActions = useDeckUiActions();
   const { deckActions, deckImport, preview } = useDeckDetailServices();
   const canRedo = !compareMode && redoStack.length > 0;
   const canUndo = !compareMode && undoStack.length > 0;
   const cardSort = stackLayout.cardSort ?? "manaValue";
   const cardSortDirection = stackLayout.cardSortDirection ?? "desc";
 
-  function updateCardSort(nextSort: DeckCardSort) {
-    actions.updateEditorSnapshot((current) => ({
-      ...current,
-      stackLayout: normalizeStackLayout(
-        { ...current.stackLayout, cardSort: nextSort },
-        current.categories,
-      ),
-    }));
-  }
-
-  function reverseCardSortDirection() {
-    actions.updateEditorSnapshot((current) => ({
-      ...current,
-      stackLayout: normalizeStackLayout(
-        {
-          ...current.stackLayout,
-          cardSortDirection:
-            (current.stackLayout.cardSortDirection ?? "desc") === "asc" ? "desc" : "asc",
-        },
-        current.categories,
-      ),
-    }));
-  }
-
   return (
     <section className="rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
       <div className="flex border-b border-zinc-800">
-        <TabButton active={activeTab === "editor"} onClick={() => actions.setActiveTab("editor")}>
+        <TabButton
+          active={activeTab === "editor"}
+          onClick={() => deckUiActions.onSetActiveTab("editor")}
+        >
           Editor
         </TabButton>
-        <TabButton active={activeTab === "history"} onClick={() => actions.setActiveTab("history")}>
+        <TabButton
+          active={activeTab === "history"}
+          onClick={() => deckUiActions.onSetActiveTab("history")}
+        >
           History
+        </TabButton>
+        <TabButton
+          active={activeTab === "stats"}
+          onClick={() => deckUiActions.onSetActiveTab("stats")}
+        >
+          Stats
         </TabButton>
         {compareMode ? (
           <div className="ml-auto flex items-center gap-2 px-4">
@@ -88,12 +71,12 @@ export function DeckEditorSurface() {
               exportDisabled={
                 isHydrated && (mergedWorkingCardsLength === 0 || baselineDeck.status === "loading")
               }
-              onRedo={actions.onRedo}
-              onUndo={actions.onUndo}
+              onRedo={workspaceActions.onRedo}
+              onUndo={workspaceActions.onUndo}
               cardSort={cardSort}
               cardSortDirection={cardSortDirection}
-              onCardSortChange={updateCardSort}
-              onReverseCardSortDirection={reverseCardSortDirection}
+              onCardSortChange={workspaceActions.onSetCardSort}
+              onReverseCardSortDirection={workspaceActions.onReverseCardSortDirection}
               onPreviewCard={(card) =>
                 preview.updatePreviewCard({
                   name: card.name,
@@ -104,14 +87,16 @@ export function DeckEditorSurface() {
             />
           }
         />
-      ) : (
+      ) : activeTab === "history" ? (
         <SaveHistoryPanel
           deck={deck}
           onLoadSave={(save) => void deckActions.loadSave(save)}
           onSaveSnapshotBeforeLoad={deckActions.saveSnapshotBeforeLoad}
           onCompareSaves={deckActions.compareSaves}
-          onBackToEditor={() => actions.setActiveTab("editor")}
+          onBackToEditor={() => deckUiActions.onSetActiveTab("editor")}
         />
+      ) : (
+        <DeckStatsPanel />
       )}
     </section>
   );

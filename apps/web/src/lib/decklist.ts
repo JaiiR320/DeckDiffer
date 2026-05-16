@@ -120,7 +120,9 @@ export type ValidatedDeckCard = {
   typeLine: string;
   categoryId?: CardCategory;
   category?: CardCategory;
+  manaCost?: string;
   manaValue?: number;
+  producedMana?: string[];
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;

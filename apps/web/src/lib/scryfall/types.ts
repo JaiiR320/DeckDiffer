@@ -12,6 +12,7 @@ export type ScryfallCard = {
   released_at?: string;
   mana_cost?: string;
   oracle_text?: string;
+  produced_mana?: string[];
   prices?: {
     usd?: string | null;
   };
@@ -134,7 +135,9 @@ export type SearchCardResult = {
   typeLine: string;
   category: ReturnType<typeof getCardCategory>;
   categoryId: string;
+  manaCost?: string;
   manaValue: number;
+  producedMana?: string[];
   setCode?: string;
   collectorNumber?: string;
   smallImageUrl?: string;
@@ -165,6 +168,7 @@ export type CardPreviewResult = {
   oracleText?: string;
   setCode?: string;
   collectorNumber?: string;
+  producedMana?: string[];
   manaValue?: number;
   smallImageUrl: string;
   imageUrl: string;
@@ -180,6 +184,8 @@ export type CardPrintingOption = {
   setName: string;
   collectorNumber: string;
   releasedAt: string;
+  manaCost?: string;
+  producedMana?: string[];
   priceUsd?: number;
   smallImageUrl?: string;
   imageUrl?: string;

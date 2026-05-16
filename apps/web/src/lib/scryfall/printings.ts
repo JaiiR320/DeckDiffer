@@ -20,6 +20,8 @@ function toCardPrintingOption(card: ScryfallCard): CardPrintingOption {
     setName: card.set_name ?? card.set.toUpperCase(),
     collectorNumber: card.collector_number,
     releasedAt: card.released_at ?? "",
+    manaCost: card.mana_cost,
+    producedMana: card.produced_mana,
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
     smallImageUrl: imageUris?.small,
     imageUrl: imageUris?.normal,

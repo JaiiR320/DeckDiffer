@@ -13,6 +13,7 @@ import {
   renameDeckInputSchema,
   saveDeckInputSchema,
   updateDeckCoverInputSchema,
+  updateDeckColorsInputSchema,
   updateDeckCurrentInputSchema,
   type CreateDeckInput,
   type DeleteDeckInput,
@@ -20,6 +21,7 @@ import {
   type RenameDeckInput,
   type SaveDeckInput,
   type UpdateDeckCoverInput,
+  type UpdateDeckColorsInput,
   type UpdateDeckCurrentInput,
 } from "./deckSchemas";
 
@@ -298,6 +300,30 @@ export const updateDeckCoverForUser = createServerFn({ method: "POST" })
       .update(decks)
       .set({
         cover: data.cover,
+        updatedAt: new Date(),
+      })
+      .where(eq(decks.id, existingDeck.id));
+
+    return getDeckWithSavesBySlug(userId, existingDeck.slug);
+  });
+
+export const updateDeckColorsForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: UpdateDeckColorsInput) => updateDeckColorsInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+
+    const existingDeck = await db.query.decks.findFirst({
+      where: and(eq(decks.userId, userId), eq(decks.slug, data.deckId)),
+    });
+
+    if (!existingDeck) {
+      throw new Error("Deck not found.");
+    }
+
+    await db
+      .update(decks)
+      .set({
+        colors: data.colors,
         updatedAt: new Date(),
       })
       .where(eq(decks.id, existingDeck.id));

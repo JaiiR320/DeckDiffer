@@ -2,35 +2,40 @@ import { getRouteApi } from "@tanstack/react-router";
 import { useEffect, useReducer, useRef } from "react";
 import type { SetStateAction } from "react";
 import { buildDeckEditorModel } from "./editor/deckEditorModel";
-import {
-  type EditorSnapshot,
-  type EditorUndoState,
-  pushUndoSnapshot,
-  redoEditorSnapshot,
-  undoEditorSnapshot,
-} from "./editor/editorUndo";
-import { addEmptyStackLane } from "./editor/stackLayoutLane";
+import { type EditorSnapshot } from "./editor/editorUndo";
 import { useDeckActions } from "./editor/useDeckActions";
 import { useDeckImport } from "./editor/useDeckImport";
 import { useDeckPreview } from "./editor/useDeckPreview";
-import { getLatestSave, type DeckItem, type DeckSave, type DeckStackLayout } from "#/lib/deck";
+import { type DeckCardSort, type DeckItem, type DeckStackLayout } from "#/lib/deck";
 import { createDeckExport } from "#/lib/deckExport";
-import { defaultStackLayout, normalizeStackLayout } from "#/lib/deckLayout";
-import { normalizeDeckSave } from "#/lib/deckSave";
+import { defaultStackLayout } from "#/lib/deckLayout";
 import { defaultDeckCategories, type DeckCategory, type ValidatedDeckCard } from "#/lib/decklist";
+import type { CardCategory } from "#/lib/decklist";
+import type { CardPrintingOption, SearchCardResult } from "#/lib/scryfall";
 import { getCardPreview } from "#/lib/scryfall";
 import { getDeck, updateDeckCurrentForUser } from "#/server/decks";
+import type { EditorRow } from "./editor/types";
 import type { DeckState } from "./editor/types";
 import {
-  type DeckDetailActions,
+  type DeckUiActions,
+  type DeckUiView,
+  type DeckDetailTab,
   type DeckDetailModel,
   type DeckDetailServices,
+  type DeckWorkspaceActions,
+  type DeckWorkspaceView,
   pageStateReducer,
   resolveStateAction,
-  type HydratedPageState,
   type PageState,
 } from "./deckDetailContext";
 import { useDeckEditorShortcuts } from "./useDeckEditorShortcuts";
+import {
+  applyDeckWorkspaceTransition,
+  deckWorkspaceTransitions,
+  getDeckWorkspaceDisplay,
+  type DeckWorkspaceState,
+  type DeckWorkspaceTransitionResult,
+} from "./workspace/deckWorkspace";
 
 const routeApi = getRouteApi("/decks_/$deckId");
 
@@ -42,71 +47,11 @@ const emptyDeckState: DeckState = {
   errorMessage: null,
 };
 
-function getEditorSnapshot(state: Pick<PageState, "categories" | "stackLayout" | "workingCards">) {
-  return {
-    categories: state.categories,
-    stackLayout: state.stackLayout,
-    workingCards: state.workingCards,
-  };
-}
-
-function applyEditorSnapshot(snapshot: EditorSnapshot) {
-  return {
-    categories: snapshot.categories,
-    stackLayout: snapshot.stackLayout,
-    workingCards: snapshot.workingCards,
-  };
-}
-
-function getUndoState(state: Pick<PageState, "redoStack" | "undoStack">): EditorUndoState {
-  return { redoStack: state.redoStack, undoStack: state.undoStack };
-}
-
 function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partial<PageState> {
-  const latestSave = getLatestSave(deck);
-  const normalizedBaselineSave = latestSave ? normalizeDeckSave(latestSave) : null;
-  const baselineCategories = normalizedBaselineSave?.categories ?? defaultDeckCategories();
-  const baselineLayout = normalizeStackLayout(normalizedBaselineSave?.layout, baselineCategories);
-  const liveCategories = deck.categories
-    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).categories
-    : baselineCategories;
-  const liveLayout = normalizeStackLayout(
-    deck.layout ?? normalizedBaselineSave?.layout,
-    liveCategories,
-  );
-  const liveCards = deck.cards
-    ? normalizeDeckSave(getDeckSaveFromCurrent(deck)).cards
-    : (normalizedBaselineSave?.cards ?? []);
-
   return {
-    baselineDeck: {
-      rawText: "",
-      cards: normalizedBaselineSave?.cards ?? [],
-      invalidCards: [],
-      status: normalizedBaselineSave || liveCards.length > 0 ? "ready" : "idle",
-      errorMessage: null,
-    },
-    baselineCategories,
-    baselineStackLayout: baselineLayout,
-    deck,
+    workspace: deckWorkspaceTransitions.hydrateDeckWorkspace(deck),
     deckErrorMessage: errorMessage,
     isHydrated: true,
-    redoStack: [],
-    stackLayout: liveLayout,
-    undoStack: [],
-    categories: liveCategories,
-    workingCards: liveCards,
-  };
-}
-
-function getDeckSaveFromCurrent(deck: DeckItem): DeckSave {
-  return {
-    id: "current",
-    label: "Current",
-    savedAt: deck.updatedAt,
-    categories: deck.categories,
-    cards: deck.cards ?? [],
-    layout: deck.layout,
   };
 }
 
@@ -117,20 +62,12 @@ export function useDeckDetailController() {
   const persistVersionRef = useRef(0);
   const [pageState, dispatchPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
-    baselineDeck: emptyDeckState,
-    baselineCategories: defaultDeckCategories(),
-    baselineStackLayout: defaultStackLayout(),
-    compareMode: false,
-    compareSaves: null,
-    deck: loaderData.deck ?? undefined,
     deckErrorMessage: loaderData.errorMessage,
     isHydrated: false,
-    redoStack: [],
     showDiffOnly: false,
-    stackLayout: defaultStackLayout(),
-    undoStack: [],
-    categories: defaultDeckCategories(),
-    workingCards: [],
+    workspace: loaderData.deck
+      ? deckWorkspaceTransitions.hydrateDeckWorkspace(loaderData.deck)
+      : null,
   });
   const pageStateRef = useRef(pageState);
   useEffect(() => {
@@ -142,29 +79,34 @@ export function useDeckDetailController() {
     pageStateRef.current = { ...pageStateRef.current, ...patch };
     dispatchPageState(patch);
   };
-  const { baselineDeck, baselineCategories, baselineStackLayout, compareMode } = pageState;
-  const { compareSaves, deck, stackLayout, categories, workingCards } = pageState;
+  const workspace = pageState.workspace;
+  const display = workspace ? getDeckWorkspaceDisplay(workspace) : null;
+  const deck = workspace?.deck;
+  const baselineDeck = workspace?.importStatus ?? emptyDeckState;
+  const baselineCategories = workspace?.baseline.categories ?? defaultDeckCategories();
+  const baselineStackLayout = workspace?.baseline.stackLayout ?? defaultStackLayout();
+  const compareMode = workspace ? workspace.compare !== null : false;
+  const compareSaves = workspace?.compare
+    ? { saveA: workspace.compare.saveA, saveB: workspace.compare.saveB }
+    : null;
+  const stackLayout = display?.stackLayout ?? defaultStackLayout();
+  const categories = display?.categories ?? defaultDeckCategories();
+  const workingCards = display?.workingCards ?? [];
   const preview = useDeckPreview();
-  const setActiveTab = (activeTab: SetStateAction<"editor" | "history">) =>
+  const setActiveTab = (activeTab: SetStateAction<DeckDetailTab>) =>
     setPageState((current) => ({ activeTab: resolveStateAction(current.activeTab, activeTab) }));
-  const setBaselineDeck = (baselineDeck: SetStateAction<DeckState>) =>
-    setPageState((current) => ({
-      baselineDeck: resolveStateAction(current.baselineDeck, baselineDeck),
-    }));
-  const setBaselineStackLayout = (baselineStackLayout: SetStateAction<DeckStackLayout>) =>
-    setPageState((current) => ({
-      baselineStackLayout: resolveStateAction(current.baselineStackLayout, baselineStackLayout),
-    }));
-  const setCompareMode = (compareMode: SetStateAction<boolean>) =>
-    setPageState((current) => ({
-      compareMode: resolveStateAction(current.compareMode, compareMode),
-    }));
-  const setCompareSaves = (compareSaves: SetStateAction<PageState["compareSaves"]>) =>
-    setPageState((current) => ({
-      compareSaves: resolveStateAction(current.compareSaves, compareSaves),
-    }));
   const setDeck = (deck: SetStateAction<DeckItem | undefined>) =>
-    setPageState((current) => ({ deck: resolveStateAction(current.deck, deck) }));
+    setPageState((current) => {
+      const currentDeck = current.workspace?.deck;
+      const nextDeck = resolveStateAction(currentDeck, deck);
+
+      if (!nextDeck) return { workspace: null };
+      if (!current.workspace) {
+        return { workspace: deckWorkspaceTransitions.hydrateDeckWorkspace(nextDeck) };
+      }
+
+      return { workspace: { ...current.workspace, deck: nextDeck } };
+    });
   const setDeckErrorMessage = (deckErrorMessage: SetStateAction<string | null>) =>
     setPageState((current) => ({
       deckErrorMessage: resolveStateAction(current.deckErrorMessage, deckErrorMessage),
@@ -173,23 +115,25 @@ export function useDeckDetailController() {
     setPageState((current) => ({
       showDiffOnly: resolveStateAction(current.showDiffOnly, showDiffOnly),
     }));
-  const setStackLayout = (stackLayout: SetStateAction<DeckStackLayout>) =>
-    setPageState((current) => ({
-      stackLayout: resolveStateAction(current.stackLayout, stackLayout),
-    }));
-  const setBaselineCategories = (baselineCategories: SetStateAction<DeckCategory[]>) =>
-    setPageState((current) => ({
-      baselineCategories: resolveStateAction(current.baselineCategories, baselineCategories),
-    }));
-  const setCategories = (categories: SetStateAction<DeckCategory[]>) =>
-    setPageState((current) => ({ categories: resolveStateAction(current.categories, categories) }));
-  const setWorkingCards = (workingCards: SetStateAction<ValidatedDeckCard[]>) =>
-    setPageState((current) => ({
-      workingCards: resolveStateAction(current.workingCards, workingCards),
-    }));
-  const clearUndoHistory = () => setPageState({ undoStack: [], redoStack: [] });
+  const clearUndoHistory = () =>
+    setPageState((current) =>
+      current.workspace
+        ? { workspace: { ...current.workspace, undoStack: [], redoStack: [] } }
+        : {},
+    );
+  const dismissImportWarnings = () =>
+    setPageState((current) =>
+      current.workspace
+        ? {
+            workspace: {
+              ...current.workspace,
+              importStatus: { ...current.workspace.importStatus, invalidCards: [] },
+            },
+          }
+        : {},
+    );
   const persistEditorSnapshot = async (snapshot: EditorSnapshot) => {
-    const currentDeck = pageStateRef.current.deck;
+    const currentDeck = pageStateRef.current.workspace?.deck;
     if (!currentDeck) return false;
 
     const version = ++persistVersionRef.current;
@@ -234,20 +178,18 @@ export function useDeckDetailController() {
     persistQueueRef.current = queuedPersist.catch(() => null);
     return queuedPersist;
   };
-  const updateEditorSnapshot = (update: (snapshot: EditorSnapshot) => EditorSnapshot) => {
+  const requestDeckWorkspaceTransition = (
+    transition: (workspace: DeckWorkspaceState) => DeckWorkspaceTransitionResult,
+    options: { allowDuringCompare?: boolean } = {},
+  ) => {
     let snapshotToPersist: EditorSnapshot | null = null;
-
     setPageState((current) => {
-      const snapshot = getEditorSnapshot(current);
-      const nextSnapshot = update(snapshot);
+      const workspace = current.workspace;
+      if (!workspace) return {};
 
-      if (JSON.stringify(snapshot) === JSON.stringify(nextSnapshot)) {
-        return {};
-      }
-
-      const nextUndoState = pushUndoSnapshot(getUndoState(current), snapshot);
-      snapshotToPersist = nextSnapshot;
-      return { ...applyEditorSnapshot(nextSnapshot), ...nextUndoState };
+      const result = applyDeckWorkspaceTransition(workspace, transition, options);
+      snapshotToPersist = result.intent.kind === "persist-current" ? result.intent.snapshot : null;
+      return { workspace: result.workspace };
     });
 
     if (snapshotToPersist) {
@@ -255,59 +197,37 @@ export function useDeckDetailController() {
     }
   };
   const undoEditorChange = () => {
-    let snapshotToPersist: EditorSnapshot | null = null;
-
-    setPageState((current) => {
-      const result = undoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
-      snapshotToPersist = result?.snapshot ?? null;
-      return result ? { ...applyEditorSnapshot(result.snapshot), ...result.undoState } : {};
-    });
-
-    if (snapshotToPersist) {
-      void persistEditorSnapshot(snapshotToPersist);
-    }
+    requestDeckWorkspaceTransition(deckWorkspaceTransitions.undoCurrentDecklistEdit);
   };
   const redoEditorChange = () => {
-    let snapshotToPersist: EditorSnapshot | null = null;
-
-    setPageState((current) => {
-      const result = redoEditorSnapshot(getUndoState(current), getEditorSnapshot(current));
-      snapshotToPersist = result?.snapshot ?? null;
-      return result ? { ...applyEditorSnapshot(result.snapshot), ...result.undoState } : {};
-    });
-
-    if (snapshotToPersist) {
-      void persistEditorSnapshot(snapshotToPersist);
-    }
+    requestDeckWorkspaceTransition(deckWorkspaceTransitions.redoCurrentDecklistEdit);
   };
   const deckImport = useDeckImport({
     deckState: { baselineDeck, workingCards },
     editorActions: {
-      setBaselineDeck,
-      setWorkingCards,
-      setWorkingCardsWithUndo: (workingCards) =>
-        updateEditorSnapshot((current) => ({
-          ...current,
-          workingCards: resolveStateAction(current.workingCards, workingCards),
-        })),
+      beginImport: (options) =>
+        requestDeckWorkspaceTransition((workspace) =>
+          deckWorkspaceTransitions.beginImport(workspace, options),
+        ),
+      failImport: (options) =>
+        requestDeckWorkspaceTransition((workspace) =>
+          deckWorkspaceTransitions.failImport(workspace, options),
+        ),
+      applyValidatedImport: (options) =>
+        requestDeckWorkspaceTransition((workspace) =>
+          deckWorkspaceTransitions.applyValidatedImport(workspace, options),
+        ),
     },
   });
   const deckActions = useDeckActions({
     deckState: { deck, setDeck, setDeckErrorMessage },
     editorState: {
-      stackLayout,
-      categories,
-      workingCards,
-      setBaselineDeck,
-      setBaselineCategories,
-      setBaselineStackLayout,
-      setCategories,
-      clearUndoHistory,
-      persistEditorSnapshot,
-      setStackLayout,
-      setWorkingCards,
+      stackLayout: workspace?.current.stackLayout ?? stackLayout,
+      categories: workspace?.current.categories ?? categories,
+      workingCards: workspace?.current.workingCards ?? workingCards,
+      requestDeckWorkspaceTransition,
     },
-    navigationState: { setActiveTab, setCompareMode, setCompareSaves },
+    navigationState: { setActiveTab },
   });
 
   useEffect(() => {
@@ -315,9 +235,9 @@ export function useDeckDetailController() {
 
     if (!nextDeck) {
       setPageState({
-        deck: nextDeck,
         deckErrorMessage: loaderData.errorMessage,
         isHydrated: true,
+        workspace: null,
       });
       return;
     }
@@ -327,11 +247,17 @@ export function useDeckDetailController() {
 
   useEffect(() => {
     if (!pageState.isHydrated) return;
+    const workspace = pageState.workspace;
+    if (!workspace) return;
+    const display = getDeckWorkspaceDisplay(workspace);
 
-    const cardsNeedingBackfill = pageState.workingCards.filter((card) => {
+    const cardsNeedingBackfill = display.workingCards.filter((card) => {
       const key = getCardPriceBackfillKey(card);
       return (
-        (card.priceUsd === undefined || card.manaValue === undefined) &&
+        (card.priceUsd === undefined ||
+          card.manaValue === undefined ||
+          card.manaCost === undefined ||
+          card.producedMana === undefined) &&
         key &&
         !attemptedCardDataBackfillsRef.current.has(key)
       );
@@ -359,35 +285,70 @@ export function useDeckDetailController() {
         }).catch(() => null);
         return {
           key: getCardPriceBackfillKey(card),
+          manaCost: preview?.manaCost,
           manaValue: preview?.manaValue,
+          producedMana: preview?.producedMana,
           priceUsd: preview?.priceUsd,
         };
       }),
     ).then((cardData) => {
       if (!isCurrent) return;
       const cardDataByKey = new Map(
-        cardData.flatMap(({ key, manaValue, priceUsd }) =>
-          key && (manaValue !== undefined || priceUsd !== undefined)
-            ? [[key, { manaValue, priceUsd }] as const]
+        cardData.flatMap(({ key, manaCost, manaValue, producedMana, priceUsd }) =>
+          key &&
+          (manaCost !== undefined ||
+            manaValue !== undefined ||
+            producedMana !== undefined ||
+            priceUsd !== undefined)
+            ? [[key, { manaCost, manaValue, producedMana, priceUsd }] as const]
             : [],
         ),
       );
 
       if (cardDataByKey.size === 0) return;
 
-      setPageState((current) => ({
-        baselineDeck: {
-          ...current.baselineDeck,
-          cards: backfillCardData(current.baselineDeck.cards, cardDataByKey),
-        },
-        workingCards: backfillCardData(current.workingCards, cardDataByKey),
-      }));
+      setPageState((current) => {
+        if (!current.workspace) return {};
+
+        return {
+          workspace: {
+            ...current.workspace,
+            baseline: {
+              ...current.workspace.baseline,
+              workingCards: backfillCardData(
+                current.workspace.baseline.workingCards,
+                cardDataByKey,
+              ),
+            },
+            current: {
+              ...current.workspace.current,
+              workingCards: backfillCardData(current.workspace.current.workingCards, cardDataByKey),
+            },
+            compare: current.workspace.compare
+              ? {
+                  ...current.workspace.compare,
+                  display: {
+                    ...current.workspace.compare.display,
+                    workingCards: backfillCardData(
+                      current.workspace.compare.display.workingCards,
+                      cardDataByKey,
+                    ),
+                  },
+                }
+              : null,
+            importStatus: {
+              ...current.workspace.importStatus,
+              cards: backfillCardData(current.workspace.importStatus.cards, cardDataByKey),
+            },
+          },
+        };
+      });
     });
 
     return () => {
       isCurrent = false;
     };
-  }, [pageState.isHydrated, pageState.workingCards]);
+  }, [pageState.isHydrated, pageState.workspace]);
 
   const editorModel = buildDeckEditorModel({
     baselineDeck,
@@ -405,28 +366,45 @@ export function useDeckDetailController() {
       })
     : null;
   const exportPreview = previewExport && previewExport.ok ? previewExport.text : "";
+  const currentSnapshot = workspace?.current;
   const hasCards = workingCards.length > 0;
   const hasEditorChanges =
-    JSON.stringify(workingCards) !== JSON.stringify(baselineDeck.cards) ||
-    JSON.stringify(categories) !== JSON.stringify(baselineCategories) ||
-    JSON.stringify(stackLayout) !== JSON.stringify(baselineStackLayout) ||
+    JSON.stringify(currentSnapshot?.workingCards ?? []) !== JSON.stringify(baselineDeck.cards) ||
+    JSON.stringify(currentSnapshot?.categories ?? []) !== JSON.stringify(baselineCategories) ||
+    JSON.stringify(currentSnapshot?.stackLayout ?? defaultStackLayout()) !==
+      JSON.stringify(baselineStackLayout) ||
     !deck ||
     deck.saves.length === 0;
 
   function addStackLane() {
-    updateEditorSnapshot((current) => ({
-      ...current,
-      stackLayout: addEmptyStackLane(current.stackLayout),
-    }));
+    requestDeckWorkspaceTransition(deckWorkspaceTransitions.addStackLane);
   }
 
   useDeckEditorShortcuts(compareMode, undoEditorChange, redoEditorChange);
 
   if (!deck) {
-    return { state: null, errorMessage: loaderData.errorMessage };
+    return { workspaceView: null, errorMessage: loaderData.errorMessage };
   }
 
-  const state: HydratedPageState = { ...pageState, deck };
+  const workspaceView: DeckWorkspaceView = {
+    baselineDeck,
+    baselineCategories,
+    baselineStackLayout,
+    compareMode,
+    compareSaves,
+    deck,
+    redoStack: workspace?.redoStack ?? [],
+    stackLayout,
+    undoStack: workspace?.undoStack ?? [],
+    categories,
+    workingCards,
+  };
+  const deckUiView: DeckUiView = {
+    activeTab: pageState.activeTab,
+    deckErrorMessage: pageState.deckErrorMessage,
+    isHydrated: pageState.isHydrated,
+    showDiffOnly: pageState.showDiffOnly,
+  };
   const model: DeckDetailModel = {
     canSave: hasEditorChanges && (hasCards || categories.length > 0),
     categoryDiffs: editorModel.categoryDiffs,
@@ -438,19 +416,88 @@ export function useDeckDetailController() {
     mergedWorkingCardsLength: editorModel.mergedWorkingCards.length,
     resultCardTotal: editorModel.resultCardTotal,
   };
-  const actions: DeckDetailActions = {
-    clearUndoHistory,
+  const workspaceActions: DeckWorkspaceActions = {
+    onClearUndoHistory: clearUndoHistory,
+    onDismissImportWarnings: dismissImportWarnings,
     onAddStackLane: addStackLane,
     onRedo: redoEditorChange,
     onUndo: undoEditorChange,
-    setActiveTab,
-    setBaselineDeck,
-    setShowDiffOnly,
-    updateEditorSnapshot,
+    onAddSearchCard: (card: SearchCardResult, category: CardCategory) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.appendSearchCard(workspace, card, category),
+      ),
+    onAdjustQuantity: (row: EditorRow, delta: number) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.adjustCardQuantity(workspace, row, delta),
+      ),
+    onChangePrinting: (row: EditorRow, printing: CardPrintingOption) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.changeCardPrinting(workspace, row, printing),
+      ),
+    onCreateCategoryInLane: (laneIndex: number, category: DeckCategory) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.createCategoryInLane(workspace, laneIndex, category),
+      ),
+    onMoveAllCardsBetweenCategories: (fromCategory: CardCategory, toCategory: CardCategory) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.moveAllCardsBetweenCategories(workspace, fromCategory, toCategory),
+      ),
+    onMoveCardToCategory: (row: EditorRow, category: CardCategory) => {
+      if (row.category === category || row.currentQuantity <= 0) return;
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.moveCardToCategory(workspace, row.oracleId, category),
+      );
+    },
+    onRemoveCategory: (category: CardCategory) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.removeEmptyCategory(workspace, category),
+      ),
+    onRemoveStackLane: (laneIndex: number) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.removeStackLane(workspace, laneIndex),
+      ),
+    onRenameCategory: (category: CardCategory, name: string) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.renameCategory(workspace, category, name),
+      ),
+    onReplaceCategories: (nextCategories: DeckCategory[]) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.replaceCategories(workspace, nextCategories),
+      ),
+    onSetCardSort: (cardSort: DeckCardSort) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.setCardSort(workspace, cardSort),
+      ),
+    onSetShowRemovedCardGhosts: (showRemovedCardGhosts: boolean) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.setShowRemovedCardGhosts(workspace, showRemovedCardGhosts),
+      ),
+    onSetStackLayout: (layout: DeckStackLayout) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.setStackLayout(workspace, layout),
+      ),
+    onReverseCardSortDirection: () =>
+      requestDeckWorkspaceTransition(deckWorkspaceTransitions.reverseCardSortDirection),
+    onUpdateCategory: (category: CardCategory, patch: Partial<DeckCategory>) =>
+      requestDeckWorkspaceTransition((workspace) =>
+        deckWorkspaceTransitions.updateCategory(workspace, category, patch),
+      ),
+  };
+  const deckUiActions: DeckUiActions = {
+    onSetActiveTab: setActiveTab,
+    onToggleShowDiffOnly: () => setShowDiffOnly((current) => !current),
   };
   const services: DeckDetailServices = { deckActions, deckImport, preview };
 
-  return { actions, errorMessage: loaderData.errorMessage, model, services, state };
+  return {
+    deckUiActions,
+    deckUiView,
+    errorMessage: loaderData.errorMessage,
+    model,
+    services,
+    workspaceActions,
+    workspaceView,
+  };
 }
 
 function getCardPriceBackfillKey(card: ValidatedDeckCard) {
@@ -458,7 +505,9 @@ function getCardPriceBackfillKey(card: ValidatedDeckCard) {
 }
 
 type CardBackfillData = {
+  manaCost?: string;
   manaValue?: number;
+  producedMana?: string[];
   priceUsd?: number;
 };
 
@@ -472,7 +521,9 @@ function backfillCardData(
 
     return {
       ...card,
+      manaCost: card.manaCost ?? cardData.manaCost,
       manaValue: card.manaValue ?? cardData.manaValue,
+      producedMana: card.producedMana ?? cardData.producedMana,
       priceUsd: card.priceUsd ?? cardData.priceUsd,
     };
   });
