@@ -29,6 +29,7 @@ export type EditorRow = {
     imageUrl: string;
   }>;
   priceUsd?: number;
+  edhrecRank?: number | null;
   baselineQuantity: number;
   currentQuantity: number;
   status: "same" | "added" | "removed" | "changed";

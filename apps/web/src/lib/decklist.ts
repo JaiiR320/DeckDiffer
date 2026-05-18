@@ -136,6 +136,7 @@ export type ValidatedDeckCard = {
     imageUrl: string;
   }>;
   priceUsd?: number;
+  edhrecRank?: number | null;
 };
 
 export type DeckExportOptions = {

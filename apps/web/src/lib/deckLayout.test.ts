@@ -32,11 +32,11 @@ describe("normalizeStackLayout", () => {
     expect(
       normalizeStackLayout({
         lanes: [["Land"]],
-        cardSort: "price",
+        cardSort: "edhrecRank",
         cardSortDirection: "asc",
       }),
     ).toMatchObject({
-      cardSort: "price",
+      cardSort: "edhrecRank",
       cardSortDirection: "asc",
     });
   });

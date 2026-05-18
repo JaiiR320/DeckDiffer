@@ -20,6 +20,7 @@ describe("updateDeckCurrentInputSchema", () => {
           smallImageUrl: "small.jpg",
           imageUrl: "normal.jpg",
           priceUsd: 0.25,
+          edhrecRank: 1234,
           faces: [
             {
               name: "Opt",
@@ -38,6 +39,7 @@ describe("updateDeckCurrentInputSchema", () => {
       smallImageUrl: "small.jpg",
       imageUrl: "normal.jpg",
       priceUsd: 0.25,
+      edhrecRank: 1234,
       faces: [
         {
           name: "Opt",

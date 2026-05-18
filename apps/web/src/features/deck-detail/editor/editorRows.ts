@@ -29,6 +29,7 @@ export function buildEditorRows(
   for (const diffKey of allIds) {
     const baselineCard = baselineById.get(diffKey);
     const workingCard = workingById.get(diffKey);
+    const displayCard = workingCard ?? baselineCard;
     const baselineQuantity = baselineCard?.quantity ?? 0;
     const currentQuantity = workingCard?.quantity ?? 0;
 
@@ -46,6 +47,7 @@ export function buildEditorRows(
       imageUrl: workingCard?.imageUrl ?? baselineCard?.imageUrl,
       faces: workingCard?.faces ?? baselineCard?.faces,
       priceUsd: workingCard?.priceUsd ?? baselineCard?.priceUsd,
+      edhrecRank: displayCard?.edhrecRank ?? null,
       baselineQuantity,
       currentQuantity,
       status:

@@ -23,6 +23,7 @@ function toCardPrintingOption(card: ScryfallCard): CardPrintingOption {
     manaCost: card.mana_cost,
     producedMana: card.produced_mana,
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+    edhrecRank: card.edhrec_rank ?? null,
     smallImageUrl: imageUris?.small,
     imageUrl: imageUris?.normal,
     ...(faces ? { faces } : {}),

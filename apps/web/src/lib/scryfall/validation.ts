@@ -135,6 +135,7 @@ export async function validateDeckEntries(entries: ParsedDeckEntry[]) {
       imageUrl: imageUris?.normal,
       ...(faces ? { faces } : {}),
       priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+      edhrecRank: matchedCard.edhrec_rank ?? null,
     });
   }
 

@@ -18,6 +18,7 @@ describe("validateDeckEntries", () => {
             id: "card-5",
             type_line: "Basic Land - Island",
             cmc: 0,
+            edhrec_rank: 902,
             set: "und",
             collector_number: "90",
             prices: { usd: "0.18" },
@@ -44,6 +45,7 @@ describe("validateDeckEntries", () => {
       name: "Island",
       manaValue: 0,
       priceUsd: 0.18,
+      edhrecRank: 902,
       smallImageUrl: "https://cards.scryfall.io/small/front/i/s/island.jpg",
       imageUrl: "https://cards.scryfall.io/normal/front/i/s/island.jpg",
     });

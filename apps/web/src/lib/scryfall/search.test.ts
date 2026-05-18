@@ -21,6 +21,7 @@ describe("searchCards", () => {
               id: "card-4",
               type_line: "Instant",
               cmc: 1,
+              edhrec_rank: 1234,
               set: "dom",
               collector_number: "60",
               image_uris: {
@@ -42,6 +43,7 @@ describe("searchCards", () => {
     expect(results[0]).toMatchObject({
       name: "Opt",
       manaValue: 1,
+      edhrecRank: 1234,
       smallImageUrl: "https://cards.scryfall.io/small/front/o/p/opt.jpg",
       imageUrl: "https://cards.scryfall.io/normal/front/o/p/opt.jpg",
     });

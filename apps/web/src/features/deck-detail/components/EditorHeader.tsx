@@ -30,6 +30,7 @@ const CARD_SORT_OPTIONS = [
   { value: "manaValue", label: "Mana value" },
   { value: "alphabetical", label: "Alphabetical" },
   { value: "price", label: "Price" },
+  { value: "edhrecRank", label: "EDHREC rank" },
 ] satisfies Array<{ value: DeckCardSort; label: string }>;
 
 type SearchState = {
@@ -294,6 +295,7 @@ function SearchResultCard({
     collectorNumber: card.collectorNumber,
     smallImageUrl: card.smallImageUrl,
     imageUrl: card.imageUrl,
+    edhrecRank: card.edhrecRank,
     baselineQuantity: 0,
     currentQuantity: 1,
     status: "same",
