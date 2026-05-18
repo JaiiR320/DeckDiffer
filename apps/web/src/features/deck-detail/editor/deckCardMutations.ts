@@ -34,6 +34,7 @@ export function appendSearchCard(
       imageUrl: card.imageUrl,
       faces: card.faces,
       priceUsd: card.priceUsd,
+      edhrecRank: card.edhrecRank,
     },
   ];
 }
@@ -61,6 +62,7 @@ export function adjustCardQuantity(cards: ValidatedDeckCard[], row: EditorRow, d
             imageUrl: row.imageUrl,
             faces: row.faces,
             priceUsd: row.priceUsd,
+            edhrecRank: row.edhrecRank,
           },
         ];
   }
@@ -96,6 +98,7 @@ export function changeCardPrinting(
           imageUrl: printing.imageUrl,
           faces: printing.faces,
           priceUsd: printing.priceUsd,
+          edhrecRank: printing.edhrecRank,
         }
       : card,
   );

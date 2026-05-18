@@ -62,6 +62,7 @@ function toCardPreviewResult(card: ScryfallCard): CardPreviewResult | null {
     smallImageUrl,
     imageUrl,
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+    edhrecRank: card.edhrec_rank ?? null,
     faces: faces.length > 1 ? faces : undefined,
   };
 }

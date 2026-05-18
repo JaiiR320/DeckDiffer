@@ -28,6 +28,7 @@ function toSearchCardResult(card: ScryfallCard): SearchCardResult {
     imageUrl: imageUris?.normal,
     ...(faces ? { faces } : {}),
     priceUsd: Number.isFinite(parsedPrice) ? parsedPrice : undefined,
+    edhrecRank: card.edhrec_rank ?? null,
   };
 }
 

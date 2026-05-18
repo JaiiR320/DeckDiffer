@@ -1,7 +1,7 @@
 import type { CardCategory, DeckCategory, ValidatedDeckCard } from "./decklist";
 
 export type DeckColor = "W" | "U" | "B" | "R" | "G";
-export type DeckCardSort = "manaValue" | "alphabetical" | "price";
+export type DeckCardSort = "manaValue" | "alphabetical" | "price" | "edhrecRank";
 export type DeckCardSortDirection = "asc" | "desc";
 
 export type DeckStackLayout = {

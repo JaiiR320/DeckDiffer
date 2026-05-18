@@ -25,6 +25,9 @@ The gameplay identity of a card, ignoring printing.
 **Printing**:
 A specific published version of a card, usually identified in DeckDiff by set code and collector number.
 
+**EDHREC Rank**:
+A card popularity rank for Commander play; lower-ranked numbers indicate higher popularity, and unranked cards may have no rank.
+
 **Set**:
 A named Magic release containing cards.
 

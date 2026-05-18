@@ -13,6 +13,7 @@ export type ScryfallCard = {
   mana_cost?: string;
   oracle_text?: string;
   produced_mana?: string[];
+  edhrec_rank?: number | null;
   prices?: {
     usd?: string | null;
   };
@@ -144,6 +145,7 @@ export type SearchCardResult = {
   imageUrl?: string;
   faces?: CardPreviewFace[];
   priceUsd?: number;
+  edhrecRank?: number | null;
 };
 
 export type CardPreviewLookup = {
@@ -173,6 +175,7 @@ export type CardPreviewResult = {
   smallImageUrl: string;
   imageUrl: string;
   priceUsd?: number;
+  edhrecRank?: number | null;
   faces?: CardPreviewFace[];
 };
 
@@ -187,6 +190,7 @@ export type CardPrintingOption = {
   manaCost?: string;
   producedMana?: string[];
   priceUsd?: number;
+  edhrecRank?: number | null;
   smallImageUrl?: string;
   imageUrl?: string;
   faces?: CardPreviewFace[];

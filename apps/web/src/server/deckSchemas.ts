@@ -115,12 +115,13 @@ const validatedDeckCardSchema = z.object({
   imageUrl: z.string().optional(),
   faces: z.array(cardPreviewFaceSchema).optional(),
   priceUsd: z.number().nonnegative().optional(),
+  edhrecRank: z.number().int().nonnegative().nullable().optional(),
 });
 
 const deckStackLayoutSchema = z.object({
   lanes: z.array(z.array(z.string().trim().min(1))),
   showRemovedCardGhosts: z.boolean().optional(),
-  cardSort: z.enum(["manaValue", "alphabetical", "price"]).optional(),
+  cardSort: z.enum(["manaValue", "alphabetical", "price", "edhrecRank"]).optional(),
   cardSortDirection: z.enum(["asc", "desc"]).optional(),
 });
 

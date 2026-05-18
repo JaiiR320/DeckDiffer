@@ -16,6 +16,7 @@ describe("getCardPreview", () => {
         id: "card-1",
         type_line: "Instant",
         cmc: 1,
+        edhrec_rank: 7,
         set: "lea",
         collector_number: "161",
         prices: { usd: "2.50" },
@@ -49,6 +50,7 @@ describe("getCardPreview", () => {
     expect(firstPreview?.imageUrl).toContain("lightning-bolt.jpg");
     expect(firstPreview?.manaValue).toBe(1);
     expect(firstPreview?.priceUsd).toBe(2.5);
+    expect(firstPreview?.edhrecRank).toBe(7);
   });
 
   it("falls back to exact-name lookup when a specific print is unavailable", async () => {

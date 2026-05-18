@@ -113,6 +113,12 @@ export function StackCard({
           {row.currentQuantity}
         </div>
 
+        {row.edhrecRank != null ? (
+          <div className="absolute right-0 top-0 rounded-bl-lg bg-zinc-950/75 px-2 py-1 font-mono text-sm font-semibold text-zinc-100 shadow-lg shadow-black/30">
+            #{row.edhrecRank}
+          </div>
+        ) : null}
+
         <div className="absolute bottom-0 left-0 rounded-tr-lg bg-zinc-950/75 px-2 py-1 font-mono text-sm font-semibold text-zinc-100 shadow-lg shadow-black/30">
           {formatPrice(row.priceUsd)}
         </div>

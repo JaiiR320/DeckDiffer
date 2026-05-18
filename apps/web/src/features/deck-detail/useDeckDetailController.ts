@@ -252,26 +252,26 @@ export function useDeckDetailController() {
     const display = getDeckWorkspaceDisplay(workspace);
 
     const cardsNeedingBackfill = display.workingCards.filter((card) => {
-      const key = getCardPriceBackfillKey(card);
+      const key = getCardDataBackfillKey(card);
       return (
-        (card.priceUsd === undefined ||
+        key &&
+        !attemptedCardDataBackfillsRef.current.has(key) &&
+        (stackLayout.cardSort === "edhrecRank" ||
+          card.edhrecRank === undefined ||
+          card.priceUsd === undefined ||
           card.manaValue === undefined ||
           card.manaCost === undefined ||
-          card.producedMana === undefined) &&
-        key &&
-        !attemptedCardDataBackfillsRef.current.has(key)
+          card.producedMana === undefined)
       );
     });
 
     if (cardsNeedingBackfill.length === 0) return;
 
     const uniqueCards = [
-      ...new Map(
-        cardsNeedingBackfill.map((card) => [getCardPriceBackfillKey(card), card]),
-      ).values(),
+      ...new Map(cardsNeedingBackfill.map((card) => [getCardDataBackfillKey(card), card])).values(),
     ];
     for (const card of uniqueCards) {
-      const key = getCardPriceBackfillKey(card);
+      const key = getCardDataBackfillKey(card);
       if (key) attemptedCardDataBackfillsRef.current.add(key);
     }
 
@@ -284,31 +284,53 @@ export function useDeckDetailController() {
           collectorNumber: card.collectorNumber,
         }).catch(() => null);
         return {
-          key: getCardPriceBackfillKey(card),
+          key: getCardDataBackfillKey(card),
+          hasPreview: preview !== null,
           manaCost: preview?.manaCost,
           manaValue: preview?.manaValue,
           producedMana: preview?.producedMana,
           priceUsd: preview?.priceUsd,
+          edhrecRank: preview?.edhrecRank,
         };
       }),
     ).then((cardData) => {
       if (!isCurrent) return;
       const cardDataByKey = new Map(
-        cardData.flatMap(({ key, manaCost, manaValue, producedMana, priceUsd }) =>
-          key &&
-          (manaCost !== undefined ||
-            manaValue !== undefined ||
-            producedMana !== undefined ||
-            priceUsd !== undefined)
-            ? [[key, { manaCost, manaValue, producedMana, priceUsd }] as const]
-            : [],
+        cardData.flatMap(
+          ({ key, hasPreview, manaCost, manaValue, producedMana, priceUsd, edhrecRank }) =>
+            key &&
+            hasPreview &&
+            (manaCost !== undefined ||
+              manaValue !== undefined ||
+              producedMana !== undefined ||
+              priceUsd !== undefined ||
+              edhrecRank !== undefined)
+              ? [[key, { manaCost, manaValue, producedMana, priceUsd, edhrecRank }] as const]
+              : [],
         ),
       );
 
       if (cardDataByKey.size === 0) return;
 
+      let snapshotToPersist: EditorSnapshot | null = null;
       setPageState((current) => {
         if (!current.workspace) return {};
+        const nextCurrentCards = backfillCardData(
+          current.workspace.current.workingCards,
+          cardDataByKey,
+        );
+        const shouldPersistCurrent = nextCurrentCards.some(
+          (card, index) =>
+            card.edhrecRank !==
+            (current.workspace?.current.workingCards[index]?.edhrecRank ?? null),
+        );
+
+        if (shouldPersistCurrent) {
+          snapshotToPersist = {
+            ...current.workspace.current,
+            workingCards: nextCurrentCards,
+          };
+        }
 
         return {
           workspace: {
@@ -322,7 +344,7 @@ export function useDeckDetailController() {
             },
             current: {
               ...current.workspace.current,
-              workingCards: backfillCardData(current.workspace.current.workingCards, cardDataByKey),
+              workingCards: nextCurrentCards,
             },
             compare: current.workspace.compare
               ? {
@@ -343,6 +365,10 @@ export function useDeckDetailController() {
           },
         };
       });
+
+      if (snapshotToPersist) {
+        void persistEditorSnapshot(snapshotToPersist);
+      }
     });
 
     return () => {
@@ -500,7 +526,7 @@ export function useDeckDetailController() {
   };
 }
 
-function getCardPriceBackfillKey(card: ValidatedDeckCard) {
+function getCardDataBackfillKey(card: ValidatedDeckCard) {
   return [card.oracleId, card.setCode ?? "", card.collectorNumber ?? ""].join("\0");
 }
 
@@ -509,6 +535,7 @@ type CardBackfillData = {
   manaValue?: number;
   producedMana?: string[];
   priceUsd?: number;
+  edhrecRank?: number | null;
 };
 
 function backfillCardData(
@@ -516,15 +543,28 @@ function backfillCardData(
   cardDataByKey: Map<string, CardBackfillData>,
 ) {
   return cards.map((card) => {
-    const cardData = cardDataByKey.get(getCardPriceBackfillKey(card));
+    const cardData = cardDataByKey.get(getCardDataBackfillKey(card));
     if (!cardData) return card;
 
-    return {
+    const nextCard = {
       ...card,
       manaCost: card.manaCost ?? cardData.manaCost,
       manaValue: card.manaValue ?? cardData.manaValue,
       producedMana: card.producedMana ?? cardData.producedMana,
       priceUsd: card.priceUsd ?? cardData.priceUsd,
+      edhrecRank: cardData.edhrecRank ?? null,
     };
+
+    if (
+      nextCard.manaCost === card.manaCost &&
+      nextCard.manaValue === card.manaValue &&
+      nextCard.producedMana === card.producedMana &&
+      nextCard.priceUsd === card.priceUsd &&
+      nextCard.edhrecRank === (card.edhrecRank ?? null)
+    ) {
+      return card;
+    }
+
+    return nextCard;
   });
 }

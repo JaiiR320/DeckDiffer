@@ -85,7 +85,9 @@ function isStackLayoutLike(layout: unknown): layout is {
 }
 
 function isCardSort(value: unknown): value is DeckCardSort {
-  return value === "manaValue" || value === "alphabetical" || value === "price";
+  return (
+    value === "manaValue" || value === "alphabetical" || value === "price" || value === "edhrecRank"
+  );
 }
 
 function isCardSortDirection(value: unknown): value is DeckCardSortDirection {
