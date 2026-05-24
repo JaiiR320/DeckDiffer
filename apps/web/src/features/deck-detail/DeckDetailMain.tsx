@@ -15,7 +15,7 @@ export function DeckDetailMain() {
   const { deckActions } = useDeckDetailServices();
 
   return (
-    <main className="mx-auto w-full p-8">
+    <main className="mx-auto w-full max-w-[1920px] p-8">
       {deckErrorMessage ? <ErrorBanner>{deckErrorMessage}</ErrorBanner> : null}
       <DeckDetailHeader
         deck={deck}
