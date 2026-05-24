@@ -14,8 +14,6 @@ import { useFallbackCardImage } from "./useFallbackCardImage";
 type StackCardProps = {
   row: EditorRow;
   index: number;
-  isHovered: boolean;
-  isShifted: boolean;
   onHover: () => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onCardLayout?: (layout: CardLayout) => void;
@@ -27,15 +25,17 @@ type StackCardProps = {
   dragType?: "card" | "search-card";
   layout?: "stack" | "inline";
   readOnly: boolean;
-  showControls?: boolean;
-  showEdhrecRank?: boolean;
+  viewState: {
+    hovered: boolean;
+    shifted: boolean;
+    showControls: boolean;
+    showEdhrecRank: boolean;
+  };
 };
 
 export function StackCard({
   row,
   index,
-  isHovered,
-  isShifted,
   onHover,
   onAdjustQuantity,
   onCardLayout,
@@ -47,14 +47,15 @@ export function StackCard({
   dragType = "card",
   layout = "stack",
   readOnly,
-  showControls = true,
-  showEdhrecRank = false,
+  viewState,
 }: StackCardProps) {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const [cardLayout, setCardLayout] = useState<CardLayout | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [faceIndex, setFaceIndex] = useState(0);
+  const faceIdentity = `${row.oracleId}:${row.setCode ?? ""}:${row.collectorNumber ?? ""}:${row.name}`;
+  const [faceState, setFaceState] = useState({ identity: faceIdentity, index: 0 });
+  const faceIndex = faceState.identity === faceIdentity ? faceState.index : 0;
   const isMoveDisabled =
     readOnly || (dragType === "card" && (!onMoveCardCategory || row.currentQuantity <= 0));
   const { isDragging, ref: draggableRef } = useDraggable({
@@ -77,10 +78,6 @@ export function StackCard({
         : row.status === "changed"
           ? "ring-amber-400/40"
           : "ring-zinc-700/80";
-
-  useEffect(() => {
-    setFaceIndex(0);
-  }, [row.collectorNumber, row.name, row.oracleId, row.setCode]);
 
   useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
 
@@ -117,7 +114,7 @@ export function StackCard({
     <div
       className={
         layout === "stack"
-          ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${isShifted ? "translate-y-[calc(100%_-_var(--stack-card-peek,_0)_+_var(--stack-card-hover-gap,_0))]" : "translate-y-0"}`
+          ? `pointer-events-none absolute left-3 right-3 select-none overflow-visible transition-transform duration-500 will-change-transform ${viewState.shifted ? "translate-y-[calc(100%_-_var(--stack-card-peek,_0)_+_var(--stack-card-hover-gap,_0))]" : "translate-y-0"}`
           : "pointer-events-none w-36 shrink-0 select-none overflow-visible"
       }
       style={
@@ -134,7 +131,7 @@ export function StackCard({
         ref={setCardRef}
         onPointerEnter={onHover}
         style={cardStyle}
-        className={`pointer-events-auto relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 [container-type:inline-size] ${isChanged ? "ring-2" : "ring-1"} transition-all duration-300 ${isMoveDisabled ? "" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "scale-[1.04] rotate-1 opacity-90 shadow-2xl shadow-cyan-950/50 ring-2 ring-cyan-200" : isHovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
+        className={`pointer-events-auto relative aspect-[488/680] overflow-hidden rounded-xl bg-zinc-900 shadow-lg shadow-black/30 [container-type:inline-size] ${isChanged ? "ring-2" : "ring-1"} transition-all duration-300 ${isMoveDisabled ? "" : "cursor-grab active:cursor-grabbing"} ${isDragging ? "scale-[1.04] rotate-1 opacity-90 shadow-2xl shadow-cyan-950/50 ring-2 ring-cyan-200" : viewState.hovered ? "ring-cyan-300/70" : ""} ${toneClass}`}
       >
         {imageUrl ? (
           <img
@@ -154,7 +151,7 @@ export function StackCard({
           {row.currentQuantity}
         </div>
 
-        {showEdhrecRank && row.edhrecRank != null ? (
+        {viewState.showEdhrecRank && row.edhrecRank != null ? (
           <div className="absolute right-0 top-0 rounded-bl-lg bg-zinc-950/75 px-[var(--card-badge-padding-x)] py-[var(--card-badge-padding-y)] font-mono text-[length:var(--card-badge-font-size)] font-semibold text-zinc-100 shadow-lg shadow-black/30">
             #{row.edhrecRank}
           </div>
@@ -166,9 +163,9 @@ export function StackCard({
 
         <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/45 to-transparent opacity-80" />
 
-        {showControls ? (
+        {viewState.showControls ? (
           <div
-            className={`absolute right-[var(--card-control-right)] top-[var(--card-control-top)] z-20 flex -translate-y-1/2 flex-col rounded-lg border border-white/20 bg-zinc-950/45 shadow-xl shadow-black/30 backdrop-blur-sm transition duration-200 ${isHovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+            className={`absolute right-[var(--card-control-right)] top-[var(--card-control-top)] z-20 flex -translate-y-1/2 flex-col rounded-lg border border-white/20 bg-zinc-950/45 shadow-xl shadow-black/30 backdrop-blur-sm transition duration-200 ${viewState.hovered ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
           >
             {readOnly ? null : (
               <>
@@ -199,7 +196,11 @@ export function StackCard({
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
-                  setFaceIndex((current) => (current + 1) % faces.length);
+                  setFaceState((current) => ({
+                    identity: faceIdentity,
+                    index:
+                      (current.identity === faceIdentity ? current.index + 1 : 1) % faces.length,
+                  }));
                 }}
                 className="inline-flex size-[var(--card-control-size)] items-center justify-center border-t border-white/20 text-zinc-100 transition hover:bg-white/15"
               >

@@ -1,6 +1,7 @@
 import {
   createContext,
   use,
+  useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -48,7 +49,8 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [style, setStyle] = useState<{ left: number; top: number; opacity: number } | null>(null);
-  const closeMenu = useEffectEvent(() => onOpenChange(false));
+  const closeMenu = useCallback(() => onOpenChange(false), [onOpenChange]);
+  const closeMenuFromEffect = useEffectEvent(closeMenu);
 
   useIsomorphicLayoutEffect(() => {
     if (!open) {
@@ -94,11 +96,11 @@ export function ContextMenu({
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (menuRef.current?.contains(target) || anchorRef?.current?.contains(target)) return;
-      closeMenu();
+      closeMenuFromEffect();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") closeMenu();
+      if (event.key === "Escape") closeMenuFromEffect();
     }
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -113,7 +115,7 @@ export function ContextMenu({
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
-    <ContextMenuCloseContext.Provider value={() => onOpenChange(false)}>
+    <ContextMenuCloseContext.Provider value={closeMenu}>
       <div
         ref={menuRef}
         role="menu"

@@ -3,14 +3,7 @@ import { useEffect, useReducer, useState } from "react";
 import { DropdownSelect } from "#/components/ui/DropdownSelect";
 import { getCardPrintings, type CardPrintingOption } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
-
-type PrintingSort = "date" | "set" | "price";
-
-const PRINTING_SORT_OPTIONS = [
-  { value: "date", label: "Edition date" },
-  { value: "set", label: "Set Name" },
-  { value: "price", label: "Price" },
-] satisfies Array<{ value: PrintingSort; label: string }>;
+import { PRINTING_SORT_OPTIONS, sortPrintings, type PrintingSort } from "./printingSort";
 
 type PrintingPickerModalProps = {
   row: EditorRow;
@@ -78,9 +71,11 @@ export function PrintingPickerModal({ row, onClose, onSelect }: PrintingPickerMo
           <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-semibold text-zinc-100">Select a printing</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,360px)_170px]">
-              <label className="block">
+              <label className="block" htmlFor="printing-set-filter">
                 <span className="text-sm font-semibold text-zinc-200">Search printings…</span>
                 <input
+                  id="printing-set-filter"
+                  aria-label="Search printings by set name"
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
                   placeholder="Filter set name"
@@ -101,6 +96,7 @@ export function PrintingPickerModal({ row, onClose, onSelect }: PrintingPickerMo
           </div>
           <button
             type="button"
+            aria-label="Close printing picker"
             onClick={onClose}
             className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-900 hover:text-zinc-100"
           >
@@ -171,27 +167,6 @@ export function PrintingPickerModal({ row, onClose, onSelect }: PrintingPickerMo
       </div>
     </div>
   );
-}
-
-export function sortPrintings(printings: CardPrintingOption[], sort: PrintingSort) {
-  return printings.slice().sort((left, right) => {
-    if (sort === "set") {
-      return (
-        left.setName.localeCompare(right.setName) ||
-        left.collectorNumber.localeCompare(right.collectorNumber)
-      );
-    }
-
-    if (sort === "price") {
-      const leftPrice = left.priceUsd ?? Number.POSITIVE_INFINITY;
-      const rightPrice = right.priceUsd ?? Number.POSITIVE_INFINITY;
-      return leftPrice - rightPrice || right.releasedAt.localeCompare(left.releasedAt);
-    }
-
-    return (
-      right.releasedAt.localeCompare(left.releasedAt) || left.setName.localeCompare(right.setName)
-    );
-  });
 }
 
 function formatPrice(price: number | undefined) {

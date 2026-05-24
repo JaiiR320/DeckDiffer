@@ -9,6 +9,7 @@ import type { DeckTileCover } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
 import { cardLayoutToCssVars, type CardLayout } from "./cardLayout";
+import { applySortDirection, compareEdhrecRanks, comparePrices } from "./categoryStackSort";
 import { StackCard } from "./StackCard";
 import { cardCategoryDropId } from "./stackIds";
 
@@ -253,8 +254,6 @@ export function CategoryStack({
                 key={row.oracleId}
                 row={row}
                 index={index}
-                isHovered={hoveredIndex === index}
-                isShifted={hoveredIndex !== null && index > hoveredIndex}
                 onHover={() => setHoveredIndex(index)}
                 onAdjustQuantity={onAdjustQuantity}
                 onCardLayout={handleCardLayout}
@@ -262,7 +261,12 @@ export function CategoryStack({
                 onChangePrinting={onChangePrinting}
                 onSetDeckCover={onSetDeckCover}
                 readOnly={readOnly}
-                showEdhrecRank={cardSort === "edhrecRank"}
+                viewState={{
+                  hovered: hoveredIndex === index,
+                  shifted: hoveredIndex !== null && index > hoveredIndex,
+                  showControls: true,
+                  showEdhrecRank: cardSort === "edhrecRank",
+                }}
               />
             ))}
             <div
@@ -281,32 +285,6 @@ export function CategoryStack({
 
 function formatPrice(price: number) {
   return `$${price.toFixed(2)}`;
-}
-
-function applySortDirection(value: number, direction: DeckCardSortDirection) {
-  return direction === "asc" ? value : -value;
-}
-
-function comparePrices(
-  leftPrice: number | undefined,
-  rightPrice: number | undefined,
-  direction: DeckCardSortDirection,
-) {
-  if (leftPrice === undefined && rightPrice === undefined) return 0;
-  if (leftPrice === undefined) return 1;
-  if (rightPrice === undefined) return -1;
-  return applySortDirection(leftPrice - rightPrice, direction);
-}
-
-export function compareEdhrecRanks(
-  leftRank: number | null | undefined,
-  rightRank: number | null | undefined,
-  direction: DeckCardSortDirection,
-) {
-  if (leftRank == null && rightRank == null) return 0;
-  if (leftRank == null) return 1;
-  if (rightRank == null) return -1;
-  return applySortDirection(leftRank - rightRank, direction);
 }
 
 function areCardLayoutsEqual(left: CardLayout | null, right: CardLayout) {
@@ -395,15 +373,7 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
           placement="bottom-end"
         >
           {isRenaming ? (
-            <div
-              role="group"
-              className="space-y-2"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") saveRename();
-                if (event.key === "Escape")
-                  setMenuState({ isMovingCards: false, isRenaming: false });
-              }}
-            >
+            <div className="space-y-2">
               <label
                 className="block text-xs font-medium text-zinc-500"
                 htmlFor={`rename-${category}`}
@@ -419,8 +389,14 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
                   }
                 }}
                 id={`rename-${category}`}
+                aria-label="Category name"
                 value={renameDraft}
                 onChange={(event) => setMenuState({ renameDraft: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") saveRename();
+                  if (event.key === "Escape")
+                    setMenuState({ isMovingCards: false, isRenaming: false });
+                }}
                 className="w-full select-text rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
               />
               <div className="flex gap-2">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareEdhrecRanks } from "./CategoryStack";
+import { compareEdhrecRanks } from "./categoryStackSort";
 
 describe("compareEdhrecRanks", () => {
   it("sorts lower ranks first when ascending", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sortPrintings } from "./PrintingPickerModal";
+import { sortPrintings } from "./printingSort";
 
 const printings = [
   {
