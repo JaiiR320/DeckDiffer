@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DeckSave } from "#/lib/deck";
-import { groupSaveHistoryItems, isAutoSaveLabel } from "./SaveHistoryPanel";
+import { groupSaveHistoryItems, isAutoSaveLabel } from "./saveHistoryItems";
 
 function save(id: string, label: string): DeckSave {
   return {

@@ -1,14 +1,16 @@
 import { useDraggable, useDroppable } from "@dnd-kit/react";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, useReducer, useRef, useState } from "react";
-import type { RefObject } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
 import { IconButton } from "#/components/ui/IconButton";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import type { DeckTileCover } from "#/lib/deck";
 import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { CategoryDiff, EditorRow } from "../editor/types";
-import { StackCard, STACK_CARD_OFFSET } from "./StackCard";
+import { cardLayoutToCssVars, type CardLayout } from "./cardLayout";
+import { applySortDirection, compareEdhrecRanks, comparePrices } from "./categoryStackSort";
+import { StackCard } from "./StackCard";
 import { cardCategoryDropId } from "./stackIds";
 
 type CategoryStackProps = {
@@ -79,6 +81,7 @@ export function CategoryStack({
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const handledStartRenameRef = useRef(false);
+  const [cardLayout, setCardLayout] = useState<CardLayout | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [menuState, setMenuState] = useReducer(
     (current: MenuState, next: Partial<MenuState>) => ({ ...current, ...next }),
@@ -113,7 +116,7 @@ export function CategoryStack({
       left.name.localeCompare(right.name)
     );
   });
-  const lastCardOffset = Math.max(0, sortedRows.length - 1) * STACK_CARD_OFFSET;
+  const lastCardOffset = Math.max(0, sortedRows.length - 1);
   const totalQuantity = sortedRows.reduce((sum, row) => sum + row.currentQuantity, 0);
   const totalPrice = sortedRows.reduce(
     (sum, row) => sum + (row.priceUsd ?? 0) * row.currentQuantity,
@@ -138,6 +141,10 @@ export function CategoryStack({
     onRenameCategory?.(category, nextName);
     setMenuState({ isRenaming: false, isMenuOpen: false });
   }
+
+  const handleCardLayout = useCallback((nextLayout: CardLayout) => {
+    setCardLayout((current) => (areCardLayoutsEqual(current, nextLayout) ? current : nextLayout));
+  }, []);
 
   useEffect(() => {
     if (!shouldStartRenaming) {
@@ -175,7 +182,7 @@ export function CategoryStack({
       }`}
     >
       <div className="overflow-hidden rounded-xl">
-        <div className="border-b border-zinc-800 bg-zinc-900/80 px-3 py-2">
+        <div className="border-b border-zinc-800 bg-zinc-900/80 px-3 py-1.5">
           <div className="flex items-start justify-between gap-3">
             <div
               ref={handleRef}
@@ -208,7 +215,7 @@ export function CategoryStack({
               }}
             />
           </div>
-          <div className="mt-1 flex items-center justify-between gap-3 font-mono text-xs text-zinc-600">
+          <div className="mt-0.5 flex items-center justify-between gap-3 font-mono text-xs text-zinc-600">
             <p className="min-w-0 truncate">
               Qty: {totalQuantity}
               <span className="ml-2 text-emerald-300">+{diffCounts.added}</span>
@@ -238,7 +245,8 @@ export function CategoryStack({
           </div>
         ) : (
           <div
-            className="relative min-h-64 overflow-hidden px-3 pb-3 pt-2"
+            className="relative min-h-64 overflow-hidden px-3 pb-3"
+            style={cardLayout ? (cardLayoutToCssVars(cardLayout) as CSSProperties) : undefined}
             onPointerLeave={() => setHoveredIndex(null)}
           >
             {sortedRows.map((row, index) => (
@@ -246,20 +254,27 @@ export function CategoryStack({
                 key={row.oracleId}
                 row={row}
                 index={index}
-                isHovered={hoveredIndex === index}
-                isShifted={hoveredIndex !== null && index > hoveredIndex}
                 onHover={() => setHoveredIndex(index)}
                 onAdjustQuantity={onAdjustQuantity}
+                onCardLayout={handleCardLayout}
                 onMoveCardCategory={onMoveCardCategory}
                 onChangePrinting={onChangePrinting}
                 onSetDeckCover={onSetDeckCover}
                 readOnly={readOnly}
+                viewState={{
+                  hovered: hoveredIndex === index,
+                  shifted: hoveredIndex !== null && index > hoveredIndex,
+                  showControls: true,
+                  showEdhrecRank: cardSort === "edhrecRank",
+                }}
               />
             ))}
             <div
               aria-hidden="true"
               className="pointer-events-none invisible aspect-488/680"
-              style={{ marginTop: `${lastCardOffset}px` }}
+              style={{
+                marginTop: `calc(${lastCardOffset} * var(--stack-card-peek) + var(--stack-card-top-inset))`,
+              }}
             />
           </div>
         )}
@@ -272,30 +287,20 @@ function formatPrice(price: number) {
   return `$${price.toFixed(2)}`;
 }
 
-function applySortDirection(value: number, direction: DeckCardSortDirection) {
-  return direction === "asc" ? value : -value;
-}
-
-function comparePrices(
-  leftPrice: number | undefined,
-  rightPrice: number | undefined,
-  direction: DeckCardSortDirection,
-) {
-  if (leftPrice === undefined && rightPrice === undefined) return 0;
-  if (leftPrice === undefined) return 1;
-  if (rightPrice === undefined) return -1;
-  return applySortDirection(leftPrice - rightPrice, direction);
-}
-
-export function compareEdhrecRanks(
-  leftRank: number | null | undefined,
-  rightRank: number | null | undefined,
-  direction: DeckCardSortDirection,
-) {
-  if (leftRank == null && rightRank == null) return 0;
-  if (leftRank == null) return 1;
-  if (rightRank == null) return -1;
-  return applySortDirection(leftRank - rightRank, direction);
+function areCardLayoutsEqual(left: CardLayout | null, right: CardLayout) {
+  return (
+    left !== null &&
+    left.badgeFontSize === right.badgeFontSize &&
+    left.badgePaddingX === right.badgePaddingX &&
+    left.badgePaddingY === right.badgePaddingY &&
+    left.controlIconSize === right.controlIconSize &&
+    left.controlRight === right.controlRight &&
+    left.controlSize === right.controlSize &&
+    left.controlTop === right.controlTop &&
+    left.stackHoverGap === right.stackHoverGap &&
+    left.stackPeek === right.stackPeek &&
+    left.stackTopInset === right.stackTopInset
+  );
 }
 
 type CategoryStackMenuModel = {
@@ -350,9 +355,9 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
         onClick={() => setMenuState({ isMenuOpen: !isMenuOpen })}
         variant="ghost"
         size="sm"
-        className="rounded-md text-zinc-400 hover:text-zinc-100"
+        className="size-5 rounded-md text-zinc-400 hover:text-zinc-100"
       >
-        <MoreHorizontal className="size-4" />
+        <MoreHorizontal className="size-3.5" />
       </IconButton>
       {isMenuOpen ? (
         <ContextMenu
@@ -368,15 +373,7 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
           placement="bottom-end"
         >
           {isRenaming ? (
-            <div
-              role="group"
-              className="space-y-2"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") saveRename();
-                if (event.key === "Escape")
-                  setMenuState({ isMovingCards: false, isRenaming: false });
-              }}
-            >
+            <div className="space-y-2">
               <label
                 className="block text-xs font-medium text-zinc-500"
                 htmlFor={`rename-${category}`}
@@ -392,8 +389,14 @@ function CategoryStackMenu({ menu }: { menu: CategoryStackMenuModel }) {
                   }
                 }}
                 id={`rename-${category}`}
+                aria-label="Category name"
                 value={renameDraft}
                 onChange={(event) => setMenuState({ renameDraft: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") saveRename();
+                  if (event.key === "Escape")
+                    setMenuState({ isMovingCards: false, isRenaming: false });
+                }}
                 className="w-full select-text rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-cyan-500"
               />
               <div className="flex gap-2">

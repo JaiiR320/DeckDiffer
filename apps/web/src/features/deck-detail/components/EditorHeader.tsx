@@ -306,15 +306,18 @@ function SearchResultCard({
       <StackCard
         row={row}
         index={index}
-        isHovered={false}
-        isShifted={false}
         onHover={onPreview}
         dragId={`search-card:${card.oracleId}:${card.setCode ?? ""}:${card.collectorNumber ?? ""}`}
         dragType="search-card"
         dragData={{ card }}
         layout="inline"
         readOnly={false}
-        showControls={false}
+        viewState={{
+          hovered: false,
+          shifted: false,
+          showControls: false,
+          showEdhrecRank: false,
+        }}
       />
     </div>
   );

@@ -374,7 +374,7 @@ export function useDeckDetailController() {
     return () => {
       isCurrent = false;
     };
-  }, [pageState.isHydrated, pageState.workspace]);
+  }, [pageState.isHydrated, pageState.workspace, stackLayout.cardSort]);
 
   const editorModel = buildDeckEditorModel({
     baselineDeck,
