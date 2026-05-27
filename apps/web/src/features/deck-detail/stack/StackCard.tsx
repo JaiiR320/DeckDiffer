@@ -2,14 +2,16 @@ import { useDraggable } from "@dnd-kit/react";
 import { Minus, MoreHorizontal, Plus, RotateCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { ContextMenu, ContextMenuItem } from "#/components/ui/ContextMenu";
+import { ContextMenu, ContextMenuItem, ContextMenuSubmenuItem } from "#/components/ui/ContextMenu";
 import type { DeckTileCover } from "#/lib/deck";
-import type { CardCategory } from "#/lib/decklist";
+import type { CardCategory, DeckCategory } from "#/lib/decklist";
 import type { EditorRow } from "../editor/types";
 import { cardLayoutToCssVars, computeCardLayout, type CardLayout } from "./cardLayout";
 import { createDeckTileCover } from "./deckTileCover";
 import { cardDragId } from "./stackIds";
 import { useFallbackCardImage } from "./useFallbackCardImage";
+
+const noCategories: DeckCategory[] = [];
 
 type StackCardProps = {
   row: EditorRow;
@@ -17,6 +19,7 @@ type StackCardProps = {
   onHover: () => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
   onCardLayout?: (layout: CardLayout) => void;
+  categories?: DeckCategory[];
   onMoveCardCategory?: (row: EditorRow, category: CardCategory) => void;
   onChangePrinting?: (row: EditorRow) => void;
   onSetDeckCover?: (cover: DeckTileCover) => void;
@@ -39,6 +42,7 @@ export function StackCard({
   onHover,
   onAdjustQuantity,
   onCardLayout,
+  categories = noCategories,
   onMoveCardCategory,
   onChangePrinting,
   onSetDeckCover,
@@ -66,6 +70,8 @@ export function StackCard({
   });
   const { imageUrl: fallbackImageUrl, faces } = useFallbackCardImage(row);
   const hasMultipleFaces = !!faces && faces.length > 1;
+  const moveTargetCategories = categories.filter((category) => category.id !== row.category);
+  const canMoveCard = !readOnly && !!onMoveCardCategory && row.currentQuantity > 0;
   const displayFaceIndex = hasMultipleFaces ? faceIndex % faces.length : 0;
   const imageUrl = hasMultipleFaces ? faces[displayFaceIndex]?.imageUrl : fallbackImageUrl;
   const imageName = hasMultipleFaces ? (faces[displayFaceIndex]?.name ?? row.name) : row.name;
@@ -251,6 +257,25 @@ export function StackCard({
                     >
                       Change printing
                     </ContextMenuItem>
+                  ) : null}
+                  {moveTargetCategories.length > 0 ? (
+                    <ContextMenuSubmenuItem
+                      disabled={!canMoveCard}
+                      title={canMoveCard ? "Move to category" : "Card cannot be moved"}
+                      submenu={moveTargetCategories.map((category) => (
+                        <ContextMenuItem
+                          key={category.id}
+                          onSelect={() => {
+                            setIsMenuOpen(false);
+                            onMoveCardCategory?.(row, category.id);
+                          }}
+                        >
+                          {category.name}
+                        </ContextMenuItem>
+                      ))}
+                    >
+                      Move to
+                    </ContextMenuSubmenuItem>
                   ) : null}
                 </ContextMenu>
               ) : null}

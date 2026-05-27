@@ -257,6 +257,7 @@ export function CategoryStack({
                 onHover={() => setHoveredIndex(index)}
                 onAdjustQuantity={onAdjustQuantity}
                 onCardLayout={handleCardLayout}
+                categories={categories}
                 onMoveCardCategory={onMoveCardCategory}
                 onChangePrinting={onChangePrinting}
                 onSetDeckCover={onSetDeckCover}
