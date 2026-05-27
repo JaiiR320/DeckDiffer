@@ -8,6 +8,7 @@ import { Input } from "#/components/ui/Input";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import { searchCards, type SearchCardResult } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
+import { CARD_GROUP_VIEW_OPTIONS, type CardGroupView } from "../stack/cardGroupView";
 import { StackCard } from "../stack/StackCard";
 
 type EditorHeaderProps = {
@@ -20,7 +21,9 @@ type EditorHeaderProps = {
   onUndo: () => void;
   cardSort: DeckCardSort;
   cardSortDirection: DeckCardSortDirection;
+  cardGroupView: CardGroupView;
   onCardSortChange: (sort: DeckCardSort) => void;
+  onCardGroupViewChange: (groupView: CardGroupView) => void;
   onReverseCardSortDirection: () => void;
   onPreviewCard: (card: SearchCardResult) => void;
 };
@@ -71,7 +74,9 @@ export function EditorHeader({
   onUndo,
   cardSort,
   cardSortDirection,
+  cardGroupView,
   onCardSortChange,
+  onCardGroupViewChange,
   onReverseCardSortDirection,
   onPreviewCard,
 }: EditorHeaderProps) {
@@ -230,6 +235,14 @@ export function EditorHeader({
 
         <ToolbarDivider />
         <div className="flex shrink-0 items-center gap-2">
+          <DropdownSelect
+            value={cardGroupView}
+            options={CARD_GROUP_VIEW_OPTIONS}
+            onChange={onCardGroupViewChange}
+            aria-label="Group cards"
+            className="w-40"
+          />
+          <ToolbarDivider />
           <DropdownSelect
             value={cardSort}
             options={CARD_SORT_OPTIONS}

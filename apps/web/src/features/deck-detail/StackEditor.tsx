@@ -3,6 +3,7 @@ import { EditorDeckStack } from "./stack/EditorDeckStack";
 import type { EditorRow } from "./editor/types";
 import { useState, type ReactNode } from "react";
 import { PrintingPickerModal } from "./modals/PrintingPickerModal";
+import type { CardGroupView } from "./stack/cardGroupView";
 import {
   useDeckDetailModel,
   useDeckDetailServices,
@@ -12,7 +13,13 @@ import {
   useDeckWorkspaceView,
 } from "./deckDetailContext";
 
-export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
+export function StackEditor({
+  cardGroupView,
+  searchToolbar,
+}: {
+  cardGroupView: CardGroupView;
+  searchToolbar: ReactNode;
+}) {
   const { baselineDeck, categories, compareMode, stackLayout } = useDeckWorkspaceView();
   const { showDiffOnly } = useDeckUiView();
   const { categoryDiffs, groupedRows, resultCardTotal } = useDeckDetailModel();
@@ -34,6 +41,7 @@ export function StackEditor({ searchToolbar }: { searchToolbar: ReactNode }) {
         resultCardTotal={resultCardTotal}
         showDiffOnly={showDiffOnly}
         layout={stackLayout}
+        cardGroupView={cardGroupView}
         onToggleShowDiffOnly={deckUiActions.onToggleShowDiffOnly}
         onLayoutChange={workspaceActions.onSetStackLayout}
         searchToolbar={searchToolbar}

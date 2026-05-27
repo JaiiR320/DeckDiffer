@@ -32,6 +32,7 @@ type CategoryStackProps = {
   onCategoryChange?: (category: CardCategory, patch: Partial<DeckCategory>) => void;
   onRenameCategory?: (category: CardCategory, name: string) => void;
   shouldStartRenaming?: boolean;
+  generatedView?: boolean;
   readOnly: boolean;
   onCategoryRef: (element: HTMLElement | null) => void;
 };
@@ -75,6 +76,7 @@ export function CategoryStack({
   onCategoryChange,
   onRenameCategory,
   shouldStartRenaming = false,
+  generatedView = false,
   readOnly,
   onCategoryRef,
 }: CategoryStackProps) {
@@ -126,12 +128,12 @@ export function CategoryStack({
     isDragging,
     ref: draggableRef,
     handleRef,
-  } = useDraggable({ id: category, type: "category", disabled: readOnly });
+  } = useDraggable({ id: category, type: "category", disabled: readOnly || generatedView });
   const { isDropTarget: isCardDropTarget, ref: droppableRef } = useDroppable({
     id: cardCategoryDropId(category),
     type: "card-category",
     accept: ["card", "search-card"],
-    disabled: readOnly,
+    disabled: readOnly || generatedView,
     data: { category },
   });
 
@@ -192,28 +194,30 @@ export function CategoryStack({
                 {categoryName}
               </h3>
             </div>
-            <CategoryStackMenu
-              menu={{
-                cardCount,
-                categories,
-                category,
-                categoryName,
-                isMenuOpen,
-                isMovingCards,
-                isRenaming,
-                menuButtonRef,
-                onMoveCategoryCards,
-                onRemoveCategory,
-                onCategoryChange,
-                onRenameCategory,
-                readOnly,
-                renameDraft,
-                renameInputRef,
-                rowCount: rows.length,
-                saveRename,
-                setMenuState,
-              }}
-            />
+            {generatedView ? null : (
+              <CategoryStackMenu
+                menu={{
+                  cardCount,
+                  categories,
+                  category,
+                  categoryName,
+                  isMenuOpen,
+                  isMovingCards,
+                  isRenaming,
+                  menuButtonRef,
+                  onMoveCategoryCards,
+                  onRemoveCategory,
+                  onCategoryChange,
+                  onRenameCategory,
+                  readOnly,
+                  renameDraft,
+                  renameInputRef,
+                  rowCount: rows.length,
+                  saveRename,
+                  setMenuState,
+                }}
+              />
+            )}
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-3 font-mono text-xs text-zinc-600">
             <p className="min-w-0 truncate">
@@ -257,8 +261,8 @@ export function CategoryStack({
                 onHover={() => setHoveredIndex(index)}
                 onAdjustQuantity={onAdjustQuantity}
                 onCardLayout={handleCardLayout}
-                categories={categories}
-                onMoveCardCategory={onMoveCardCategory}
+                categories={generatedView ? [] : categories}
+                onMoveCardCategory={generatedView ? undefined : onMoveCardCategory}
                 onChangePrinting={onChangePrinting}
                 onSetDeckCover={onSetDeckCover}
                 readOnly={readOnly}
