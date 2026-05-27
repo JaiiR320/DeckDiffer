@@ -144,6 +144,10 @@ export type DeckExportOptions = {
   includeSet: boolean;
   includeCollectorNumber: boolean;
   setStyle: "brackets" | "parentheses";
+  groupByCategory?: boolean;
+  includeOutOfDeckCategories?: boolean;
+  deckName?: string;
+  categories?: DeckCategory[];
 };
 
 export type InvalidDeckCard = {
@@ -293,11 +297,37 @@ export function mergeValidatedCards(cards: ValidatedDeckCard[]) {
 }
 
 export function formatDecklist(cards: ValidatedDeckCard[], options: DeckExportOptions) {
-  const mergedCards = mergeValidatedCards(cards).sort((left, right) =>
-    left.name.localeCompare(right.name),
-  );
+  const mergedCards = sortDeckCardsByName(mergeValidatedCards(cards));
 
-  const rows = mergedCards.flatMap((card) => {
+  if (options.groupByCategory) {
+    return formatGroupedDecklist(mergedCards, options);
+  }
+
+  return formatDeckCardRows(mergedCards, options).join("\n").trim();
+}
+
+function formatGroupedDecklist(cards: ValidatedDeckCard[], options: DeckExportOptions) {
+  const categories = normalizeDeckCategories(options.categories);
+  const sections = categories.flatMap((category) => {
+    if (category.includeInDeck === false && !options.includeOutOfDeckCategories) {
+      return [];
+    }
+
+    const categoryCards = sortDeckCardsByName(
+      cards.filter((card) => card.categoryId === category.id),
+    );
+    if (categoryCards.length === 0) {
+      return [];
+    }
+
+    return [`## ${category.name}\n${formatDeckCardRows(categoryCards, options).join("\n")}`];
+  });
+
+  return [`# ${options.deckName ?? "Deck"}`, ...sections].join("\n\n").trim();
+}
+
+function formatDeckCardRows(cards: ValidatedDeckCard[], options: DeckExportOptions) {
+  return cards.flatMap((card) => {
     const suffixParts: string[] = [];
 
     if (options.includeSet && card.setCode) {
@@ -318,6 +348,8 @@ export function formatDecklist(cards: ValidatedDeckCard[], options: DeckExportOp
 
     return Array.from({ length: card.quantity }, () => cardText);
   });
+}
 
-  return rows.join("\n").trim();
+function sortDeckCardsByName(cards: ValidatedDeckCard[]) {
+  return cards.sort((left, right) => left.name.localeCompare(right.name));
 }

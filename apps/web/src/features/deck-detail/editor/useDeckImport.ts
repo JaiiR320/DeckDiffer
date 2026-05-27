@@ -26,7 +26,11 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   const [draftDeck, setDraftDeck] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [exportOptions, setExportOptions] = useState<ExportModalState>({ includeQuantity: true });
+  const [exportOptions, setExportOptions] = useState<ExportModalState>({
+    includeQuantity: true,
+    groupByCategory: false,
+    includeOutOfDeckCategories: false,
+  });
   const { baselineDeck, workingCards } = deckState;
   const { applyValidatedImport, beginImport, failImport } = editorActions;
 
@@ -102,6 +106,13 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
     setDraftDeck,
     setIsExportOpen,
     submitImport,
+    toggleExportGroupByCategory: () =>
+      setExportOptions((current) => ({ ...current, groupByCategory: !current.groupByCategory })),
+    toggleExportIncludeOutOfDeckCategories: () =>
+      setExportOptions((current) => ({
+        ...current,
+        includeOutOfDeckCategories: !current.includeOutOfDeckCategories,
+      })),
     toggleExportQuantity: () =>
       setExportOptions((current) => ({ ...current, includeQuantity: !current.includeQuantity })),
   };

@@ -389,6 +389,8 @@ export function useDeckDetailController() {
         cards: editorModel.mergedWorkingCards,
         categories,
         includeQuantity: deckImport.exportOptions.includeQuantity,
+        groupByCategory: deckImport.exportOptions.groupByCategory,
+        includeOutOfDeckCategories: deckImport.exportOptions.includeOutOfDeckCategories,
       })
     : null;
   const exportPreview = previewExport && previewExport.ok ? previewExport.text : "";
