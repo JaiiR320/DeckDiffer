@@ -18,6 +18,7 @@ export function AppHeader() {
   const isAuthPage = location.pathname === "/auth";
   const isDecksPage = location.pathname === "/decks";
   const isJudgePage = location.pathname === "/judge";
+  const isSearchPage = location.pathname === "/search";
   const username = session?.user.email.split("@")[0] ?? "";
 
   return (
@@ -47,6 +48,16 @@ export function AppHeader() {
                 }`}
               >
                 Judge
+              </Link>
+              <Link
+                to="/search"
+                className={`${navLinkClass} ${
+                  isSearchPage
+                    ? "border-cyan-800 bg-cyan-950/40 text-cyan-200"
+                    : "border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
+                }`}
+              >
+                Search
               </Link>
             </nav>
           ) : null}

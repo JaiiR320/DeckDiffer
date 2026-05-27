@@ -1,6 +1,15 @@
 import type { DeckColor, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
-import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
@@ -109,6 +118,42 @@ export const deckSaves = pgTable(
   (table) => [index("deck_saves_deck_id_saved_at_idx").on(table.deckId, table.savedAt)],
 );
 
+const scryfallTaggerTags = pgTable(
+  "scryfall_tagger_tags",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    namespace: text("namespace").notNull(),
+    type: text("type").notNull(),
+    description: text("description"),
+    taggingCount: integer("tagging_count").notNull().default(0),
+    status: text("status").notNull(),
+    category: boolean("category").notNull().default(false),
+    hasExemplaryTagging: boolean("has_exemplary_tagging").notNull().default(false),
+    taggerCreatedAt: text("tagger_created_at").notNull(),
+    queryOperator: text("query_operator"),
+    raw: jsonb("raw"),
+    importedAt: timestamp("imported_at", { withTimezone: true, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("scryfall_tagger_tags_slug_idx").on(table.slug),
+    index("scryfall_tagger_tags_namespace_idx").on(table.namespace),
+    index("scryfall_tagger_tags_query_operator_idx").on(table.queryOperator),
+    index("scryfall_tagger_tags_tagging_count_idx").on(table.taggingCount),
+  ],
+);
+
+const scryfallTaggerImports = pgTable("scryfall_tagger_imports", {
+  id: text("id").primaryKey(),
+  startedAt: timestamp("started_at", { withTimezone: true, mode: "date" }).notNull(),
+  finishedAt: timestamp("finished_at", { withTimezone: true, mode: "date" }),
+  status: text("status").notNull(),
+  tagCount: integer("tag_count").notNull().default(0),
+  pageCount: integer("page_count").notNull().default(0),
+  errorMessage: text("error_message"),
+});
+
 export const schema = {
   user,
   session,
@@ -116,4 +161,6 @@ export const schema = {
   verification,
   decks,
   deckSaves,
+  scryfallTaggerTags,
+  scryfallTaggerImports,
 };

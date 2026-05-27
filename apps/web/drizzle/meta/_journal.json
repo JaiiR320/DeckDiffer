@@ -43,6 +43,34 @@
       "when": 1778871222529,
       "tag": "0005_same_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779638400000,
+      "tag": "0006_scryfall_tagger_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779649500000,
+      "tag": "0007_tagger_import_defaults",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779649740000,
+      "tag": "0008_repair_tagger_import_nullability",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779649980000,
+      "tag": "0009_repair_tagger_slug_index",
+      "breakpoints": true
     }
   ]
 }
