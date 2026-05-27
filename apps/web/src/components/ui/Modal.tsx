@@ -36,7 +36,7 @@ export function Modal({
   useLockBodyScroll();
 
   return (
-    <div className={`fixed inset-0 z-50 flex bg-black/70 ${className}`}>
+    <div className={`fixed inset-0 z-[1200] flex bg-black/70 ${className}`}>
       <button type="button" aria-label={ariaLabel} className="absolute inset-0" onClick={onClose} />
       <div
         className={`relative z-10 w-full ${widthClassNames[maxWidth]} rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${panelClassName}`}

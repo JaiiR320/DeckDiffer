@@ -21,7 +21,7 @@ export function AppHeader() {
   const username = session?.user.email.split("@")[0] ?? "";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur">
+    <header className="sticky top-0 z-[1000] border-b border-zinc-900 bg-zinc-950/90 backdrop-blur">
       <div className="mx-auto flex w-full items-center justify-between px-6 py-4 sm:px-8">
         <div className="flex items-center gap-6">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-cyan-300">DeckDiff</p>

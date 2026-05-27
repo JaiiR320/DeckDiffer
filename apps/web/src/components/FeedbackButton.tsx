@@ -86,7 +86,7 @@ export function FeedbackButton() {
         aria-label="Send feedback"
         onClick={() => setState({ isOpen: true })}
         size="lg"
-        className="fixed bottom-6 right-6 z-50 border border-zinc-700 bg-zinc-800 text-zinc-300 shadow-lg shadow-black/40 hover:bg-zinc-700 hover:text-cyan-300"
+        className="fixed bottom-6 right-6 z-[1000] border border-zinc-700 bg-zinc-800 text-zinc-300 shadow-lg shadow-black/40 hover:bg-zinc-700 hover:text-cyan-300"
       >
         <MessageSquarePlus className="size-5" strokeWidth={1.75} />
       </IconButton>

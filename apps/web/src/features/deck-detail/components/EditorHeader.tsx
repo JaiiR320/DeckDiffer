@@ -203,7 +203,7 @@ export function EditorHeader({
 
           {query.trim().length >= 3 && isResultsOpen ? (
             <div
-              className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${isDraggingSearchCard ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[1000] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${isDraggingSearchCard ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               {isSearching ? (
                 <div className="px-4 py-3 text-sm text-zinc-500">Searching cards…</div>

@@ -119,7 +119,7 @@ export function ContextMenu({
       <div
         ref={menuRef}
         role="menu"
-        className={`fixed z-[100] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/50 ${widthClassName}`}
+        className={`fixed z-[1100] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 p-2 shadow-2xl shadow-black/50 ${widthClassName}`}
         style={style ?? { left: 0, top: 0, opacity: 0 }}
       >
         {children}
