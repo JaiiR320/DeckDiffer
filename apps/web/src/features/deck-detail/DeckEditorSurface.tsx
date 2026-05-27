@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { EditorHeader } from "./components/EditorHeader";
 import { SaveHistoryPanel } from "./components/SaveHistoryPanel";
 import { DeckStatsPanel } from "./stats/DeckStatsPanel";
@@ -10,6 +10,7 @@ import {
   useDeckWorkspaceActions,
   useDeckWorkspaceView,
 } from "./deckDetailContext";
+import type { CardGroupView } from "./stack/cardGroupView";
 import { StackEditor } from "./StackEditor";
 import { TabButton } from "./TabButton";
 
@@ -21,6 +22,7 @@ export function DeckEditorSurface() {
   const workspaceActions = useDeckWorkspaceActions();
   const deckUiActions = useDeckUiActions();
   const { deckActions, deckImport, preview } = useDeckDetailServices();
+  const [cardGroupView, setCardGroupView] = useState<CardGroupView>("categories");
   const canRedo = !compareMode && redoStack.length > 0;
   const canUndo = !compareMode && undoStack.length > 0;
   const cardSort = stackLayout.cardSort ?? "manaValue";
@@ -39,7 +41,9 @@ export function DeckEditorSurface() {
         onUndo={workspaceActions.onUndo}
         cardSort={cardSort}
         cardSortDirection={cardSortDirection}
+        cardGroupView={cardGroupView}
         onCardSortChange={workspaceActions.onSetCardSort}
+        onCardGroupViewChange={setCardGroupView}
         onReverseCardSortDirection={workspaceActions.onReverseCardSortDirection}
         onPreviewCard={(card) =>
           preview.updatePreviewCard({
@@ -54,6 +58,7 @@ export function DeckEditorSurface() {
       baselineDeck.status,
       canRedo,
       canUndo,
+      cardGroupView,
       cardSort,
       cardSortDirection,
       deckImport,
@@ -100,7 +105,7 @@ export function DeckEditorSurface() {
       </div>
 
       {activeTab === "editor" ? (
-        <StackEditor searchToolbar={searchToolbar} />
+        <StackEditor cardGroupView={cardGroupView} searchToolbar={searchToolbar} />
       ) : activeTab === "history" ? (
         <SaveHistoryPanel
           deck={deck}

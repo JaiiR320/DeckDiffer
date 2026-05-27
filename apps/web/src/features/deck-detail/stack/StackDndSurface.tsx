@@ -15,6 +15,7 @@ import type { DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import { createCategoryId, type CardCategory, type DeckCategory } from "#/lib/decklist";
 import type { SearchCardResult } from "#/lib/scryfall";
 import type { CategoryDiff, EditorRow } from "../editor/types";
+import { buildGeneratedCardGroups, type CardGroupView } from "./cardGroupView";
 import { CategoryLane } from "./CategoryLane";
 import { CategoryStack } from "./CategoryStack";
 import { DropPlaceholder } from "./DropPlaceholder";
@@ -32,6 +33,7 @@ type EditorDeckStackProps = {
   resultCardTotal: number;
   showDiffOnly: boolean;
   layout: DeckStackLayout;
+  cardGroupView: CardGroupView;
   onToggleShowDiffOnly: () => void;
   onLayoutChange: (layout: DeckStackLayout) => void;
   onAdjustQuantity?: (row: EditorRow, delta: number) => void;
@@ -58,6 +60,7 @@ type StackLaneGridData = {
   renamingCategoryId: CardCategory | null;
   visibleGroupedRows: Record<CardCategory, EditorRow[]>;
   visibleLanes: Array<{ lane: CardCategory[]; laneIndex: number }>;
+  generatedView: boolean;
 };
 
 type StackLaneGridRefs = {
@@ -87,6 +90,7 @@ export function EditorDeckStack({
   resultCardTotal,
   showDiffOnly,
   layout,
+  cardGroupView,
   onToggleShowDiffOnly,
   onLayoutChange,
   onAdjustQuantity,
@@ -104,6 +108,7 @@ export function EditorDeckStack({
   readOnly = false,
 }: EditorDeckStackProps) {
   const previousLayout = useRef(layout);
+  const generatedView = cardGroupView !== "categories";
   const laneElements = useRef(new Map<number, HTMLDivElement>());
   const categoryElements = useRef(new Map<CardCategory, HTMLElement>());
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
@@ -147,6 +152,15 @@ export function EditorDeckStack({
       visibleRows.push(...(visibleGroupedRows[category.id] ?? []));
     }
   }
+  const generatedGroups = generatedView
+    ? buildGeneratedCardGroups({ categories, groupView: cardGroupView, rows: visibleRows })
+    : null;
+  const stackCategories = generatedGroups?.categories ?? categories;
+  const stackGroupedRows = generatedGroups?.groupedRows ?? groupedRows;
+  const stackVisibleGroupedRows = generatedGroups?.groupedRows ?? visibleGroupedRows;
+  const stackVisibleLanes = generatedGroups
+    ? generatedGroups.lanes.map((lane, laneIndex) => ({ lane, laneIndex }))
+    : visibleLanes;
   const totalAdded = allRows.filter((row) => row.status === "added").length;
   const totalChanged = allRows.filter((row) => row.status === "changed").length;
   const totalRemoved = allRows.filter((row) => row.status === "removed").length;
@@ -155,14 +169,15 @@ export function EditorDeckStack({
     0,
   );
   const laneGridData: StackLaneGridData = {
-    categories,
+    categories: stackCategories,
     categoryDiffs,
     dropPreview,
-    groupedRows,
+    generatedView,
+    groupedRows: stackGroupedRows,
     layout,
     renamingCategoryId,
-    visibleGroupedRows,
-    visibleLanes,
+    visibleGroupedRows: stackVisibleGroupedRows,
+    visibleLanes: stackVisibleLanes,
   };
   const laneGridRefs: StackLaneGridRefs = { categoryElements, laneElements };
   const laneGridActions: StackLaneGridActions = {
@@ -185,7 +200,11 @@ export function EditorDeckStack({
 
   function openLaneMenu(event: MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement;
-    if (readOnly || target.closest("[data-category-stack],button,input,textarea,select")) {
+    if (
+      readOnly ||
+      generatedView ||
+      target.closest("[data-category-stack],button,input,textarea,select")
+    ) {
       return;
     }
 
@@ -237,7 +256,7 @@ export function EditorDeckStack({
   ) {
     const { source } = operation;
 
-    if (readOnly || source?.type !== "category") {
+    if (readOnly || generatedView || source?.type !== "category") {
       return;
     }
 
@@ -304,13 +323,15 @@ export function EditorDeckStack({
       >
         {searchToolbar}
         <SearchCardDragOverlayHost />
-        <LaneMenu
-          laneMenu={laneMenu}
-          onOpenChange={(open) => {
-            if (!open) setLaneMenu(null);
-          }}
-          onCreateCategory={createCategoryInLane}
-        />
+        {generatedView ? null : (
+          <LaneMenu
+            laneMenu={laneMenu}
+            onOpenChange={(open) => {
+              if (!open) setLaneMenu(null);
+            }}
+            onCreateCategory={createCategoryInLane}
+          />
+        )}
         <div className="space-y-4 px-5 pb-5 pt-5">
           <StackSummary
             resultCardTotal={resultCardTotal}
@@ -349,6 +370,7 @@ function StackLaneGrid({
     categories,
     categoryDiffs,
     dropPreview,
+    generatedView,
     groupedRows,
     layout,
     renamingCategoryId,
@@ -385,7 +407,7 @@ function StackLaneGrid({
               laneElements.current.delete(laneIndex);
             }
           }}
-          onRemoveLane={readOnly ? undefined : actions.onRemoveLane}
+          onRemoveLane={readOnly || generatedView ? undefined : actions.onRemoveLane}
         >
           {lane.map((category, categoryIndex) => {
             const placeholderIndex = getPlaceholderRenderIndex(lane, laneIndex, dropPreview);
@@ -412,10 +434,11 @@ function StackLaneGrid({
                   onMoveCardCategory={actions.onMoveCardCategory}
                   onChangePrinting={actions.onChangePrinting}
                   onSetDeckCover={actions.onSetDeckCover}
-                  onMoveCategoryCards={actions.onMoveCategoryCards}
-                  onRemoveCategory={actions.onRemoveCategory}
-                  onCategoryChange={actions.onCategoryChange}
-                  onRenameCategory={actions.onRenameCategory}
+                  onMoveCategoryCards={generatedView ? undefined : actions.onMoveCategoryCards}
+                  onRemoveCategory={generatedView ? undefined : actions.onRemoveCategory}
+                  onCategoryChange={generatedView ? undefined : actions.onCategoryChange}
+                  onRenameCategory={generatedView ? undefined : actions.onRenameCategory}
+                  generatedView={generatedView}
                   readOnly={readOnly}
                   onCategoryRef={(element) => {
                     if (element) {

@@ -59,7 +59,7 @@ export function PrintingPickerModal({ row, onClose, onSelect }: PrintingPickerMo
   );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/80 px-4 py-5 backdrop-blur-sm sm:px-6">
+    <div className="fixed inset-0 z-[1200] overflow-y-auto overscroll-contain bg-black/80 px-4 py-5 backdrop-blur-sm sm:px-6">
       <button
         type="button"
         aria-label="Close printing picker"

@@ -8,6 +8,7 @@ import { Input } from "#/components/ui/Input";
 import type { DeckCardSort, DeckCardSortDirection } from "#/lib/deck";
 import { searchCards, type SearchCardResult } from "#/lib/scryfall";
 import type { EditorRow } from "../editor/types";
+import { CARD_GROUP_VIEW_OPTIONS, type CardGroupView } from "../stack/cardGroupView";
 import { StackCard } from "../stack/StackCard";
 
 type EditorHeaderProps = {
@@ -20,7 +21,9 @@ type EditorHeaderProps = {
   onUndo: () => void;
   cardSort: DeckCardSort;
   cardSortDirection: DeckCardSortDirection;
+  cardGroupView: CardGroupView;
   onCardSortChange: (sort: DeckCardSort) => void;
+  onCardGroupViewChange: (groupView: CardGroupView) => void;
   onReverseCardSortDirection: () => void;
   onPreviewCard: (card: SearchCardResult) => void;
 };
@@ -71,7 +74,9 @@ export function EditorHeader({
   onUndo,
   cardSort,
   cardSortDirection,
+  cardGroupView,
   onCardSortChange,
+  onCardGroupViewChange,
   onReverseCardSortDirection,
   onPreviewCard,
 }: EditorHeaderProps) {
@@ -203,7 +208,7 @@ export function EditorHeader({
 
           {query.trim().length >= 3 && isResultsOpen ? (
             <div
-              className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-20 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${isDraggingSearchCard ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[1000] overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl shadow-black/40 ${isDraggingSearchCard ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               {isSearching ? (
                 <div className="px-4 py-3 text-sm text-zinc-500">Searching cards…</div>
@@ -230,6 +235,14 @@ export function EditorHeader({
 
         <ToolbarDivider />
         <div className="flex shrink-0 items-center gap-2">
+          <DropdownSelect
+            value={cardGroupView}
+            options={CARD_GROUP_VIEW_OPTIONS}
+            onChange={onCardGroupViewChange}
+            aria-label="Group cards"
+            className="w-40"
+          />
+          <ToolbarDivider />
           <DropdownSelect
             value={cardSort}
             options={CARD_SORT_OPTIONS}
