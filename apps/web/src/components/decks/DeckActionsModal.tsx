@@ -1,4 +1,5 @@
-import { Download, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
+import { DragDropProvider, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/react";
+import { Download, GripVertical, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
 import { ManaSymbolIcon } from "#/components/cards/ManaSymbolIcon";
 import type { Dispatch, FormEvent } from "react";
 import { useReducer, useState } from "react";
@@ -162,7 +163,7 @@ export function DeckActionsModal({
       className="items-center justify-center overflow-y-auto overscroll-contain p-6"
       maxWidth="4xl"
       onClose={handleClose}
-      panelClassName="flex h-[640px] !max-w-[800px] max-h-[85vh] flex-col p-6"
+      panelClassName="flex h-[736px] !max-w-[800px] max-h-[85vh] flex-col p-6"
     >
       <h2 className="text-xl font-semibold text-zinc-100">{deck.name}</h2>
       <div className="mt-5 flex border-b border-zinc-800">
@@ -435,6 +436,22 @@ function CategoriesSettingsTab({
   onShowRemovedCardGhostsChange?: (showRemovedCardGhosts: boolean) => void;
   setState: Dispatch<Partial<ModalState>>;
 }) {
+  function handleDragEnd(event: DragEndEvent) {
+    const { source, target } = event.operation;
+    const targetCategoryId = target?.data.categoryId as string | undefined;
+
+    if (
+      event.operation.canceled ||
+      source?.type !== "settings-category" ||
+      !targetCategoryId ||
+      source.id === targetCategoryId
+    ) {
+      return;
+    }
+
+    onCategoriesChange(reorderCategories(categories, String(source.id), targetCategoryId));
+  }
+
   return (
     <div className="mt-5 space-y-3">
       <form onSubmit={onAddCategory} className="flex gap-2">
@@ -475,81 +492,179 @@ function CategoriesSettingsTab({
         </div>
       ) : null}
 
-      <div className="space-y-2">
-        {categories.map((category) => {
-          const cardCount = cards.filter((card) => card.categoryId === category.id).length;
-          const isBlocked = cardCount > 0;
-
-          return (
-            <div key={category.id} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
-              {renamingCategoryId === category.id ? (
-                <form onSubmit={onRenameCategory} className="flex gap-2">
-                  <Input
-                    value={categoryName}
-                    onChange={(event) => setState({ categoryName: event.target.value })}
-                    inputSize="sm"
-                    className="min-w-0 flex-1 rounded-lg bg-zinc-950 px-3"
-                  />
-                  <Button type="submit" variant="primary" size="sm" className="rounded-lg px-3">
-                    Save
-                  </Button>
-                </form>
-              ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-100">{category.name}</p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {cardCount} card{cardCount === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <ToggleChip
-                      label="Hide"
-                      checked={category.hidden === true}
-                      onToggle={() =>
-                        updateCategory(category.id, categories, onCategoriesChange, {
-                          hidden: !category.hidden,
-                        })
-                      }
-                    />
-                    <ToggleChip
-                      label="In Deck"
-                      checked={category.includeInDeck !== false}
-                      onToggle={() =>
-                        updateCategory(category.id, categories, onCategoriesChange, {
-                          includeInDeck: category.includeInDeck === false,
-                        })
-                      }
-                    />
-                    <Button
-                      onClick={() =>
-                        setState({ renamingCategoryId: category.id, categoryName: category.name })
-                      }
-                      size="sm"
-                      className="rounded-lg py-1.5"
-                    >
-                      Rename
-                    </Button>
-                    <Button
-                      onClick={() =>
-                        removeCategory(category.id, categories, cards, onCategoriesChange)
-                      }
-                      disabled={isBlocked}
-                      title={isBlocked ? "Move cards out before removing." : "Remove category"}
-                      size="sm"
-                      className="rounded-lg py-1.5 text-rose-400 hover:border-rose-900/50"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <DragDropProvider onDragEnd={handleDragEnd}>
+        <div className="space-y-2">
+          {categories.map((category) => (
+            <CategorySettingsRow
+              key={category.id}
+              cards={cards}
+              categories={categories}
+              category={category}
+              categoryName={categoryName}
+              isRenaming={renamingCategoryId === category.id}
+              onCategoriesChange={onCategoriesChange}
+              onRenameCategory={onRenameCategory}
+              setState={setState}
+            />
+          ))}
+        </div>
+      </DragDropProvider>
     </div>
   );
+}
+
+function CategorySettingsRow({
+  cards,
+  categories,
+  category,
+  categoryName,
+  isRenaming,
+  onCategoriesChange,
+  onRenameCategory,
+  setState,
+}: {
+  cards: ValidatedDeckCard[];
+  categories: DeckCategory[];
+  category: DeckCategory;
+  categoryName: string;
+  isRenaming: boolean;
+  onCategoriesChange: (categories: DeckCategory[]) => void;
+  onRenameCategory: (event: FormEvent<HTMLFormElement>) => void;
+  setState: Dispatch<Partial<ModalState>>;
+}) {
+  const cardCount = cards.filter((card) => card.categoryId === category.id).length;
+  const isBlocked = cardCount > 0;
+  const {
+    isDragging,
+    ref: draggableRef,
+    handleRef,
+  } = useDraggable({
+    id: category.id,
+    type: "settings-category",
+  });
+  const { isDropTarget, ref: droppableRef } = useDroppable({
+    id: `settings-category-${category.id}`,
+    type: "settings-category-drop",
+    accept: "settings-category",
+    data: { categoryId: category.id },
+  });
+
+  return (
+    <div
+      ref={(element) => {
+        draggableRef(element);
+        droppableRef(element);
+      }}
+      className={`rounded-xl border bg-zinc-900/40 p-3 transition ${
+        isDropTarget ? "border-cyan-700/70" : "border-zinc-800"
+      } ${isDragging ? "opacity-50" : "opacity-100"}`}
+    >
+      {isRenaming ? (
+        <form onSubmit={onRenameCategory} className="flex gap-2">
+          <DragHandle handleRef={handleRef} categoryName={category.name} />
+          <Input
+            value={categoryName}
+            onChange={(event) => setState({ categoryName: event.target.value })}
+            inputSize="sm"
+            className="min-w-0 flex-1 rounded-lg bg-zinc-950 px-3"
+          />
+          <Button type="submit" variant="primary" size="sm" className="rounded-lg px-3">
+            Save
+          </Button>
+        </form>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <DragHandle handleRef={handleRef} categoryName={category.name} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-zinc-100">{category.name}</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {cardCount} card{cardCount === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <ToggleChip
+              label="Hide"
+              checked={category.hidden === true}
+              onToggle={() =>
+                updateCategory(category.id, categories, onCategoriesChange, {
+                  hidden: !category.hidden,
+                })
+              }
+            />
+            <ToggleChip
+              label="In Deck"
+              checked={category.includeInDeck !== false}
+              onToggle={() =>
+                updateCategory(category.id, categories, onCategoriesChange, {
+                  includeInDeck: category.includeInDeck === false,
+                })
+              }
+            />
+            <Button
+              onClick={() =>
+                setState({ renamingCategoryId: category.id, categoryName: category.name })
+              }
+              size="sm"
+              className="rounded-lg py-1.5"
+            >
+              Rename
+            </Button>
+            <Button
+              onClick={() => removeCategory(category.id, categories, cards, onCategoriesChange)}
+              disabled={isBlocked}
+              title={isBlocked ? "Move cards out before removing." : "Remove category"}
+              size="sm"
+              className="rounded-lg py-1.5 text-rose-400 hover:border-rose-900/50"
+            >
+              Remove
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DragHandle({
+  handleRef,
+  categoryName,
+}: {
+  handleRef: (element: HTMLElement | null) => void;
+  categoryName: string;
+}) {
+  return (
+    <button
+      ref={handleRef}
+      type="button"
+      aria-label={`Reorder ${categoryName}`}
+      className="rounded-md p-1 text-zinc-600 transition hover:bg-zinc-800 hover:text-zinc-300 active:cursor-grabbing"
+    >
+      <GripVertical className="size-4" />
+    </button>
+  );
+}
+
+function reorderCategories(
+  categories: DeckCategory[],
+  sourceCategoryId: string,
+  targetCategoryId: string,
+) {
+  const sourceIndex = categories.findIndex((category) => category.id === sourceCategoryId);
+  const targetIndex = categories.findIndex((category) => category.id === targetCategoryId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+    return categories;
+  }
+
+  const nextCategories = [...categories];
+  const [movedCategory] = nextCategories.splice(sourceIndex, 1);
+  if (!movedCategory) {
+    return categories;
+  }
+
+  nextCategories.splice(targetIndex, 0, movedCategory);
+  return nextCategories;
 }
 
 function updateCategory(
