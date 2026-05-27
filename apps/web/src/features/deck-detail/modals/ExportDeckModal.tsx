@@ -11,6 +11,8 @@ type ExportDeckModalProps = {
   exportPreview: string;
   onClose: () => void;
   onCopy: () => void;
+  onToggleGroupByCategory: () => void;
+  onToggleIncludeOutOfDeckCategories: () => void;
   onToggleIncludeQuantity: () => void;
 };
 
@@ -19,6 +21,8 @@ export function ExportDeckModal({
   exportPreview,
   onClose,
   onCopy,
+  onToggleGroupByCategory,
+  onToggleIncludeOutOfDeckCategories,
   onToggleIncludeQuantity,
 }: ExportDeckModalProps) {
   return (
@@ -40,6 +44,17 @@ export function ExportDeckModal({
             label="Quantity"
             checked={exportOptions.includeQuantity}
             onToggle={onToggleIncludeQuantity}
+          />
+          <ToggleChip
+            label="Group by category"
+            checked={exportOptions.groupByCategory}
+            onToggle={onToggleGroupByCategory}
+          />
+          <ToggleChip
+            label="Include out-of-deck"
+            checked={exportOptions.includeOutOfDeckCategories}
+            disabled={!exportOptions.groupByCategory}
+            onToggle={onToggleIncludeOutOfDeckCategories}
           />
         </div>
 

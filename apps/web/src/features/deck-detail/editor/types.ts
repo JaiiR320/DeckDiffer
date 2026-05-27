@@ -41,4 +41,6 @@ export type CategoryDiff = {
 
 export type ExportModalState = {
   includeQuantity: boolean;
+  groupByCategory: boolean;
+  includeOutOfDeckCategories: boolean;
 };

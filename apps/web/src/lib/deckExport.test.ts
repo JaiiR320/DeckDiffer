@@ -90,6 +90,73 @@ describe("Deck export", () => {
     expect(result).toMatchObject({ ok: true, text: "Lightning Bolt\nLightning Bolt" });
   });
 
+  it("supports grouped markdown exports", () => {
+    const result = createDeckExport(
+      deck({
+        cards: [island, lightningBolt],
+        categories: [
+          { id: "creature", name: "Creature" },
+          { id: "instant", name: "Instant" },
+          { id: "land", name: "Land" },
+        ],
+      }),
+      { groupByCategory: true },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      text: "# Izzet Spells!\n\n## Instant\n2 Lightning Bolt\n\n## Land\n1 Island",
+    });
+  });
+
+  it("skips out-of-deck categories in grouped exports by default", () => {
+    const result = createDeckExport(
+      deck({
+        cards: [lightningBolt, island],
+        categories: [
+          { id: "instant", name: "Instant", includeInDeck: true },
+          { id: "land", name: "Sideboard", includeInDeck: false },
+        ],
+      }),
+      { groupByCategory: true },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      text: "# Izzet Spells!\n\n## Instant\n2 Lightning Bolt",
+    });
+  });
+
+  it("can include out-of-deck categories in grouped exports", () => {
+    const result = createDeckExport(
+      deck({
+        cards: [lightningBolt, island],
+        categories: [
+          { id: "instant", name: "Instant", includeInDeck: true },
+          { id: "land", name: "Sideboard", includeInDeck: false },
+        ],
+      }),
+      { groupByCategory: true, includeOutOfDeckCategories: true },
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      text: "# Izzet Spells!\n\n## Instant\n2 Lightning Bolt\n\n## Sideboard\n1 Island",
+    });
+  });
+
+  it("supports quantity-free grouped exports", () => {
+    const result = createDeckExport(deck({ cards: [lightningBolt] }), {
+      groupByCategory: true,
+      includeQuantity: false,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      text: "# Izzet Spells!\n\n## Instant\nLightning Bolt\nLightning Bolt",
+    });
+  });
+
   it("returns a reason for empty exports", () => {
     expect(createDeckExport(deck())).toEqual({
       ok: false,
