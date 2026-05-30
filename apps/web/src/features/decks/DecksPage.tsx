@@ -552,7 +552,7 @@ function FolderCard({ folder, path, onOpen, onEdit }: FolderCardProps) {
         }}
         aria-label={`Open ${folder.name} settings`}
         variant="ghost"
-        className="absolute right-4 top-4 z-20 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
+        className="absolute right-6 top-6 z-20 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
       >
         <MoreVertical className="size-5" strokeWidth={1.75} />
       </IconButton>
