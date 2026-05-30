@@ -76,7 +76,7 @@ export type DeckFolderOption = DeckFolder & {
 };
 
 export type DeckFolderView = {
-  currentFolder?: DeckFolder;
+  currentFolder?: DeckFolder & { isEmpty: boolean; folderCount: number; deckCount: number };
   currentFolderPath: string;
   breadcrumbs: DeckBreadcrumb[];
   folders: Array<DeckFolder & { isEmpty: boolean; folderCount: number; deckCount: number }>;

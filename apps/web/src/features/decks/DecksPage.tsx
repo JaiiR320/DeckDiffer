@@ -1,5 +1,5 @@
 import { useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronRight, Folder, FolderPlus, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Folder, FolderPlus, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useReducer } from "react";
 import type { FormEvent } from "react";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
@@ -7,6 +7,8 @@ import { CreateDeckModal } from "#/components/decks/CreateDeckModal";
 import { DeckCard } from "#/components/decks/DeckCard";
 import { Button } from "#/components/ui/Button";
 import { IconButton } from "#/components/ui/IconButton";
+import { Input } from "#/components/ui/Input";
+import { Modal } from "#/components/ui/Modal";
 import type { DeckFolderView, DeckItem } from "#/lib/deck";
 import { swapSplitDeckCover } from "#/lib/deckCover";
 import { createDeckExport } from "#/lib/deckExport";
@@ -17,6 +19,7 @@ import {
   deleteFolderForUser,
   moveDeckToFolderForUser,
   renameDeckForUser,
+  renameFolderForUser,
   updateDeckCoverForUser,
 } from "#/server/decks";
 
@@ -25,6 +28,9 @@ type DecksPageState = {
   isCreateFolderOpen: boolean;
   name: string;
   editingDeck: DeckItem | null;
+  editingFolder: DeckFolderView["folders"][number] | DeckFolderView["currentFolder"] | null;
+  folderName: string;
+  showFolderDeleteConfirm: boolean;
   errorMessage: string | null;
 };
 
@@ -32,12 +38,17 @@ type FolderCardProps = {
   folder: DeckFolderView["folders"][number];
   path: string;
   onOpen: (path: string) => void;
-  onDelete: (folder: DeckFolderView["folders"][number]) => void;
+  onEdit: (folder: DeckFolderView["folders"][number]) => void;
 };
+
+type EditableFolder = NonNullable<DecksPageState["editingFolder"]>;
 
 function folderSearch(folderPath: string) {
   return { folder: folderPath || undefined };
 }
+
+const deckGridClass =
+  "grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),24rem))]";
 
 export function DecksPage() {
   const view = useLoaderData({ from: "/decks" }) as DeckFolderView;
@@ -50,10 +61,22 @@ export function DecksPage() {
       isCreateFolderOpen: false,
       name: "",
       editingDeck: null,
+      editingFolder: null,
+      folderName: "",
+      showFolderDeleteConfirm: false,
       errorMessage: null,
     },
   );
-  const { isCreateDeckOpen, isCreateFolderOpen, name, editingDeck, errorMessage } = state;
+  const {
+    isCreateDeckOpen,
+    isCreateFolderOpen,
+    name,
+    editingDeck,
+    editingFolder,
+    folderName,
+    showFolderDeleteConfirm,
+    errorMessage,
+  } = state;
 
   function openFolder(folderPath: string) {
     void navigate({ to: "/decks", search: folderSearch(folderPath) });
@@ -65,6 +88,10 @@ export function DecksPage() {
 
   function closeEditModal() {
     setState({ editingDeck: null });
+  }
+
+  function closeFolderModal() {
+    setState({ editingFolder: null, folderName: "", showFolderDeleteConfirm: false });
   }
 
   async function refreshDecks() {
@@ -116,16 +143,43 @@ export function DecksPage() {
     }
   }
 
-  async function handleDeleteFolder(folder: DeckFolderView["folders"][number]) {
+  async function handleDeleteFolder(folder: EditableFolder) {
     if (!folder.isEmpty) return;
 
     try {
       await deleteFolderForUser({ data: { folderId: folder.id } });
+      closeFolderModal();
       setState({ errorMessage: null });
+
+      if (folder.id === view.currentFolder?.id) {
+        const parentPath = view.breadcrumbs.at(-2)?.path ?? "";
+        await navigate({ to: "/decks", search: folderSearch(parentPath) });
+        return;
+      }
+
       await refreshDecks();
     } catch (error) {
       setState({
         errorMessage: error instanceof Error ? error.message : "Could not delete folder right now.",
+      });
+    }
+  }
+
+  async function handleRenameFolder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingFolder) return;
+
+    const trimmedName = folderName.trim();
+    if (!trimmedName || trimmedName === editingFolder.name) return;
+
+    try {
+      await renameFolderForUser({ data: { folderId: editingFolder.id, newName: trimmedName } });
+      closeFolderModal();
+      setState({ errorMessage: null });
+      await refreshDecks();
+    } catch (error) {
+      setState({
+        errorMessage: error instanceof Error ? error.message : "Could not rename folder right now.",
       });
     }
   }
@@ -248,25 +302,50 @@ export function DecksPage() {
                 <FolderPlus className="size-4" strokeWidth={1.75} />
                 New Folder
               </Button>
+              {view.currentFolder ? (
+                <IconButton
+                  aria-label={`Open ${view.currentFolder.name} settings`}
+                  onClick={() =>
+                    setState({
+                      editingFolder: view.currentFolder,
+                      folderName: view.currentFolder?.name ?? "",
+                      showFolderDeleteConfirm: false,
+                    })
+                  }
+                  className="p-2"
+                >
+                  <MoreVertical className="size-4" strokeWidth={1.75} />
+                </IconButton>
+              ) : null}
             </div>
           </div>
 
-          <section className="grid justify-center gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),24rem))]">
-            {view.folders.map((folder) => {
-              const folderPath = view.currentFolderPath
-                ? `${view.currentFolderPath}/${folder.slug}`
-                : folder.slug;
-              return (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  path={folderPath}
-                  onOpen={openFolder}
-                  onDelete={handleDeleteFolder}
-                />
-              );
-            })}
+          {view.folders.length > 0 ? (
+            <section className={`mb-5 ${deckGridClass}`}>
+              {view.folders.map((folder) => {
+                const folderPath = view.currentFolderPath
+                  ? `${view.currentFolderPath}/${folder.slug}`
+                  : folder.slug;
+                return (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    path={folderPath}
+                    onOpen={openFolder}
+                    onEdit={(nextFolder) =>
+                      setState({
+                        editingFolder: nextFolder,
+                        folderName: nextFolder.name,
+                        showFolderDeleteConfirm: false,
+                      })
+                    }
+                  />
+                );
+              })}
+            </section>
+          ) : null}
 
+          <section className={deckGridClass}>
             {view.decks.map((deck) => (
               <DeckCard
                 key={deck.id}
@@ -275,13 +354,13 @@ export function DecksPage() {
               />
             ))}
           </section>
-        </div>
 
-        {!hasItems ? (
-          <p className="mt-8 text-sm text-zinc-500">
-            This folder is empty. Create a deck or folder to get started.
-          </p>
-        ) : null}
+          {!hasItems ? (
+            <p className="mt-8 text-sm text-zinc-500">
+              This folder is empty. Create a deck or folder to get started.
+            </p>
+          ) : null}
+        </div>
       </main>
 
       {isCreateDeckOpen ? (
@@ -320,6 +399,19 @@ export function DecksPage() {
           onSwapSplitCover={handleSwapSplitCover}
         />
       ) : null}
+
+      {editingFolder ? (
+        <FolderSettingsModal
+          folder={editingFolder}
+          folderName={folderName}
+          showDeleteConfirm={showFolderDeleteConfirm}
+          onFolderNameChange={(nextName) => setState({ folderName: nextName })}
+          onClose={closeFolderModal}
+          onRename={handleRenameFolder}
+          onDelete={() => void handleDeleteFolder(editingFolder)}
+          onDeleteConfirmChange={(showFolderDeleteConfirm) => setState({ showFolderDeleteConfirm })}
+        />
+      ) : null}
     </>
   );
 }
@@ -331,41 +423,49 @@ function Breadcrumbs({
   breadcrumbs: DeckFolderView["breadcrumbs"];
   onOpen: (path: string) => void;
 }) {
+  const isRootCurrent = breadcrumbs.length === 0;
+
   return (
     <nav
       className="flex flex-wrap items-center gap-2 text-sm text-zinc-500"
       aria-label="Deck folders"
     >
-      <button type="button" onClick={() => onOpen("")} className="hover:text-zinc-200">
+      <button
+        type="button"
+        onClick={() => onOpen("")}
+        className={isRootCurrent ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-200"}
+      >
         Decks
       </button>
-      {breadcrumbs.map((breadcrumb) => (
-        <span key={breadcrumb.id} className="inline-flex items-center gap-2">
-          <ChevronRight className="size-4" strokeWidth={1.75} />
-          <button
-            type="button"
-            onClick={() => onOpen(breadcrumb.path)}
-            className="text-zinc-300 hover:text-zinc-100"
-          >
-            {breadcrumb.name}
-          </button>
-        </span>
-      ))}
+      {breadcrumbs.map((breadcrumb, index) => {
+        const isCurrent = index === breadcrumbs.length - 1;
+
+        return (
+          <span key={breadcrumb.id} className="inline-flex items-center gap-2">
+            <ChevronRight className="size-4" strokeWidth={1.75} />
+            <button
+              type="button"
+              onClick={() => onOpen(breadcrumb.path)}
+              className={isCurrent ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-200"}
+            >
+              {breadcrumb.name}
+            </button>
+          </span>
+        );
+      })}
     </nav>
   );
 }
 
-function FolderCard({ folder, path, onOpen, onDelete }: FolderCardProps) {
+function FolderCard({ folder, path, onOpen, onEdit }: FolderCardProps) {
   return (
-    <div className="group relative flex aspect-[3/2] min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700 sm:min-h-0">
-      <div className="pointer-events-none">
-        <Folder className="size-9 text-amber-300" strokeWidth={1.75} />
-      </div>
-      <div className="pointer-events-none mt-8 pr-10">
-        <span className="text-3xl font-semibold tracking-tight text-zinc-100">{folder.name}</span>
-      </div>
-      <div className="pointer-events-none mt-auto">
-        <p className="mt-2 text-lg text-zinc-500">
+    <div className="group relative flex min-h-24 flex-col justify-center rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4 text-left transition hover:border-zinc-700">
+      <div className="pointer-events-none grid grid-cols-[1.75rem_1fr] items-center gap-x-3 gap-y-2 pr-12">
+        <Folder className="size-7 shrink-0 text-amber-300" strokeWidth={1.75} />
+        <span className="truncate text-2xl font-semibold tracking-tight text-zinc-100">
+          {folder.name}
+        </span>
+        <p className="col-span-2 text-sm text-zinc-500">
           {folder.folderCount} folder{folder.folderCount === 1 ? "" : "s"} | {folder.deckCount} deck
           {folder.deckCount === 1 ? "" : "s"}
         </p>
@@ -380,16 +480,85 @@ function FolderCard({ folder, path, onOpen, onDelete }: FolderCardProps) {
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          onDelete(folder);
+          onEdit(folder);
         }}
-        disabled={!folder.isEmpty}
-        title={folder.isEmpty ? `Delete ${folder.name}` : "Folder must be empty"}
-        aria-label={folder.isEmpty ? `Delete ${folder.name}` : `${folder.name} must be empty`}
+        aria-label={`Open ${folder.name} settings`}
         variant="ghost"
-        className="absolute right-6 top-6 z-20 cursor-pointer p-2 opacity-0 group-hover:opacity-100 disabled:opacity-40"
+        className="absolute right-4 top-4 z-20 cursor-pointer p-2 opacity-0 group-hover:opacity-100"
       >
-        <Trash2 className="size-5" strokeWidth={1.75} />
+        <MoreVertical className="size-5" strokeWidth={1.75} />
       </IconButton>
     </div>
+  );
+}
+
+function FolderSettingsModal({
+  folder,
+  folderName,
+  showDeleteConfirm,
+  onFolderNameChange,
+  onClose,
+  onRename,
+  onDelete,
+  onDeleteConfirmChange,
+}: {
+  folder: EditableFolder;
+  folderName: string;
+  showDeleteConfirm: boolean;
+  onFolderNameChange: (value: string) => void;
+  onClose: () => void;
+  onRename: (event: FormEvent<HTMLFormElement>) => void;
+  onDelete: () => void;
+  onDeleteConfirmChange: (showDeleteConfirm: boolean) => void;
+}) {
+  return (
+    <Modal ariaLabel="Close folder settings modal" onClose={onClose}>
+      <h1 className="text-xl font-semibold text-zinc-100">{folder.name}</h1>
+      <form className="mt-5 space-y-3" onSubmit={onRename}>
+        <label className="block text-sm font-medium text-zinc-400" htmlFor="folder-name">
+          Folder name
+        </label>
+        <Input
+          id="folder-name"
+          value={folderName}
+          onChange={(event) => onFolderNameChange(event.target.value)}
+          placeholder="Enter a folder name"
+          className="w-full"
+        />
+        <div className="flex gap-2">
+          <Button onClick={onClose} className="flex-1">
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" className="flex-1">
+            <Pencil className="size-4" strokeWidth={1.75} />
+            Rename
+          </Button>
+        </div>
+      </form>
+
+      {showDeleteConfirm ? (
+        <div className="mt-5 rounded-xl border border-rose-900/40 bg-rose-950/20 p-4 text-sm text-rose-200">
+          <p>Delete this empty folder?</p>
+          <div className="mt-3 flex gap-2">
+            <Button onClick={() => onDeleteConfirmChange(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={onDelete} className="flex-1">
+              Delete
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          onClick={() => onDeleteConfirmChange(true)}
+          disabled={!folder.isEmpty}
+          title={folder.isEmpty ? `Delete ${folder.name}` : "Folder must be empty"}
+          className="mt-5 w-full justify-start px-4 py-3 text-left text-rose-400 hover:border-rose-900/50 hover:bg-rose-950/20"
+        >
+          <Trash2 className="size-5" strokeWidth={1.75} />
+          <span>{folder.isEmpty ? "Delete folder" : "Folder must be empty"}</span>
+        </Button>
+      )}
+    </Modal>
   );
 }

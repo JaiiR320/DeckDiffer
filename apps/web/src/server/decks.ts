@@ -15,6 +15,7 @@ import {
   listDeckFolderViewInputSchema,
   moveDeckToFolderInputSchema,
   renameDeckInputSchema,
+  renameFolderInputSchema,
   saveDeckInputSchema,
   updateDeckCoverInputSchema,
   updateDeckColorsInputSchema,
@@ -27,6 +28,7 @@ import {
   type ListDeckFolderViewInput,
   type MoveDeckToFolderInput,
   type RenameDeckInput,
+  type RenameFolderInput,
   type SaveDeckInput,
   type UpdateDeckCoverInput,
   type UpdateDeckColorsInput,
@@ -241,7 +243,12 @@ async function getUniqueSlug(userId: string, name: string, currentDeckId?: strin
   return getUniqueDeckIdentity(userId, name, currentDeckId);
 }
 
-async function getUniqueFolderSlug(userId: string, parentFolderId: string | null, name: string) {
+async function getUniqueFolderSlug(
+  userId: string,
+  parentFolderId: string | null,
+  name: string,
+  currentFolderId?: string,
+) {
   const siblingFolders = await db
     .select({ slug: folders.slug })
     .from(folders)
@@ -251,6 +258,7 @@ async function getUniqueFolderSlug(userId: string, parentFolderId: string | null
         parentFolderId
           ? eq(folders.parentFolderId, parentFolderId)
           : isNull(folders.parentFolderId),
+        currentFolderId ? ne(folders.id, currentFolderId) : undefined,
       ),
     );
   const existingSlugs = new Set(siblingFolders.map((folder) => folder.slug));
@@ -342,8 +350,21 @@ export const listDeckFolderView = createServerFn({ method: "GET" })
       ]),
     );
 
+    const currentFolderCounts = currentFolder
+      ? countFolderContents(currentFolder.id, foldersByParentId, deckCountByFolderId)
+      : null;
+
     return {
-      currentFolder: currentFolder ? mapFolder(currentFolder) : undefined,
+      currentFolder: currentFolder
+        ? {
+            ...mapFolder(currentFolder),
+            isEmpty:
+              !folderIdsWithChildren.has(currentFolder.id) &&
+              !folderIdsWithDecks.has(currentFolder.id),
+            folderCount: currentFolderCounts?.folderCount ?? 0,
+            deckCount: currentFolderCounts?.deckCount ?? 0,
+          }
+        : undefined,
       currentFolderPath,
       breadcrumbs: breadcrumbs.map(({ folder, path }) => ({
         id: folder.id,
@@ -412,6 +433,28 @@ export const deleteFolderForUser = createServerFn({ method: "POST" })
 
     await db.delete(folders).where(eq(folders.id, folder.id));
     return { success: true, parentFolderId: folder.parentFolderId };
+  });
+
+export const renameFolderForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: RenameFolderInput) => renameFolderInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const folder = await requireFolderForUser(userId, data.folderId);
+    const nextName = data.newName.trim();
+    const nextSlug = await getUniqueFolderSlug(
+      userId,
+      folder.parentFolderId ?? null,
+      nextName,
+      folder.id,
+    );
+
+    await db
+      .update(folders)
+      .set({ name: nextName, slug: nextSlug, updatedAt: new Date() })
+      .where(eq(folders.id, folder.id));
+
+    const updatedFolder = await requireFolderForUser(userId, folder.id);
+    return mapFolder(updatedFolder);
   });
 
 export const moveDeckToFolderForUser = createServerFn({ method: "POST" })

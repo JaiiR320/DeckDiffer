@@ -31,9 +31,12 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
         <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/85 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/85 to-transparent" />
         <div className="pointer-events-none relative z-10 flex h-full flex-col justify-between px-7 py-6 pr-16">
-          <span className="text-3xl font-semibold tracking-tight text-zinc-100 drop-shadow-lg">
-            {deck.name}
-          </span>
+          <div className="flex items-center gap-3">
+            <Layers className="size-8 shrink-0 text-cyan-300 drop-shadow-lg" strokeWidth={1.75} />
+            <span className="text-3xl font-semibold tracking-tight text-zinc-100 drop-shadow-lg">
+              {deck.name}
+            </span>
+          </div>
           <p className="mt-2 text-lg text-zinc-300 drop-shadow-lg">
             {deck.saves.length} snapshot{deck.saves.length === 1 ? "" : "s"}
           </p>
@@ -64,12 +67,8 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
 
   return (
     <div className="group relative flex aspect-[3/2] min-h-48 flex-col rounded-2xl border border-zinc-800 bg-zinc-950 px-7 py-6 text-left transition hover:border-zinc-700 sm:min-h-0">
-      {/* Content - sits below the Link */}
-      <div className="pointer-events-none">
-        <Layers className="size-8 text-cyan-300" strokeWidth={1.75} />
-      </div>
-
-      <div className="pointer-events-none mt-8 pr-10">
+      <div className="pointer-events-none flex items-center gap-3 pr-10">
+        <Layers className="size-8 shrink-0 text-cyan-300" strokeWidth={1.75} />
         <span className="text-3xl font-semibold tracking-tight text-zinc-100">{deck.name}</span>
       </div>
 
