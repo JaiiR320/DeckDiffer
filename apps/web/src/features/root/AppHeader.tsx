@@ -30,6 +30,7 @@ export function AppHeader() {
             <nav className="flex items-center gap-3">
               <Link
                 to="/decks"
+                search={{ folder: undefined }}
                 className={`${navLinkClass} ${
                   isDecksPage
                     ? "border-cyan-800 bg-cyan-950/40 text-cyan-200"

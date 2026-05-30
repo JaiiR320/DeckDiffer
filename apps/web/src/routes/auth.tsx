@@ -6,7 +6,7 @@ export const Route = createFileRoute("/auth")({
   beforeLoad: async () => {
     const session = await getCurrentSession();
     if (session) {
-      throw redirect({ to: "/decks" });
+      throw redirect({ to: "/decks", search: { folder: undefined } });
     }
   },
   component: AuthPage,

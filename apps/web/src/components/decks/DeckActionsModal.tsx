@@ -1,5 +1,14 @@
 import { DragDropProvider, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/react";
-import { Download, GripVertical, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
+import {
+  Download,
+  FolderInput,
+  GripVertical,
+  ImageOff,
+  Pencil,
+  Plus,
+  Shuffle,
+  Trash2,
+} from "lucide-react";
 import { ManaSymbolIcon } from "#/components/cards/ManaSymbolIcon";
 import type { Dispatch, FormEvent } from "react";
 import { useReducer, useState } from "react";
@@ -9,7 +18,7 @@ import { Input } from "#/components/ui/Input";
 import { Modal } from "#/components/ui/Modal";
 import { TabButton } from "#/components/ui/TabButton";
 import { ToggleChip } from "#/components/ui/ToggleChip";
-import type { DeckColor, DeckItem } from "../../lib/deck";
+import type { DeckColor, DeckFolderOption, DeckItem } from "../../lib/deck";
 import {
   createCategoryId,
   hasCategoryName,
@@ -24,6 +33,9 @@ type DeckActionsModalProps = {
   onRename: (deckId: string, newName: string) => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onMoveToFolder?: (deckId: string, folderId: string | null) => void;
+  folderOptions?: DeckFolderOption[];
+  currentFolderId?: string | null;
   onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
   onClearCover?: (deckId: string) => void;
   onSwapSplitCover?: (deck: DeckItem) => void;
@@ -36,6 +48,7 @@ type DeckActionsModalProps = {
 };
 
 const EMPTY_CARDS: ValidatedDeckCard[] = [];
+const EMPTY_FOLDER_OPTIONS: DeckFolderOption[] = [];
 const DECK_COLORS: Array<{
   color: DeckColor;
   label: string;
@@ -74,6 +87,9 @@ export function DeckActionsModal({
   onRename,
   onDelete,
   onExport,
+  onMoveToFolder,
+  folderOptions = EMPTY_FOLDER_OPTIONS,
+  currentFolderId = null,
   onColorsChange,
   onClearCover,
   onSwapSplitCover,
@@ -199,6 +215,9 @@ export function DeckActionsModal({
               persistDraftColors();
               onExport({ ...deckToExport, colors: draftColors });
             }}
+            onMoveToFolder={onMoveToFolder}
+            folderOptions={folderOptions}
+            currentFolderId={currentFolderId}
             onColorsChange={onColorsChange}
             onDraftColorsChange={setDraftColors}
             onClearCover={onClearCover}
@@ -240,6 +259,9 @@ function GeneralSettingsTab({
   onClose,
   onDelete,
   onExport,
+  onMoveToFolder,
+  folderOptions,
+  currentFolderId,
   onColorsChange,
   onDraftColorsChange,
   onClearCover,
@@ -255,6 +277,9 @@ function GeneralSettingsTab({
   onClose: () => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onMoveToFolder?: (deckId: string, folderId: string | null) => void;
+  folderOptions: DeckFolderOption[];
+  currentFolderId: string | null;
   onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
   onDraftColorsChange: (colors: DeckColor[]) => void;
   onClearCover?: (deckId: string) => void;
@@ -327,6 +352,39 @@ function GeneralSettingsTab({
                 );
               })}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {onMoveToFolder ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-zinc-100">
+            <FolderInput className="size-5 text-zinc-500" strokeWidth={1.75} />
+            Move to folder
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              size="sm"
+              variant={currentFolderId ? "secondary" : "primary"}
+              disabled={!currentFolderId}
+              onClick={() => onMoveToFolder(deck.id, null)}
+              className="justify-start"
+            >
+              Root
+            </Button>
+            {folderOptions.map((folder) => (
+              <Button
+                key={folder.id}
+                size="sm"
+                variant={currentFolderId === folder.id ? "primary" : "secondary"}
+                disabled={currentFolderId === folder.id}
+                onClick={() => onMoveToFolder(deck.id, folder.id)}
+                className="justify-start"
+                title={folder.path}
+              >
+                <span style={{ paddingLeft: `${folder.depth * 12}px` }}>{folder.name}</span>
+              </Button>
+            ))}
           </div>
         </div>
       ) : null}

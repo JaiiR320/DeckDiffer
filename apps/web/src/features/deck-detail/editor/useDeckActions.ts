@@ -99,7 +99,7 @@ export function useDeckActions({ deckState, editorState, navigationState }: UseD
   async function deleteDeck(deckId: string) {
     try {
       await deleteDeckForUser({ data: { deckId } });
-      await navigate({ to: "/decks" });
+      await navigate({ to: "/decks", search: { folder: undefined } });
     } catch (error) {
       setDeckErrorMessage(
         error instanceof Error ? error.message : "Could not delete deck right now.",

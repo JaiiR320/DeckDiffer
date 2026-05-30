@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
       throw redirect({ to: "/auth" });
     }
 
-    throw redirect({ to: "/decks" });
+    throw redirect({ to: "/decks", search: { folder: undefined } });
   },
   component: RootRedirectPage,
 });
