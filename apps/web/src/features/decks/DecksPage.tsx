@@ -363,7 +363,12 @@ function FolderCard({ folder, path, onOpen, onDelete }: FolderCardProps) {
       </div>
       <div className="pointer-events-none mt-8 pr-10">
         <span className="text-3xl font-semibold tracking-tight text-zinc-100">{folder.name}</span>
-        <p className="mt-2 text-lg text-zinc-500">Folder</p>
+      </div>
+      <div className="pointer-events-none mt-auto">
+        <p className="mt-2 text-lg text-zinc-500">
+          {folder.folderCount} folder{folder.folderCount === 1 ? "" : "s"} | {folder.deckCount} deck
+          {folder.deckCount === 1 ? "" : "s"}
+        </p>
       </div>
       <button
         type="button"

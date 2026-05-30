@@ -69,8 +69,11 @@ export function DeckCard({ deck, onEdit }: DeckCardProps) {
         <Layers className="size-8 text-cyan-300" strokeWidth={1.75} />
       </div>
 
-      <div className="pointer-events-none mt-8">
+      <div className="pointer-events-none mt-8 pr-10">
         <span className="text-3xl font-semibold tracking-tight text-zinc-100">{deck.name}</span>
+      </div>
+
+      <div className="pointer-events-none mt-auto">
         <p className="mt-2 text-lg text-zinc-500">
           {deck.saves.length} snapshot{deck.saves.length === 1 ? "" : "s"}
         </p>

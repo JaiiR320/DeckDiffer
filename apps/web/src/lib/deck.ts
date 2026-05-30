@@ -79,7 +79,7 @@ export type DeckFolderView = {
   currentFolder?: DeckFolder;
   currentFolderPath: string;
   breadcrumbs: DeckBreadcrumb[];
-  folders: Array<DeckFolder & { isEmpty: boolean }>;
+  folders: Array<DeckFolder & { isEmpty: boolean; folderCount: number; deckCount: number }>;
   folderOptions: DeckFolderOption[];
   deckFolderIds: Record<string, string | null>;
   decks: DeckItem[];

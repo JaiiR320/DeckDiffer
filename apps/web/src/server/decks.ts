@@ -119,6 +119,23 @@ function buildFolderOptions(allFolders: FolderRow[]): DeckFolderOption[] {
   return options;
 }
 
+function countFolderContents(
+  folderId: string,
+  foldersByParentId: Map<string | null, FolderRow[]>,
+  deckCountByFolderId: Map<string, number>,
+) {
+  let folderCount = 0;
+  let deckCount = deckCountByFolderId.get(folderId) ?? 0;
+
+  for (const childFolder of foldersByParentId.get(folderId) ?? []) {
+    const childCounts = countFolderContents(childFolder.id, foldersByParentId, deckCountByFolderId);
+    folderCount += 1 + childCounts.folderCount;
+    deckCount += childCounts.deckCount;
+  }
+
+  return { folderCount, deckCount };
+}
+
 async function getDeckRowsWithSaves(userId: string, folderId?: string | null) {
   const deckRows = await db
     .select()
@@ -305,6 +322,19 @@ export const listDeckFolderView = createServerFn({ method: "GET" })
     const folderIdsWithChildren = new Set(
       allFolders.flatMap((folder) => (folder.parentFolderId ? [folder.parentFolderId] : [])),
     );
+    const foldersByParentId = new Map<string | null, FolderRow[]>();
+
+    for (const folder of allFolders) {
+      const parentId = folder.parentFolderId ?? null;
+      foldersByParentId.set(parentId, [...(foldersByParentId.get(parentId) ?? []), folder]);
+    }
+
+    const deckCountByFolderId = new Map<string, number>();
+
+    for (const entry of entryRows) {
+      deckCountByFolderId.set(entry.folderId, (deckCountByFolderId.get(entry.folderId) ?? 0) + 1);
+    }
+
     const deckFolderIds = Object.fromEntries(
       userDeckRows.map((deck) => [
         deck.slug,
@@ -323,6 +353,7 @@ export const listDeckFolderView = createServerFn({ method: "GET" })
       folders: childFolders.map((folder) => ({
         ...mapFolder(folder),
         isEmpty: !folderIdsWithChildren.has(folder.id) && !folderIdsWithDecks.has(folder.id),
+        ...countFolderContents(folder.id, foldersByParentId, deckCountByFolderId),
       })),
       folderOptions: buildFolderOptions(allFolders),
       deckFolderIds,

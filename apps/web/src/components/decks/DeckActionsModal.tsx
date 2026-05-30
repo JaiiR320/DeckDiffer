@@ -1,6 +1,9 @@
 import { DragDropProvider, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/react";
 import {
+  ChevronDown,
+  ChevronRight,
   Download,
+  Folder,
   FolderInput,
   GripVertical,
   ImageOff,
@@ -287,6 +290,27 @@ function GeneralSettingsTab({
   onRenameSubmit: (event: FormEvent<HTMLFormElement>) => void;
   setState: Dispatch<Partial<ModalState>>;
 }) {
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(() => new Set());
+  const folderHasChildren = new Set(
+    folderOptions.flatMap((folder) => (folder.parentFolderId ? [folder.parentFolderId] : [])),
+  );
+  const foldersById = new Map(folderOptions.map((folder) => [folder.id, folder]));
+  const visibleFolderOptions = folderOptions.filter((folder) =>
+    isFolderVisible(folder, foldersById, collapsedFolderIds),
+  );
+
+  function toggleFolderCollapsed(folderId: string) {
+    setCollapsedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="mt-5 space-y-2">
       {isEditing ? (
@@ -362,29 +386,64 @@ function GeneralSettingsTab({
             <FolderInput className="size-5 text-zinc-500" strokeWidth={1.75} />
             Move to folder
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button
-              size="sm"
-              variant={currentFolderId ? "secondary" : "primary"}
+          <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-950/60 p-1">
+            <button
+              type="button"
               disabled={!currentFolderId}
               onClick={() => onMoveToFolder(deck.id, null)}
-              className="justify-start"
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition disabled:cursor-default ${
+                currentFolderId
+                  ? "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                  : "bg-cyan-400 text-cyan-950"
+              }`}
             >
-              Root
-            </Button>
-            {folderOptions.map((folder) => (
-              <Button
-                key={folder.id}
-                size="sm"
-                variant={currentFolderId === folder.id ? "primary" : "secondary"}
-                disabled={currentFolderId === folder.id}
-                onClick={() => onMoveToFolder(deck.id, folder.id)}
-                className="justify-start"
-                title={folder.path}
-              >
-                <span style={{ paddingLeft: `${folder.depth * 12}px` }}>{folder.name}</span>
-              </Button>
-            ))}
+              <FolderInput className="size-4" strokeWidth={1.75} />
+              <span>Root</span>
+            </button>
+            {visibleFolderOptions.map((folder) => {
+              const hasChildren = folderHasChildren.has(folder.id);
+              const isCollapsed = collapsedFolderIds.has(folder.id);
+              const isCurrent = currentFolderId === folder.id;
+
+              return (
+                <div
+                  key={folder.id}
+                  className={`flex items-center rounded-lg text-sm transition ${
+                    isCurrent
+                      ? "bg-cyan-400 text-cyan-950"
+                      : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                  }`}
+                  style={{ paddingLeft: `${8 + folder.depth * 20}px` }}
+                >
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleFolderCollapsed(folder.id)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md transition hover:bg-black/10"
+                      aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${folder.name}`}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="size-4" strokeWidth={1.75} />
+                      ) : (
+                        <ChevronDown className="size-4" strokeWidth={1.75} />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="size-8 shrink-0" />
+                  )}
+                  <button
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={() => onMoveToFolder(deck.id, folder.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 pr-3 text-left disabled:cursor-default"
+                    title={folder.path}
+                  >
+                    <Folder className="size-4 shrink-0" strokeWidth={1.75} />
+                    <span className="truncate">{folder.name}</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -461,6 +520,24 @@ function toggleDeckColor(colors: DeckColor[], color: DeckColor) {
   return DECK_COLORS.flatMap((deckColor) =>
     nextColors.has(deckColor.color) ? [deckColor.color] : [],
   );
+}
+
+function isFolderVisible(
+  folder: DeckFolderOption,
+  foldersById: Map<string, DeckFolderOption>,
+  collapsedFolderIds: Set<string>,
+) {
+  let parentFolderId = folder.parentFolderId;
+
+  while (parentFolderId) {
+    if (collapsedFolderIds.has(parentFolderId)) {
+      return false;
+    }
+
+    parentFolderId = foldersById.get(parentFolderId)?.parentFolderId;
+  }
+
+  return true;
 }
 
 function areDeckColorsEqual(left: DeckColor[], right: DeckColor[]) {
