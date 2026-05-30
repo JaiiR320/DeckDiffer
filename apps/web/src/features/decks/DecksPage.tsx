@@ -1,6 +1,15 @@
 import { useLoaderData, useNavigate, useRouter } from "@tanstack/react-router";
-import { ChevronRight, Folder, FolderPlus, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
-import { useReducer } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Folder,
+  FolderPlus,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useReducer, useRef } from "react";
 import type { FormEvent } from "react";
 import { DeckActionsModal } from "#/components/decks/DeckActionsModal";
 import { CreateDeckModal } from "#/components/decks/CreateDeckModal";
@@ -31,6 +40,8 @@ type DecksPageState = {
   editingFolder: DeckFolderView["folders"][number] | DeckFolderView["currentFolder"] | null;
   folderName: string;
   showFolderDeleteConfirm: boolean;
+  folderOffset: number;
+  visibleFolderSlots: number;
   errorMessage: string | null;
 };
 
@@ -64,6 +75,8 @@ export function DecksPage() {
       editingFolder: null,
       folderName: "",
       showFolderDeleteConfirm: false,
+      folderOffset: 0,
+      visibleFolderSlots: 1,
       errorMessage: null,
     },
   );
@@ -75,10 +88,36 @@ export function DecksPage() {
     editingFolder,
     folderName,
     showFolderDeleteConfirm,
+    folderOffset,
+    visibleFolderSlots,
     errorMessage,
   } = state;
+  const folderViewportRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const viewport = folderViewportRef.current;
+    if (!viewport) return;
+    const viewportElement = viewport;
+
+    function updateVisibleFolderSlots() {
+      const cardWidth = 384;
+      const gapWidth = 20;
+      const nextSlots = Math.max(
+        1,
+        Math.floor((viewportElement.clientWidth + gapWidth) / (cardWidth + gapWidth)),
+      );
+      setState({ visibleFolderSlots: nextSlots });
+    }
+
+    updateVisibleFolderSlots();
+    const resizeObserver = new ResizeObserver(updateVisibleFolderSlots);
+    resizeObserver.observe(viewportElement);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   function openFolder(folderPath: string) {
+    setState({ folderOffset: 0 });
     void navigate({ to: "/decks", search: folderSearch(folderPath) });
   }
 
@@ -280,6 +319,8 @@ export function DecksPage() {
   }
 
   const hasItems = view.folders.length > 0 || view.decks.length > 0;
+  const maxFolderOffset = Math.max(0, view.folders.length - visibleFolderSlots);
+  const clampedFolderOffset = Math.min(folderOffset, maxFolderOffset);
 
   return (
     <>
@@ -321,27 +362,54 @@ export function DecksPage() {
           </div>
 
           {view.folders.length > 0 ? (
-            <section className={`mb-5 ${deckGridClass}`}>
-              {view.folders.map((folder) => {
-                const folderPath = view.currentFolderPath
-                  ? `${view.currentFolderPath}/${folder.slug}`
-                  : folder.slug;
-                return (
-                  <FolderCard
-                    key={folder.id}
-                    folder={folder}
-                    path={folderPath}
-                    onOpen={openFolder}
-                    onEdit={(nextFolder) =>
-                      setState({
-                        editingFolder: nextFolder,
-                        folderName: nextFolder.name,
-                        showFolderDeleteConfirm: false,
-                      })
-                    }
-                  />
-                );
-              })}
+            <section className="relative mb-5">
+              <IconButton
+                aria-label="Show previous folder"
+                disabled={clampedFolderOffset === 0}
+                onClick={() => setState({ folderOffset: Math.max(0, clampedFolderOffset - 1) })}
+                className="absolute left-0 top-1/2 z-20 -translate-x-[calc(100%+1.25rem)] -translate-y-1/2 p-2"
+              >
+                <ChevronLeft className="size-5" strokeWidth={1.75} />
+              </IconButton>
+              <div ref={folderViewportRef} className="overflow-hidden">
+                <div
+                  className="flex gap-5 transition-transform duration-200 ease-out"
+                  style={{
+                    transform: `translateX(calc(-${clampedFolderOffset} * (24rem + 1.25rem)))`,
+                  }}
+                >
+                  {view.folders.map((folder) => {
+                    const folderPath = view.currentFolderPath
+                      ? `${view.currentFolderPath}/${folder.slug}`
+                      : folder.slug;
+                    return (
+                      <FolderCard
+                        key={folder.id}
+                        folder={folder}
+                        path={folderPath}
+                        onOpen={openFolder}
+                        onEdit={(nextFolder) =>
+                          setState({
+                            editingFolder: nextFolder,
+                            folderName: nextFolder.name,
+                            showFolderDeleteConfirm: false,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              <IconButton
+                aria-label="Show next folder"
+                disabled={clampedFolderOffset >= maxFolderOffset}
+                onClick={() =>
+                  setState({ folderOffset: Math.min(maxFolderOffset, clampedFolderOffset + 1) })
+                }
+                className="absolute right-0 top-1/2 z-20 translate-x-[calc(100%+1.25rem)] -translate-y-1/2 p-2"
+              >
+                <ChevronRight className="size-5" strokeWidth={1.75} />
+              </IconButton>
             </section>
           ) : null}
 
@@ -459,7 +527,7 @@ function Breadcrumbs({
 
 function FolderCard({ folder, path, onOpen, onEdit }: FolderCardProps) {
   return (
-    <div className="group relative flex min-h-24 flex-col justify-center rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4 text-left transition hover:border-zinc-700">
+    <div className="group relative flex min-h-24 w-96 shrink-0 flex-col justify-center rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4 text-left transition hover:border-zinc-700">
       <div className="pointer-events-none grid grid-cols-[1.75rem_1fr] items-center gap-x-3 gap-y-2 pr-12">
         <Folder className="size-7 shrink-0 text-amber-300" strokeWidth={1.75} />
         <span className="truncate text-2xl font-semibold tracking-tight text-zinc-100">
