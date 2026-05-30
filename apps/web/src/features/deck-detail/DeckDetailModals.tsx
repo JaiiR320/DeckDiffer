@@ -39,6 +39,7 @@ export function DeckDetailModals() {
               .writeText(exportPreview)
               .then(() => deckImport.setIsExportOpen(false))
           }
+          onToggleAddedOnly={deckImport.toggleExportAddedOnly}
           onToggleGroupByCategory={deckImport.toggleExportGroupByCategory}
           onToggleIncludeOutOfDeckCategories={deckImport.toggleExportIncludeOutOfDeckCategories}
           onToggleIncludeQuantity={deckImport.toggleExportQuantity}

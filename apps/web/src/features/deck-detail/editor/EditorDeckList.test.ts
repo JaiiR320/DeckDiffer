@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hasCategoryName, normalizeDeckCategories, type DeckCategory } from "#/lib/decklist";
 import { buildDeckEditorModel } from "./deckEditorModel";
-import { buildEditorRows, groupEditorRows } from "./editorRows";
+import { buildAddedDeltaCards, buildEditorRows, groupEditorRows } from "./editorRows";
 
 describe("buildEditorRows", () => {
   it("returns no diff rows for identical baseline and working cards", () => {
@@ -172,6 +172,86 @@ describe("buildEditorRows", () => {
     const workingCards = [{ ...baselineCards[0], quantity: 2 }];
 
     expect(buildEditorRows(baselineCards, workingCards, categories)[0]?.status).toBe("changed");
+  });
+});
+
+describe("buildAddedDeltaCards", () => {
+  it("returns brand-new cards and positive quantity deltas only", () => {
+    const baselineCards = [
+      {
+        oracleId: "sol-ring",
+        name: "Sol Ring",
+        quantity: 1,
+        typeLine: "Artifact",
+        category: "Artifact" as const,
+      },
+      {
+        oracleId: "counterspell",
+        name: "Counterspell",
+        quantity: 2,
+        typeLine: "Instant",
+        category: "Instant" as const,
+      },
+      {
+        oracleId: "island",
+        name: "Island",
+        quantity: 3,
+        typeLine: "Basic Land - Island",
+        category: "Land" as const,
+      },
+    ];
+    const workingCards = [
+      {
+        oracleId: "sol-ring",
+        name: "Sol Ring",
+        quantity: 2,
+        typeLine: "Artifact",
+        category: "Artifact" as const,
+      },
+      {
+        oracleId: "counterspell",
+        name: "Counterspell",
+        quantity: 1,
+        typeLine: "Instant",
+        category: "Instant" as const,
+      },
+      {
+        oracleId: "opt",
+        name: "Opt",
+        quantity: 4,
+        typeLine: "Instant",
+        category: "Instant" as const,
+      },
+    ];
+
+    expect(buildAddedDeltaCards(baselineCards, workingCards)).toMatchObject([
+      { oracleId: "sol-ring", quantity: 1 },
+      { oracleId: "opt", quantity: 4 },
+    ]);
+  });
+
+  it("uses the current category when exporting grouped added cards", () => {
+    const categories: DeckCategory[] = [
+      { id: "main", name: "Main", kind: "custom" },
+      { id: "maybe", name: "Maybeboard", kind: "custom", includeInDeck: false },
+    ];
+    const baselineCards = [
+      { oracleId: "card-1", name: "Island", quantity: 1, typeLine: "Land", categoryId: "main" },
+    ];
+    const workingCards = [
+      ...baselineCards,
+      {
+        oracleId: "card-2",
+        name: "Counterspell",
+        quantity: 1,
+        typeLine: "Instant",
+        categoryId: "maybe",
+      },
+    ];
+
+    expect(buildAddedDeltaCards(baselineCards, workingCards, categories)).toMatchObject([
+      { oracleId: "card-2", categoryId: "maybe", quantity: 1 },
+    ]);
   });
 });
 

@@ -6,7 +6,7 @@ import {
   type DeckCategory,
   type ValidatedDeckCard,
 } from "#/lib/decklist";
-import { buildEditorRows, groupEditorRows } from "./editorRows";
+import { buildAddedDeltaCards, buildEditorRows, groupEditorRows } from "./editorRows";
 import type { CategoryDiff, DeckState } from "./types";
 
 type BuildDeckEditorModelOptions = {
@@ -47,9 +47,16 @@ export function buildDeckEditorModel({
     compareWorkingCategories,
     compareBaselineCategories,
   );
+  const addedDeltaCards = buildAddedDeltaCards(
+    compareBaselineCards,
+    compareWorkingCards,
+    compareWorkingCategories,
+    compareBaselineCategories,
+  );
   const categoryDiffs = buildCategoryDiffs(compareBaselineCategories, compareWorkingCategories);
 
   return {
+    addedDeltaCards,
     categoryDiffs,
     emptyMessage:
       baselineDeck.status === "loading"
@@ -58,6 +65,7 @@ export function buildDeckEditorModel({
           ? `Comparing "${compareSaves?.saveA.label}" → "${compareSaves?.saveB.label}"`
           : "Import a deck or add cards to start building.",
     groupedRows: groupEditorRows(editorRows, compareWorkingCategories),
+    exportCategories: compareWorkingCategories,
     mergedWorkingCards,
     resultCardTotal: editorRows.reduce(
       (total, row) => total + (includedCategoryIds.has(row.category) ? row.currentQuantity : 0),

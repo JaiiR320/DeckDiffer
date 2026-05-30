@@ -30,6 +30,7 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
     includeQuantity: true,
     groupByCategory: false,
     includeOutOfDeckCategories: false,
+    addedOnly: false,
   });
   const { baselineDeck, workingCards } = deckState;
   const { applyValidatedImport, beginImport, failImport } = editorActions;
@@ -42,24 +43,6 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
   function closeImportModal() {
     setDraftDeck("");
     setIsImportOpen(false);
-  }
-
-  async function validateDraftDeck(rawText: string) {
-    const { entries, errors } = parseDecklist(rawText);
-    const { validCards, invalidCards } = await validateDeckEntries(entries);
-
-    return {
-      validCards,
-      warnings: [
-        ...errors.map((error) => ({
-          lineNumber: error.lineNumber,
-          quantity: 0,
-          name: error.text,
-          reason: error.reason,
-        })),
-        ...invalidCards,
-      ],
-    };
   }
 
   async function importDraftDeck(mode: ImportMode) {
@@ -106,6 +89,8 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
     setDraftDeck,
     setIsExportOpen,
     submitImport,
+    toggleExportAddedOnly: () =>
+      setExportOptions((current) => ({ ...current, addedOnly: !current.addedOnly })),
     toggleExportGroupByCategory: () =>
       setExportOptions((current) => ({ ...current, groupByCategory: !current.groupByCategory })),
     toggleExportIncludeOutOfDeckCategories: () =>
@@ -115,5 +100,23 @@ export function useDeckImport({ deckState, editorActions }: UseDeckImportOptions
       })),
     toggleExportQuantity: () =>
       setExportOptions((current) => ({ ...current, includeQuantity: !current.includeQuantity })),
+  };
+}
+
+async function validateDraftDeck(rawText: string) {
+  const { entries, errors } = parseDecklist(rawText);
+  const { validCards, invalidCards } = await validateDeckEntries(entries);
+
+  return {
+    validCards,
+    warnings: [
+      ...errors.map((error) => ({
+        lineNumber: error.lineNumber,
+        quantity: 0,
+        name: error.text,
+        reason: error.reason,
+      })),
+      ...invalidCards,
+    ],
   };
 }

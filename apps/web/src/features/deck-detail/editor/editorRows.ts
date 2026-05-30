@@ -73,6 +73,33 @@ export function buildEditorRows(
   });
 }
 
+export function buildAddedDeltaCards(
+  baselineCards: ValidatedDeckCard[],
+  workingCards: ValidatedDeckCard[],
+  categories: DeckCategory[] = defaultDeckCategories(),
+  baselineCategories: DeckCategory[] = categories,
+) {
+  const baseline = mergeValidatedCards(
+    baselineCards.map((card) => normalizeDeckCard(card, baselineCategories)),
+  );
+  const working = mergeValidatedCards(
+    workingCards.map((card) => normalizeDeckCard(card, categories)),
+  );
+  const baselineById = new Map(baseline.map((card) => [diffCardKey(card), card]));
+  const addedCards: ValidatedDeckCard[] = [];
+
+  for (const workingCard of working) {
+    const baselineQuantity = baselineById.get(diffCardKey(workingCard))?.quantity ?? 0;
+    const quantity = workingCard.quantity - baselineQuantity;
+
+    if (quantity > 0) {
+      addedCards.push({ ...workingCard, quantity });
+    }
+  }
+
+  return addedCards;
+}
+
 function diffCardKey(card: ValidatedDeckCard) {
   return `${card.categoryId ?? ""}\0${card.oracleId}`;
 }
