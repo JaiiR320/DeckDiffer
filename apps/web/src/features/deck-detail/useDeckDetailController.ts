@@ -46,6 +46,7 @@ const emptyDeckState: DeckState = {
   status: "idle",
   errorMessage: null,
 };
+const resolvedPersistQueue = Promise.resolve();
 
 function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partial<PageState> {
   return {
@@ -57,8 +58,14 @@ function getDeckEditorState(deck: DeckItem, errorMessage: string | null): Partia
 
 export function useDeckDetailController() {
   const loaderData = routeApi.useLoaderData();
-  const attemptedCardDataBackfillsRef = useRef(new Set<string>());
-  const persistQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const attemptedCardDataBackfillsRef = useRef<Set<string> | null>(null);
+  const persistQueueRef = useRef<Promise<unknown> | null>(null);
+  if (attemptedCardDataBackfillsRef.current === null) {
+    attemptedCardDataBackfillsRef.current = new Set<string>();
+  }
+  if (persistQueueRef.current === null) {
+    persistQueueRef.current = resolvedPersistQueue;
+  }
   const persistVersionRef = useRef(0);
   const [pageState, dispatchPageState] = useReducer(pageStateReducer, {
     activeTab: "editor",
@@ -174,7 +181,7 @@ export function useDeckDetailController() {
       }
     };
 
-    const queuedPersist = persistQueueRef.current.then(persist, persist);
+    const queuedPersist = persistQueueRef.current!.then(persist, persist);
     persistQueueRef.current = queuedPersist.catch(() => null);
     return queuedPersist;
   };
@@ -255,7 +262,7 @@ export function useDeckDetailController() {
       const key = getCardDataBackfillKey(card);
       return (
         key &&
-        !attemptedCardDataBackfillsRef.current.has(key) &&
+        !attemptedCardDataBackfillsRef.current!.has(key) &&
         (stackLayout.cardSort === "edhrecRank" ||
           card.edhrecRank === undefined ||
           card.priceUsd === undefined ||
@@ -272,7 +279,7 @@ export function useDeckDetailController() {
     ];
     for (const card of uniqueCards) {
       const key = getCardDataBackfillKey(card);
-      if (key) attemptedCardDataBackfillsRef.current.add(key);
+      if (key) attemptedCardDataBackfillsRef.current!.add(key);
     }
 
     let isCurrent = true;
@@ -386,8 +393,10 @@ export function useDeckDetailController() {
   });
   const previewExport = deck
     ? createDeckExport(deck, {
-        cards: editorModel.mergedWorkingCards,
-        categories,
+        cards: deckImport.exportOptions.addedOnly
+          ? editorModel.addedDeltaCards
+          : editorModel.mergedWorkingCards,
+        categories: editorModel.exportCategories,
         includeQuantity: deckImport.exportOptions.includeQuantity,
         groupByCategory: deckImport.exportOptions.groupByCategory,
         includeOutOfDeckCategories: deckImport.exportOptions.includeOutOfDeckCategories,

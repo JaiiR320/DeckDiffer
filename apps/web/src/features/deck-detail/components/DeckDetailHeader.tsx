@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router";
 import { Save, Settings } from "lucide-react";
 import { Button } from "#/components/ui/Button";
 import type { DeckItem } from "#/lib/deck";
@@ -21,12 +20,6 @@ export function DeckDetailHeader({
   return (
     <div className="mb-8 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
-        <Link
-          to="/decks"
-          className="rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
-        >
-          Back
-        </Link>
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">{deckName}</h1>
         {deck.saves.length > 0 && (
           <span className="rounded-lg bg-zinc-900 px-2 py-1 text-sm text-zinc-500">
