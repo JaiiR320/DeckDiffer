@@ -1,5 +1,17 @@
 import { DragDropProvider, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/react";
-import { Download, GripVertical, ImageOff, Pencil, Plus, Shuffle, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Folder,
+  FolderInput,
+  GripVertical,
+  ImageOff,
+  Pencil,
+  Plus,
+  Shuffle,
+  Trash2,
+} from "lucide-react";
 import { ManaSymbolIcon } from "#/components/cards/ManaSymbolIcon";
 import type { Dispatch, FormEvent } from "react";
 import { useReducer, useState } from "react";
@@ -9,7 +21,7 @@ import { Input } from "#/components/ui/Input";
 import { Modal } from "#/components/ui/Modal";
 import { TabButton } from "#/components/ui/TabButton";
 import { ToggleChip } from "#/components/ui/ToggleChip";
-import type { DeckColor, DeckItem } from "../../lib/deck";
+import type { DeckColor, DeckFolderOption, DeckItem } from "../../lib/deck";
 import {
   createCategoryId,
   hasCategoryName,
@@ -24,6 +36,9 @@ type DeckActionsModalProps = {
   onRename: (deckId: string, newName: string) => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onMoveToFolder?: (deckId: string, folderId: string | null) => void;
+  folderOptions?: DeckFolderOption[];
+  currentFolderId?: string | null;
   onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
   onClearCover?: (deckId: string) => void;
   onSwapSplitCover?: (deck: DeckItem) => void;
@@ -36,6 +51,7 @@ type DeckActionsModalProps = {
 };
 
 const EMPTY_CARDS: ValidatedDeckCard[] = [];
+const EMPTY_FOLDER_OPTIONS: DeckFolderOption[] = [];
 const DECK_COLORS: Array<{
   color: DeckColor;
   label: string;
@@ -74,6 +90,9 @@ export function DeckActionsModal({
   onRename,
   onDelete,
   onExport,
+  onMoveToFolder,
+  folderOptions = EMPTY_FOLDER_OPTIONS,
+  currentFolderId = null,
   onColorsChange,
   onClearCover,
   onSwapSplitCover,
@@ -199,6 +218,9 @@ export function DeckActionsModal({
               persistDraftColors();
               onExport({ ...deckToExport, colors: draftColors });
             }}
+            onMoveToFolder={onMoveToFolder}
+            folderOptions={folderOptions}
+            currentFolderId={currentFolderId}
             onColorsChange={onColorsChange}
             onDraftColorsChange={setDraftColors}
             onClearCover={onClearCover}
@@ -240,6 +262,9 @@ function GeneralSettingsTab({
   onClose,
   onDelete,
   onExport,
+  onMoveToFolder,
+  folderOptions,
+  currentFolderId,
   onColorsChange,
   onDraftColorsChange,
   onClearCover,
@@ -255,6 +280,9 @@ function GeneralSettingsTab({
   onClose: () => void;
   onDelete: (deckId: string) => void;
   onExport: (deck: DeckItem) => void;
+  onMoveToFolder?: (deckId: string, folderId: string | null) => void;
+  folderOptions: DeckFolderOption[];
+  currentFolderId: string | null;
   onColorsChange?: (colors: DeckColor[]) => void | Promise<unknown>;
   onDraftColorsChange: (colors: DeckColor[]) => void;
   onClearCover?: (deckId: string) => void;
@@ -262,6 +290,27 @@ function GeneralSettingsTab({
   onRenameSubmit: (event: FormEvent<HTMLFormElement>) => void;
   setState: Dispatch<Partial<ModalState>>;
 }) {
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(() => new Set());
+  const folderHasChildren = new Set(
+    folderOptions.flatMap((folder) => (folder.parentFolderId ? [folder.parentFolderId] : [])),
+  );
+  const foldersById = new Map(folderOptions.map((folder) => [folder.id, folder]));
+  const visibleFolderOptions = folderOptions.filter((folder) =>
+    isFolderVisible(folder, foldersById, collapsedFolderIds),
+  );
+
+  function toggleFolderCollapsed(folderId: string) {
+    setCollapsedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="mt-5 space-y-2">
       {isEditing ? (
@@ -327,6 +376,74 @@ function GeneralSettingsTab({
                 );
               })}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {onMoveToFolder ? (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-zinc-100">
+            <FolderInput className="size-5 text-zinc-500" strokeWidth={1.75} />
+            Move to folder
+          </div>
+          <div className="space-y-1 rounded-xl border border-zinc-800 bg-zinc-950/60 p-1">
+            <button
+              type="button"
+              disabled={!currentFolderId}
+              onClick={() => onMoveToFolder(deck.id, null)}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition disabled:cursor-default ${
+                currentFolderId
+                  ? "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                  : "bg-cyan-400 text-cyan-950"
+              }`}
+            >
+              <FolderInput className="size-4" strokeWidth={1.75} />
+              <span>Root</span>
+            </button>
+            {visibleFolderOptions.map((folder) => {
+              const hasChildren = folderHasChildren.has(folder.id);
+              const isCollapsed = collapsedFolderIds.has(folder.id);
+              const isCurrent = currentFolderId === folder.id;
+
+              return (
+                <div
+                  key={folder.id}
+                  className={`flex items-center rounded-lg text-sm transition ${
+                    isCurrent
+                      ? "bg-cyan-400 text-cyan-950"
+                      : "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100"
+                  }`}
+                  style={{ paddingLeft: `${8 + folder.depth * 20}px` }}
+                >
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleFolderCollapsed(folder.id)}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md transition hover:bg-black/10"
+                      aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${folder.name}`}
+                    >
+                      {isCollapsed ? (
+                        <ChevronRight className="size-4" strokeWidth={1.75} />
+                      ) : (
+                        <ChevronDown className="size-4" strokeWidth={1.75} />
+                      )}
+                    </button>
+                  ) : (
+                    <span className="size-8 shrink-0" />
+                  )}
+                  <button
+                    type="button"
+                    disabled={isCurrent}
+                    onClick={() => onMoveToFolder(deck.id, folder.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-2 pr-3 text-left disabled:cursor-default"
+                    title={folder.path}
+                  >
+                    <Folder className="size-4 shrink-0" strokeWidth={1.75} />
+                    <span className="truncate">{folder.name}</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -403,6 +520,24 @@ function toggleDeckColor(colors: DeckColor[], color: DeckColor) {
   return DECK_COLORS.flatMap((deckColor) =>
     nextColors.has(deckColor.color) ? [deckColor.color] : [],
   );
+}
+
+function isFolderVisible(
+  folder: DeckFolderOption,
+  foldersById: Map<string, DeckFolderOption>,
+  collapsedFolderIds: Set<string>,
+) {
+  let parentFolderId = folder.parentFolderId;
+
+  while (parentFolderId) {
+    if (collapsedFolderIds.has(parentFolderId)) {
+      return false;
+    }
+
+    parentFolderId = foldersById.get(parentFolderId)?.parentFolderId;
+  }
+
+  return true;
 }
 
 function areDeckColorsEqual(left: DeckColor[], right: DeckColor[]) {

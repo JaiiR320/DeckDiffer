@@ -6,6 +6,7 @@ export function DeckNotFound() {
       <div className="flex items-center gap-4">
         <Link
           to="/decks"
+          search={{ folder: undefined }}
           className="rounded-xl border border-zinc-800 px-3 py-2 text-sm text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
         >
           Back

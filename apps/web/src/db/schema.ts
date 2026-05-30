@@ -1,6 +1,16 @@
 import type { DeckColor, DeckStackLayout, DeckTileCover } from "#/lib/deck";
 import type { DeckCategory, ValidatedDeckCard } from "#/lib/decklist";
-import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull(),
@@ -93,6 +103,43 @@ export const decks = pgTable(
   ],
 );
 
+export const folders = pgTable(
+  "folders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    parentFolderId: text("parent_folder_id").references((): AnyPgColumn => folders.id, {
+      onDelete: "cascade",
+    }),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("folders_user_parent_slug_uidx").on(
+      table.userId,
+      sql`coalesce(${table.parentFolderId}, '')`,
+      table.slug,
+    ),
+    index("folders_user_parent_idx").on(table.userId, table.parentFolderId),
+  ],
+);
+
+export const deckFolderEntries = pgTable(
+  "deck_folder_entries",
+  {
+    deckId: text("deck_id")
+      .primaryKey()
+      .references(() => decks.id, { onDelete: "cascade" }),
+    folderId: text("folder_id")
+      .notNull()
+      .references(() => folders.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("deck_folder_entries_folder_id_idx").on(table.folderId)],
+);
+
 export const deckSaves = pgTable(
   "deck_saves",
   {
@@ -115,5 +162,7 @@ export const schema = {
   account,
   verification,
   decks,
+  folders,
+  deckFolderEntries,
   deckSaves,
 };

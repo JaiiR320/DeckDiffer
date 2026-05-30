@@ -6,10 +6,15 @@ import {
   type ValidatedDeckCard,
 } from "#/lib/decklist";
 
-export type CreateDeckInput = { name: string };
+export type CreateDeckInput = { name: string; folderId?: string | null };
 export type RenameDeckInput = { deckId: string; newName: string };
 export type DeleteDeckInput = { deckId: string };
 export type GetDeckInput = { deckId: string };
+export type ListDeckFolderViewInput = { folderPath?: string };
+export type CreateFolderInput = { name: string; parentFolderId?: string | null };
+export type DeleteFolderInput = { folderId: string };
+export type RenameFolderInput = { folderId: string; newName: string };
+export type MoveDeckToFolderInput = { deckId: string; folderId?: string | null };
 export type SaveDeckInput = {
   deckId: string;
   label: string;
@@ -40,6 +45,30 @@ const deckNameSchema = z.string().trim().min(1, "Deck name is required.");
 
 export const createDeckInputSchema = z.object({
   name: deckNameSchema,
+  folderId: z.string().trim().min(1, "Folder ID is required.").nullable().optional(),
+});
+
+export const listDeckFolderViewInputSchema = z.object({
+  folderPath: z.string().optional(),
+});
+
+export const createFolderInputSchema = z.object({
+  name: z.string().trim().min(1, "Folder name is required."),
+  parentFolderId: z.string().trim().min(1, "Folder ID is required.").nullable().optional(),
+});
+
+export const deleteFolderInputSchema = z.object({
+  folderId: z.string().trim().min(1, "Folder ID is required."),
+});
+
+export const renameFolderInputSchema = z.object({
+  folderId: z.string().trim().min(1, "Folder ID is required."),
+  newName: z.string().trim().min(1, "Folder name is required."),
+});
+
+export const moveDeckToFolderInputSchema = z.object({
+  deckId: z.string().trim().min(1, "Deck ID is required."),
+  folderId: z.string().trim().min(1, "Folder ID is required.").nullable().optional(),
 });
 
 export const renameDeckInputSchema = z.object({

@@ -55,6 +55,36 @@ export type DeckItem = {
   saves: DeckSave[]; // oldest-first
 };
 
+export type DeckFolder = {
+  id: string;
+  name: string;
+  slug: string;
+  parentFolderId?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeckBreadcrumb = {
+  id: string;
+  name: string;
+  path: string;
+};
+
+export type DeckFolderOption = DeckFolder & {
+  path: string;
+  depth: number;
+};
+
+export type DeckFolderView = {
+  currentFolder?: DeckFolder & { isEmpty: boolean; folderCount: number; deckCount: number };
+  currentFolderPath: string;
+  breadcrumbs: DeckBreadcrumb[];
+  folders: Array<DeckFolder & { isEmpty: boolean; folderCount: number; deckCount: number }>;
+  folderOptions: DeckFolderOption[];
+  deckFolderIds: Record<string, string | null>;
+  decks: DeckItem[];
+};
+
 /**
  * Converts a deck name to a URL-safe slug for use as the deck ID.
  * "My Commander Deck" → "my-commander-deck"

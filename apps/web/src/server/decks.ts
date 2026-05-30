@@ -1,24 +1,34 @@
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import { db } from "#/db";
-import { deckSaves, decks } from "#/db/schema";
+import { deckFolderEntries, deckSaves, decks, folders } from "#/db/schema";
 import { auth } from "#/lib/auth";
 import { createCommanderDeckCover, shouldRefreshCommanderCover } from "#/lib/deckCover";
-import { slugifyName } from "#/lib/deck";
+import { slugifyName, type DeckFolder, type DeckFolderOption } from "#/lib/deck";
 import { mapDeck, type DeckSaveRow } from "./deckMappers";
 import {
+  createFolderInputSchema,
   createDeckInputSchema,
+  deleteFolderInputSchema,
   deckIdSchema,
+  listDeckFolderViewInputSchema,
+  moveDeckToFolderInputSchema,
   renameDeckInputSchema,
+  renameFolderInputSchema,
   saveDeckInputSchema,
   updateDeckCoverInputSchema,
   updateDeckColorsInputSchema,
   updateDeckCurrentInputSchema,
   type CreateDeckInput,
+  type CreateFolderInput,
   type DeleteDeckInput,
+  type DeleteFolderInput,
   type GetDeckInput,
+  type ListDeckFolderViewInput,
+  type MoveDeckToFolderInput,
   type RenameDeckInput,
+  type RenameFolderInput,
   type SaveDeckInput,
   type UpdateDeckCoverInput,
   type UpdateDeckColorsInput,
@@ -38,7 +48,97 @@ async function requireUserId() {
   return userId;
 }
 
-async function getDeckRowsWithSaves(userId: string) {
+type FolderRow = typeof folders.$inferSelect;
+
+function mapFolder(folder: FolderRow): DeckFolder {
+  return {
+    id: folder.id,
+    name: folder.name,
+    slug: folder.slug,
+    parentFolderId: folder.parentFolderId ?? undefined,
+    createdAt: folder.createdAt.toISOString(),
+    updatedAt: folder.updatedAt.toISOString(),
+  };
+}
+
+function normalizeFolderPath(path?: string) {
+  return (path ?? "").trim().replace(/^\/+|\/+$/g, "");
+}
+
+function folderParentMatches(folder: FolderRow, parentFolderId: string | null) {
+  return (folder.parentFolderId ?? null) === parentFolderId;
+}
+
+function resolveFolderPath(allFolders: FolderRow[], folderPath?: string) {
+  const segments = normalizeFolderPath(folderPath).split("/").filter(Boolean);
+  const breadcrumbs = [] as Array<{ folder: FolderRow; path: string }>;
+  const foldersByParentAndSlug = new Map(
+    allFolders.map((folder) => [`${folder.parentFolderId ?? ""}/${folder.slug}`, folder]),
+  );
+  let parentFolderId: string | null = null;
+  let currentFolder: FolderRow | null = null;
+  let currentPath = "";
+
+  for (const slug of segments) {
+    const folder = foldersByParentAndSlug.get(`${parentFolderId ?? ""}/${slug}`);
+
+    if (!folder) {
+      throw new Error("Folder not found.");
+    }
+
+    currentPath = currentPath ? `${currentPath}/${folder.slug}` : folder.slug;
+    breadcrumbs.push({ folder, path: currentPath });
+    parentFolderId = folder.id;
+    currentFolder = folder;
+  }
+
+  return { breadcrumbs, currentFolder, currentFolderPath: currentPath };
+}
+
+function buildFolderOptions(allFolders: FolderRow[]): DeckFolderOption[] {
+  const foldersByParentId = new Map<string | null, FolderRow[]>();
+
+  for (const folder of allFolders) {
+    const parentId = folder.parentFolderId ?? null;
+    foldersByParentId.set(parentId, [...(foldersByParentId.get(parentId) ?? []), folder]);
+  }
+
+  for (const siblingFolders of foldersByParentId.values()) {
+    siblingFolders.sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  const options: DeckFolderOption[] = [];
+
+  function appendFolderOptions(parentFolderId: string | null, parentPath: string, depth: number) {
+    for (const folder of foldersByParentId.get(parentFolderId) ?? []) {
+      const path = parentPath ? `${parentPath}/${folder.slug}` : folder.slug;
+      options.push({ ...mapFolder(folder), path, depth });
+      appendFolderOptions(folder.id, path, depth + 1);
+    }
+  }
+
+  appendFolderOptions(null, "", 0);
+  return options;
+}
+
+function countFolderContents(
+  folderId: string,
+  foldersByParentId: Map<string | null, FolderRow[]>,
+  deckCountByFolderId: Map<string, number>,
+) {
+  let folderCount = 0;
+  let deckCount = deckCountByFolderId.get(folderId) ?? 0;
+
+  for (const childFolder of foldersByParentId.get(folderId) ?? []) {
+    const childCounts = countFolderContents(childFolder.id, foldersByParentId, deckCountByFolderId);
+    folderCount += 1 + childCounts.folderCount;
+    deckCount += childCounts.deckCount;
+  }
+
+  return { folderCount, deckCount };
+}
+
+async function getDeckRowsWithSaves(userId: string, folderId?: string | null) {
   const deckRows = await db
     .select()
     .from(decks)
@@ -49,13 +149,31 @@ async function getDeckRowsWithSaves(userId: string) {
     return [];
   }
 
+  const entryRows = await db
+    .select()
+    .from(deckFolderEntries)
+    .where(
+      inArray(
+        deckFolderEntries.deckId,
+        deckRows.map((deck) => deck.id),
+      ),
+    );
+  const folderIdsByDeckId = new Map(entryRows.map((entry) => [entry.deckId, entry.folderId]));
+  const targetDeckRows = deckRows.filter(
+    (deck) => (folderIdsByDeckId.get(deck.id) ?? null) === (folderId ?? null),
+  );
+
+  if (targetDeckRows.length === 0) {
+    return [];
+  }
+
   const saveRows = await db
     .select()
     .from(deckSaves)
     .where(
       inArray(
         deckSaves.deckId,
-        deckRows.map((deck) => deck.id),
+        targetDeckRows.map((deck) => deck.id),
       ),
     )
     .orderBy(asc(deckSaves.savedAt));
@@ -68,7 +186,7 @@ async function getDeckRowsWithSaves(userId: string) {
     savesByDeckId.set(save.deckId, current);
   }
 
-  return deckRows.map((deck) => mapDeck(deck, savesByDeckId.get(deck.id) ?? []));
+  return targetDeckRows.map((deck) => mapDeck(deck, savesByDeckId.get(deck.id) ?? []));
 }
 
 async function getDeckWithSavesBySlug(userId: string, slug: string) {
@@ -125,10 +243,245 @@ async function getUniqueSlug(userId: string, name: string, currentDeckId?: strin
   return getUniqueDeckIdentity(userId, name, currentDeckId);
 }
 
+async function getUniqueFolderSlug(
+  userId: string,
+  parentFolderId: string | null,
+  name: string,
+  currentFolderId?: string,
+) {
+  const siblingFolders = await db
+    .select({ slug: folders.slug })
+    .from(folders)
+    .where(
+      and(
+        eq(folders.userId, userId),
+        parentFolderId
+          ? eq(folders.parentFolderId, parentFolderId)
+          : isNull(folders.parentFolderId),
+        currentFolderId ? ne(folders.id, currentFolderId) : undefined,
+      ),
+    );
+  const existingSlugs = new Set(siblingFolders.map((folder) => folder.slug));
+  const baseSlug = slugifyName(name) || "folder";
+
+  if (!existingSlugs.has(baseSlug)) {
+    return baseSlug;
+  }
+
+  let suffix = 2;
+  let nextSlug = `${baseSlug}-${suffix}`;
+
+  while (existingSlugs.has(nextSlug)) {
+    suffix += 1;
+    nextSlug = `${baseSlug}-${suffix}`;
+  }
+
+  return nextSlug;
+}
+
+async function requireFolderForUser(userId: string, folderId: string) {
+  const folder = await db.query.folders.findFirst({
+    where: and(eq(folders.userId, userId), eq(folders.id, folderId)),
+  });
+
+  if (!folder) {
+    throw new Error("Folder not found.");
+  }
+
+  return folder;
+}
+
 export const listDecks = createServerFn({ method: "GET" }).handler(async () => {
   const userId = await requireUserId();
   return getDeckRowsWithSaves(userId);
 });
+
+export const listDeckFolderView = createServerFn({ method: "GET" })
+  .inputValidator((data: ListDeckFolderViewInput) => listDeckFolderViewInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const allFolders = await db
+      .select()
+      .from(folders)
+      .where(eq(folders.userId, userId))
+      .orderBy(asc(folders.name));
+    const { breadcrumbs, currentFolder, currentFolderPath } = resolveFolderPath(
+      allFolders,
+      data.folderPath,
+    );
+    const currentFolderId = currentFolder?.id ?? null;
+    const childFolders = allFolders.filter((folder) =>
+      folderParentMatches(folder, currentFolderId),
+    );
+    const userDeckRows = await db.select().from(decks).where(eq(decks.userId, userId));
+    const entryRows =
+      userDeckRows.length === 0
+        ? []
+        : await db
+            .select()
+            .from(deckFolderEntries)
+            .where(
+              inArray(
+                deckFolderEntries.deckId,
+                userDeckRows.map((deck) => deck.id),
+              ),
+            );
+    const folderIdsWithDecks = new Set(entryRows.map((entry) => entry.folderId));
+    const folderIdsWithChildren = new Set(
+      allFolders.flatMap((folder) => (folder.parentFolderId ? [folder.parentFolderId] : [])),
+    );
+    const foldersByParentId = new Map<string | null, FolderRow[]>();
+
+    for (const folder of allFolders) {
+      const parentId = folder.parentFolderId ?? null;
+      foldersByParentId.set(parentId, [...(foldersByParentId.get(parentId) ?? []), folder]);
+    }
+
+    const deckCountByFolderId = new Map<string, number>();
+
+    for (const entry of entryRows) {
+      deckCountByFolderId.set(entry.folderId, (deckCountByFolderId.get(entry.folderId) ?? 0) + 1);
+    }
+
+    const deckFolderIds = Object.fromEntries(
+      userDeckRows.map((deck) => [
+        deck.slug,
+        entryRows.find((entry) => entry.deckId === deck.id)?.folderId ?? null,
+      ]),
+    );
+
+    const currentFolderCounts = currentFolder
+      ? countFolderContents(currentFolder.id, foldersByParentId, deckCountByFolderId)
+      : null;
+
+    return {
+      currentFolder: currentFolder
+        ? {
+            ...mapFolder(currentFolder),
+            isEmpty:
+              !folderIdsWithChildren.has(currentFolder.id) &&
+              !folderIdsWithDecks.has(currentFolder.id),
+            folderCount: currentFolderCounts?.folderCount ?? 0,
+            deckCount: currentFolderCounts?.deckCount ?? 0,
+          }
+        : undefined,
+      currentFolderPath,
+      breadcrumbs: breadcrumbs.map(({ folder, path }) => ({
+        id: folder.id,
+        name: folder.name,
+        path,
+      })),
+      folders: childFolders.map((folder) => ({
+        ...mapFolder(folder),
+        isEmpty: !folderIdsWithChildren.has(folder.id) && !folderIdsWithDecks.has(folder.id),
+        ...countFolderContents(folder.id, foldersByParentId, deckCountByFolderId),
+      })),
+      folderOptions: buildFolderOptions(allFolders),
+      deckFolderIds,
+      decks: await getDeckRowsWithSaves(userId, currentFolderId),
+    };
+  });
+
+export const createFolderForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: CreateFolderInput) => createFolderInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const name = data.name.trim();
+    const parentFolderId = data.parentFolderId ?? null;
+
+    if (parentFolderId) {
+      await requireFolderForUser(userId, parentFolderId);
+    }
+
+    const now = new Date();
+    const folder = {
+      id: crypto.randomUUID(),
+      userId,
+      parentFolderId,
+      slug: await getUniqueFolderSlug(userId, parentFolderId, name),
+      name,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await db.insert(folders).values(folder);
+    return mapFolder(folder);
+  });
+
+export const deleteFolderForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: DeleteFolderInput) => deleteFolderInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const folder = await requireFolderForUser(userId, data.folderId);
+    const childFolders = await db
+      .select({ id: folders.id })
+      .from(folders)
+      .where(and(eq(folders.userId, userId), eq(folders.parentFolderId, folder.id)));
+
+    if (childFolders.length > 0) {
+      throw new Error("Folder must be empty before it can be deleted.");
+    }
+
+    const assignedDecks = await db
+      .select({ deckId: deckFolderEntries.deckId })
+      .from(deckFolderEntries)
+      .where(eq(deckFolderEntries.folderId, folder.id));
+
+    if (assignedDecks.length > 0) {
+      throw new Error("Folder must be empty before it can be deleted.");
+    }
+
+    await db.delete(folders).where(eq(folders.id, folder.id));
+    return { success: true, parentFolderId: folder.parentFolderId };
+  });
+
+export const renameFolderForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: RenameFolderInput) => renameFolderInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const folder = await requireFolderForUser(userId, data.folderId);
+    const nextName = data.newName.trim();
+    const nextSlug = await getUniqueFolderSlug(
+      userId,
+      folder.parentFolderId ?? null,
+      nextName,
+      folder.id,
+    );
+
+    await db
+      .update(folders)
+      .set({ name: nextName, slug: nextSlug, updatedAt: new Date() })
+      .where(eq(folders.id, folder.id));
+
+    const updatedFolder = await requireFolderForUser(userId, folder.id);
+    return mapFolder(updatedFolder);
+  });
+
+export const moveDeckToFolderForUser = createServerFn({ method: "POST" })
+  .inputValidator((data: MoveDeckToFolderInput) => moveDeckToFolderInputSchema.parse(data))
+  .handler(async ({ data }) => {
+    const userId = await requireUserId();
+    const folderId = data.folderId ?? null;
+    const existingDeck = await db.query.decks.findFirst({
+      where: and(eq(decks.userId, userId), eq(decks.slug, data.deckId)),
+    });
+
+    if (!existingDeck) {
+      throw new Error("Deck not found.");
+    }
+
+    if (folderId) {
+      await requireFolderForUser(userId, folderId);
+    }
+
+    await db.delete(deckFolderEntries).where(eq(deckFolderEntries.deckId, existingDeck.id));
+
+    if (folderId) {
+      await db.insert(deckFolderEntries).values({ deckId: existingDeck.id, folderId });
+    }
+
+    return { success: true };
+  });
 
 export const getDeck = createServerFn({ method: "GET" })
   .inputValidator((data: GetDeckInput) => deckIdSchema.parse(data))
@@ -150,6 +503,11 @@ export const createDeckForUser = createServerFn({ method: "POST" })
     const now = new Date();
     const slug = await getUniqueSlug(userId, name);
     const id = crypto.randomUUID();
+    const folderId = data.folderId ?? null;
+
+    if (folderId) {
+      await requireFolderForUser(userId, folderId);
+    }
 
     await db.insert(decks).values({
       id,
@@ -159,6 +517,10 @@ export const createDeckForUser = createServerFn({ method: "POST" })
       createdAt: now,
       updatedAt: now,
     });
+
+    if (folderId) {
+      await db.insert(deckFolderEntries).values({ deckId: id, folderId });
+    }
 
     return getDeckWithSavesBySlug(userId, slug);
   });
